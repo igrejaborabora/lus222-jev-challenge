@@ -3,11 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LUS 222 — JEV Challenge</title>
-<meta name="description" content="Pilota o LUS 222, o avião português do CEiiA, num corredor de obstáculos — e depois vê o modelo JEV da TypeSafe AI fazer o mesmo percurso.">
-<meta name="theme-color" content="#0a1018">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+<title>SAAM · JEV Decision Demo</title>
+<meta name="description" content="Drone de carga em corredor semi-urbano, em vista FPV: o mesmo percurso voado por um piloto humano, por uma regra geométrica determinística e pelo modelo de decisão typesafe-ai/jev.">
+<meta name="theme-color" content="#080d14">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛸</text></svg>">
 <link rel="stylesheet" href="./styles.css">
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js" } }
+</script>
 </head>
 <body>
 
@@ -16,25 +19,29 @@
   <!-- ecrã: briefing -->
   <section class="screen is-active" id="screen-briefing">
     <div class="panel">
-      <p class="eyebrow">CEiiA · EEA Aircraft · Ponte de Sor</p>
-      <h1>LUS&nbsp;222 <span>JEV Challenge</span></h1>
+      <div class="brand-slot" id="brand-slot" title="Espaço reservado para a marca de quem apresenta">
+        <img src="./brand.svg" alt="" id="brand-img">
+      </div>
+
+      <p class="eyebrow">Demonstração de decisão tipada · Mobilidade Aérea Avançada</p>
+      <h1>Corredor semi-urbano <span>três pilotos, o mesmo percurso</span></h1>
       <p class="lead">
-        Um corredor aéreo sobre o Alentejo, semeado de obstáculos. Voas tu primeiro.
-        Depois o mesmo percurso, com o mesmo vento e os mesmos obstáculos, é voado pelo
-        <strong>Jev</strong> — o modelo de decisão da TypeSafe AI servido pelo Vercel AI Gateway.
-        No fim compara-se quem levou os 19 passageiros mais longe, mais inteiro e com menos sobressaltos.
+        Um drone de carga transporta material médico por um corredor urbano semeado de edifícios,
+        gruas, cabos de alta tensão e tráfego aéreo. O percurso nasce de uma semente, por isso as três
+        rondas enfrentam exactamente os mesmos obstáculos: primeiro um <strong>piloto humano</strong>,
+        depois uma <strong>regra geométrica determinística</strong>, e por fim o modelo
+        <strong>typesafe-ai/jev</strong> consultado pelo Vercel AI Gateway.
       </p>
 
       <div class="grid-setup">
         <label class="field">
-          <span>Dificuldade</span>
+          <span>Densidade do corredor</span>
           <select id="select-dificuldade">
-            <option value="treino">Treino — obstáculos espaçados</option>
-            <option value="linha" selected>Linha — ritmo operacional</option>
-            <option value="alentejo">Alentejo cerrado — sem descanso</option>
+            <option value="ensaio">Ensaio — aberturas largas</option>
+            <option value="entrega" selected>Entrega — perfil operacional</option>
+            <option value="denso">Urbano denso — aberturas apertadas</option>
           </select>
         </label>
-
         <label class="field">
           <span>Semente do percurso</span>
           <div class="seed-row">
@@ -42,11 +49,10 @@
             <button class="btn-ghost" id="btn-seed" type="button" title="Nova semente">↻</button>
           </div>
         </label>
-
         <label class="field">
-          <span>Ritmo de decisão do JEV</span>
+          <span>Ritmo de avaliação</span>
           <select id="select-ritmo">
-            <option value="150">Alto — 150 ms entre avaliações</option>
+            <option value="150">Alto — 150 ms</option>
             <option value="250" selected>Normal — 250 ms</option>
             <option value="400">Económico — 400 ms</option>
           </select>
@@ -58,58 +64,59 @@
         <span id="txt-gateway">A verificar o AI Gateway…</span>
       </div>
 
-      <button class="btn-primary" id="btn-start">Começar a ronda do piloto humano</button>
+      <button class="btn-primary" id="btn-start">Começar pela ronda do piloto humano</button>
 
       <div class="controls-hint">
-        <kbd>↑</kbd><kbd>↓</kbd> ou <kbd>W</kbd><kbd>S</kbd> para subir e descer · toque no ecrã nos telemóveis · <kbd>Esc</kbd> para pausar
+        <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> ou <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ·
+        arrasta no ecrã nos telemóveis · <kbd>Esc</kbd> para pausar
       </div>
+
+      <p class="disclaimer">
+        Camada de decisão de missão e triagem. Não é um sistema de Detect-and-Avoid certificável:
+        a separação mínima e a terminação de voo pertencem a lógica determinística verificável.
+        Projecto de demonstração independente.
+      </p>
     </div>
   </section>
 
   <!-- ecrã: voo -->
   <section class="screen" id="screen-flight">
-    <canvas id="canvas" width="960" height="540" aria-label="Simulação de voo do LUS 222"></canvas>
+    <canvas id="canvas"></canvas>
 
     <div class="hud hud-top">
-      <div class="hud-block">
-        <span class="hud-label" id="hud-piloto">PILOTO</span>
-        <strong class="hud-value" id="hud-piloto-nome">HUMANO</strong>
-      </div>
-      <div class="hud-block">
-        <span class="hud-label">DISTÂNCIA</span>
-        <strong class="hud-value"><span id="hud-dist">0</span> m</strong>
-      </div>
-      <div class="hud-block">
-        <span class="hud-label">EVITADOS</span>
-        <strong class="hud-value" id="hud-evitados">0</strong>
-      </div>
-      <div class="hud-block">
-        <span class="hud-label">INTEGRIDADE</span>
-        <strong class="hud-value" id="hud-vidas">●●●</strong>
-      </div>
-      <div class="hud-block">
-        <span class="hud-label">CONFORTO</span>
-        <strong class="hud-value"><span id="hud-conforto">100</span>%</strong>
-      </div>
+      <div class="hud-block"><span class="hud-label">PILOTO</span><strong class="hud-value" id="hud-piloto-nome">HUMANO</strong></div>
+      <div class="hud-block"><span class="hud-label">PERCURSO</span><strong class="hud-value"><span id="hud-dist">0</span> m</strong></div>
+      <div class="hud-block"><span class="hud-label">ALTITUDE</span><strong class="hud-value" id="hud-altitude">0 m</strong></div>
+      <div class="hud-block"><span class="hud-label">PORTÕES</span><strong class="hud-value" id="hud-portoes">0</strong></div>
+      <div class="hud-block"><span class="hud-label">INTEGRIDADE</span><strong class="hud-value" id="hud-integridade">100%</strong></div>
     </div>
 
-    <aside class="jev-panel" id="jev-panel" hidden>
+    <div class="progresso"><span id="barra-progresso"></span></div>
+
+    <aside class="painel" id="painel-decisao" hidden>
       <header>
-        <span class="jev-badge">typesafe-ai/jev</span>
-        <span class="jev-latency"><span id="jev-lat">—</span> ms</span>
+        <span class="painel-badge" id="painel-titulo">typesafe-ai/jev</span>
+        <span class="painel-lat" id="painel-latencia">—</span>
       </header>
-      <div class="jev-choice">
-        <span class="jev-label">MANOBRA</span>
-        <strong id="jev-manobra">—</strong>
+      <div class="painel-escolha">
+        <span class="painel-label">VERTICAL</span>
+        <strong id="painel-manobra-v">—</strong>
       </div>
-      <div class="bars" id="jev-bars"></div>
-      <div class="jev-meta">
-        <div><span>urgência</span><b id="jev-urgencia">—</b></div>
-        <div><span>colisão iminente</span><b id="jev-colisao">—</b></div>
-        <div><span>manobra suave</span><b id="jev-conforto">—</b></div>
+      <div class="bars" id="painel-barras-v"></div>
+      <div class="painel-escolha">
+        <span class="painel-label">LATERAL</span>
+        <strong id="painel-manobra-l">—</strong>
       </div>
-      <p class="jev-note" id="jev-note"></p>
+      <div class="bars" id="painel-barras-l"></div>
+      <div class="painel-meta">
+        <div><span>urgência</span><b id="painel-urgencia">—</b></div>
+        <div><span>colisão iminente</span><b id="painel-colisao">—</b></div>
+        <div><span>abortar missão</span><b id="painel-abortar">—</b></div>
+      </div>
+      <p class="painel-nota" id="painel-nota"></p>
     </aside>
+
+    <div class="dica-voo" id="dica-controlos">Setas ou WASD · arrasta no ecrã</div>
 
     <div class="overlay" id="overlay" hidden>
       <div class="overlay-card">
@@ -120,53 +127,22 @@
     </div>
   </section>
 
-  <!-- ecrã: resultados -->
+  <!-- ecrã: debriefing -->
   <section class="screen" id="screen-results">
     <div class="panel">
       <p class="eyebrow">Debriefing</p>
       <h2 id="result-title">Resultado</h2>
-
-      <div class="scoreboard">
-        <div class="score-col" id="col-humano">
-          <h3>Piloto humano</h3>
-          <div class="score-total" id="score-humano">0</div>
-          <dl>
-            <div><dt>Distância</dt><dd id="r-h-dist">0 m</dd></div>
-            <div><dt>Obstáculos evitados</dt><dd id="r-h-evitados">0</dd></div>
-            <div><dt>Embates</dt><dd id="r-h-embates">0</dd></div>
-            <div><dt>Conforto dos passageiros</dt><dd id="r-h-conforto">100%</dd></div>
-          </dl>
-        </div>
-        <div class="score-col" id="col-jev">
-          <h3>Jev <span class="tag">TypeSafe AI</span></h3>
-          <div class="score-total" id="score-jev">0</div>
-          <dl>
-            <div><dt>Distância</dt><dd id="r-j-dist">0 m</dd></div>
-            <div><dt>Obstáculos evitados</dt><dd id="r-j-evitados">0</dd></div>
-            <div><dt>Embates</dt><dd id="r-j-embates">0</dd></div>
-            <div><dt>Conforto dos passageiros</dt><dd id="r-j-conforto">100%</dd></div>
-            <div><dt>Avaliações do modelo</dt><dd id="r-j-chamadas">0</dd></div>
-            <div><dt>Latência mediana</dt><dd id="r-j-lat">— ms</dd></div>
-          </dl>
-        </div>
-      </div>
-
-      <p class="verdict" id="verdict"></p>
-
+      <div class="scoreboard" id="tabela-resultados"></div>
+      <div class="verdict" id="verdict"></div>
       <div class="result-actions">
-        <button class="btn-primary" id="btn-again">Outra volta</button>
-        <button class="btn-ghost" id="btn-share">Copiar resultado</button>
+        <button class="btn-primary" id="btn-again">Outro corredor</button>
+        <button class="btn-ghost" id="btn-log">Descarregar log de decisões</button>
       </div>
     </div>
   </section>
 
 </div>
 
-<footer class="site-footer">
-  <span>LUS 222 — aeronave regional de 19 lugares desenvolvida em Portugal pelo CEiiA / EEA Aircraft.</span>
-  <span>Decisões de evasão por <a href="https://vercel.com/ai-gateway/models/jev" target="_blank" rel="noopener">typesafe-ai/jev</a> no Vercel AI Gateway. Projecto de demonstração, sem ligação oficial ao programa LUS 222.</span>
-</footer>
-
-<script type="module" src="./game.js"></script>
+<script type="module" src="./src/main.js"></script>
 </body>
 </html>
