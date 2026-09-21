@@ -160,11 +160,19 @@ function coluna(titulo, answers, lat) {
   return d;
 }
 
-export function mostrarBannerPIC(maxP) {
-  $('pic-banner').hidden = false;
-  $('pic-texto').textContent = `JEV não automatiza — probabilidade máxima ${Number(maxP).toFixed(2)}`;
+export function mostrarChipJev(maxP, pediriaPic) {
+  const chip = $('jev-chip');
+  if (!chip) return;
+  const p = Number.isFinite(maxP) ? Number(maxP).toFixed(2) : '—';
+  chip.hidden = false;
+  chip.textContent = pediriaPic
+    ? `JEV actuou · max P ${p} · pediria PIC`
+    : `JEV actuou · max P ${p}`;
 }
 
-export function esconderBannerPIC() {
-  $('pic-banner').hidden = true;
+export function esconderChipJev() {
+  const chip = $('jev-chip');
+  if (chip) chip.hidden = true;
+  const ov = $('pic-override');
+  if (ov) ov.hidden = true;
 }
