@@ -1,6 +1,8 @@
 import {
   etiquetarAcao,
   etiquetarDestino,
+  etiquetarManobraL,
+  etiquetarManobraV,
   etiquetarRiscoMeteo,
   etiquetarUrgencia,
   maxProbabilidade,
@@ -45,6 +47,14 @@ export function actualizarRail({ answers, latencia_ms, fonte, incidente }) {
   const acao = answers?.acaoMissao?.choice ?? '—';
   $('rail-acao').textContent = etiquetarAcao(acao);
   barras($('rail-barras'), answers?.acaoMissao?.probabilities ?? {}, acao);
+  const vertical = answers?.manobraVertical?.choice;
+  const lateral = answers?.manobraLateral?.choice;
+  if ($('rail-vertical')) $('rail-vertical').textContent = etiquetarManobraV(vertical);
+  if ($('rail-lateral')) $('rail-lateral').textContent = etiquetarManobraL(lateral);
+  if ($('hud-evasao')) {
+    $('hud-evasao').textContent =
+      vertical || lateral ? `${etiquetarManobraV(vertical)} · ${etiquetarManobraL(lateral)}` : '—';
+  }
   $('rail-destino').textContent = etiquetarDestino(answers?.destinoPreferido?.choice);
   $('rail-urgencia').textContent = etiquetarUrgencia(answers?.urgencia?.score);
   $('rail-meteo').textContent = etiquetarRiscoMeteo(answers?.riscoMeteorologico?.score);
@@ -141,6 +151,8 @@ function coluna(titulo, answers, lat) {
   const ul = document.createElement('ul');
   const linhas = [
     ['Acção', etiquetarAcao(answers?.acaoMissao?.choice)],
+    ['Vertical', etiquetarManobraV(answers?.manobraVertical?.choice)],
+    ['Lateral', etiquetarManobraL(answers?.manobraLateral?.choice)],
     ['Destino', etiquetarDestino(answers?.destinoPreferido?.choice)],
     ['Urgência', etiquetarUrgencia(answers?.urgencia?.score)],
     ['Meteo', etiquetarRiscoMeteo(answers?.riscoMeteorologico?.score)],
@@ -160,14 +172,17 @@ function coluna(titulo, answers, lat) {
   return d;
 }
 
-export function mostrarChipJev(maxP, pediriaPic) {
+export function mostrarChipJev(maxP, pediriaPic, evasao) {
   const chip = $('jev-chip');
   if (!chip) return;
   const p = Number.isFinite(maxP) ? Number(maxP).toFixed(2) : '—';
+  const eixos = evasao
+    ? `${etiquetarManobraV(evasao.vertical)} · ${etiquetarManobraL(evasao.lateral)}`
+    : '';
   chip.hidden = false;
   chip.textContent = pediriaPic
-    ? `JEV actuou · max P ${p} · pediria PIC`
-    : `JEV actuou · max P ${p}`;
+    ? `JEV desviou · ${eixos} · max P ${p} · PIC no log`
+    : `JEV desviou · ${eixos} · max P ${p}`;
 }
 
 export function esconderChipJev() {

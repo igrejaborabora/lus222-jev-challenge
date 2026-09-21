@@ -3,7 +3,7 @@ export const CENARIOS = {
     id: 'medevac',
     nome: 'MEDEVAC Açores',
     tese:
-      'O JEV escolhe hospital, STOL ou órbita com o relógio clínico; a regra só vê céu livre.',
+      'O JEV desvia do que vês e escolhe hospital, STOL ou órbita; a regra só vê céu livre.',
     paragrafo:
       'Um doente crítico na Terceira. Tecto baixo, pista curta não pavimentada, relógio clínico a correr. O LUS-222 é o veículo; a decisão é hospital vs STOL vs orbitar.',
     origem: 'Lajes, Terceira',

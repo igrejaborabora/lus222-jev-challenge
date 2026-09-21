@@ -44,8 +44,8 @@
         </div>
         <button class="btn-primary" type="button" id="btn-entrar" disabled>Abrir briefing do comandante</button>
         <p class="disclaimer">
-          Demo independente. Não é Detect-and-Avoid certificável, não é autopiloto,
-          não é produto oficial EEA Aircraft ou CEiiA salvo autorização escrita.
+          Demo independente. O JEV desvia sozinho — não é Detect-and-Avoid certificável,
+          não é autopiloto, não é produto oficial EEA Aircraft ou CEiiA salvo autorização escrita.
           Render do LUS-222: crédito EEA Aircraft.
         </p>
       </div>
@@ -56,7 +56,7 @@
     <div class="panel commander">
       <p class="eyebrow">Comandante de missão</p>
       <h1>O humano decide o quê, não como voar</h1>
-      <p class="lead">Três teses, o mesmo motor. A fita de incidentes nasce da semente; o JEV e a regra lêem-na em paralelo. Sem stick.</p>
+      <p class="lead">Três teses, o mesmo motor. O LUS-222 desvia sozinho dos obstáculos que vês. A regra geométrica só entra no debriefing. Sem stick.</p>
 
       <div class="cartas" id="cartas"></div>
 
@@ -121,6 +121,7 @@
       <button class="btn-pic-force" id="btn-pic" type="button">Rever como PIC</button>
     </div>
     <p class="hud-next" id="hud-proximo">—</p>
+    <p class="hud-evasao" id="hud-evasao">—</p>
 
     <button class="btn-rail-toggle" type="button" id="btn-abrir-rail">Trilho</button>
     <aside class="rail" id="rail">
@@ -135,6 +136,8 @@
       </div>
       <div class="bars" id="rail-barras"></div>
       <div class="painel-meta">
+        <div><span>Vertical</span><b id="rail-vertical">—</b></div>
+        <div><span>Lateral</span><b id="rail-lateral">—</b></div>
         <div><span>Destino</span><b id="rail-destino">—</b></div>
         <div><span>Urgência</span><b id="rail-urgencia">—</b></div>
         <div><span>Risco meteo</span><b id="rail-meteo">—</b></div>

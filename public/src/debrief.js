@@ -17,7 +17,17 @@ export function teseCumprida(tese, answers, escalou) {
     destinoOk = aceites.has(destino);
   }
 
-  return acaoOk && destinoOk;
+  let eixosOk = true;
+  if (tese.manobraVertical || tese.verticaisAceites) {
+    const aceites = new Set([tese.manobraVertical, ...(tese.verticaisAceites ?? [])].filter(Boolean));
+    eixosOk = eixosOk && aceites.has(answers?.manobraVertical?.choice);
+  }
+  if (tese.manobraLateral || tese.lateraisAceites) {
+    const aceites = new Set([tese.manobraLateral, ...(tese.lateraisAceites ?? [])].filter(Boolean));
+    eixosOk = eixosOk && aceites.has(answers?.manobraLateral?.choice);
+  }
+
+  return acaoOk && destinoOk && eixosOk;
 }
 
 export function escalacaoCorrecta(tese, escalou) {

@@ -1,12 +1,14 @@
 import { LISTA_CENARIOS, cenarioPorId } from './cenarios.js';
 import { aplicarIncidente, estadoInicial, gerarFita, lerRestricoes } from './fita.js';
-import { decisaoGeometrica, deveEscalarPIC, maxProbabilidade } from './decisao.js';
+import { decisaoGeometrica, deveEscalarPIC, evasaoDeAnswers, maxProbabilidade } from './decisao.js';
 import { registarIncidente, resumirMissao } from './debrief.js';
-import { aplicarAcao, novoAutomato, passoAutomato, poseAviao } from './automato.js';
+import { aplicarAcao, aplicarEvasao, novoAutomato, passoAutomato, poseAviao } from './automato.js';
 import {
+  actualizarAmeacas,
   actualizarCamara,
   aplicarPose,
   criarCena,
+  mostrarAmeacas,
   perfilGraficoLeve,
   redimensionar,
   webglDisponivel,
@@ -180,6 +182,7 @@ function ciclo(agora) {
     passoAutomato(estado.aviao, dt);
     const pose = poseAviao(estado.aviao);
     aplicarPose(estado.mundo, pose);
+    actualizarAmeacas(estado.mundo, dt);
     actualizarCamara(estado.mundo, pose, dt);
   }
   estado.mundo.renderer.render(estado.mundo.scene, estado.mundo.camera);
@@ -278,6 +281,11 @@ async function lancarMissao() {
     const proximo = fita.incidentes[i + 1]?.resumo ?? 'Fim da fita';
     actualizarHud(missao, { fase: `Incidente ${i + 1}/${fita.incidentes.length}`, fonte: 'jev', proximo });
 
+    const ameacas = missao.geometria?.obstaculos ?? [];
+    if (estado.mundo && estado.aviao) {
+      mostrarAmeacas(estado.mundo, ameacas, poseAviao(estado.aviao));
+    }
+
     let jev;
     try {
       jev = await avaliarJev('incidente', missao);
@@ -298,11 +306,12 @@ async function lancarMissao() {
       aceite: null,
       sobreposto: false,
     };
-    mostrarChipJev(maxP, pediriaPic);
-    aplicarAcao(estado.aviao, jev.answers.acaoMissao?.choice ?? 'prosseguir');
+    const evasao = evasaoDeAnswers(jev.answers);
+    mostrarChipJev(maxP, pediriaPic, evasao);
+    aplicarEvasao(estado.aviao, evasao);
 
     estado.log.incidentes.push(registarIncidente({ estado: missao, incidente: inc, jev, baseline, pic }));
-    await esperar(2400);
+    await esperar(ameacas.length ? 3800 : 2200);
   }
 
   abrirDebrief();

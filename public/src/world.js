@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { pontoAmeaca } from './decisao.js';
 
 export function perfilGraficoLeve() {
   if (typeof window === 'undefined') return true;
@@ -223,6 +224,137 @@ function ilha(leve) {
   return g;
 }
 
+function limparGrupo(grupo) {
+  if (!grupo) return;
+  while (grupo.children.length) {
+    const c = grupo.children[0];
+    grupo.remove(c);
+    c.traverse((o) => {
+      o.geometry?.dispose();
+      const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+      for (const m of mats) {
+        m.map?.dispose?.();
+        m.dispose?.();
+      }
+    });
+  }
+}
+
+function anelChao(cor) {
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(10, 16, 28),
+    new THREE.MeshBasicMaterial({ color: cor, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.4;
+  return ring;
+}
+
+function meshAmeaca(o, pose) {
+  const p = pontoAmeaca(pose, o);
+  const g = new THREE.Group();
+  g.position.set(p.x, 0, p.z);
+  g.userData.visual = p.visual;
+
+  switch (p.visual) {
+    case 'torre': {
+      const h = p.altura;
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.6, h, 8), mat(0x2a2e33));
+      mast.position.y = h / 2;
+      const beacon = new THREE.Mesh(
+        new THREE.SphereGeometry(1.4, 10, 8),
+        new THREE.MeshLambertMaterial({ color: 0xff3b3b, emissive: 0xff2222, emissiveIntensity: 0.9 }),
+      );
+      beacon.position.y = h + 0.6;
+      g.add(mast, beacon, anelChao(0xe07a4a));
+      g.userData.beacon = beacon;
+      break;
+    }
+    case 'relevo': {
+      const h = p.altura;
+      const hill = new THREE.Mesh(new THREE.ConeGeometry(24, h, 7), mat(0x5a5e58));
+      hill.position.y = h / 2 - 2;
+      g.add(hill, anelChao(0xc4a574));
+      break;
+    }
+    case 'trafego': {
+      const alt = Math.max(28, p.y || 42);
+      const body = new THREE.Mesh(new THREE.BoxGeometry(10, 1.4, 12), mat(0xe8c36a));
+      body.position.y = alt;
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(20, 0.25, 3.4), mat(0xf0d48a));
+      wing.position.y = alt;
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 2.2), mat(0x1a2744));
+      fin.position.set(0, alt + 1.6, -5);
+      g.add(body, wing, fin, anelChao(0xe8c36a));
+      g.rotation.y = p.heading;
+      g.userData.trafego = { heading: p.heading, speed: 28 };
+      break;
+    }
+    case 'meteo': {
+      const wall = new THREE.Mesh(
+        new THREE.BoxGeometry(110, 78, 22),
+        new THREE.MeshLambertMaterial({ color: 0x8aa0b8, transparent: true, opacity: 0.48 }),
+      );
+      wall.position.y = 38;
+      g.add(wall, anelChao(0x8aa0b8));
+      break;
+    }
+    case 'cabo': {
+      const h = p.altura;
+      for (const side of [-18, 18]) {
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, h, 6), mat(0x2a2e33));
+        pole.position.set(side, h / 2, 0);
+        g.add(pole);
+      }
+      const wire = new THREE.Mesh(new THREE.BoxGeometry(36, 0.18, 0.18), mat(0x151515));
+      wire.position.y = h * 0.86;
+      g.add(wire, anelChao(0xe07a4a));
+      break;
+    }
+    default: {
+      const _x = p.visual;
+      void _x;
+      const mark = new THREE.Mesh(new THREE.SphereGeometry(6, 10, 8), mat(0xe07a4a));
+      mark.position.y = 8;
+      g.add(mark, anelChao(0xe07a4a));
+      break;
+    }
+  }
+
+  return g;
+}
+
+export function mostrarAmeacas(mundo, obstaculos, pose) {
+  if (!mundo?.ameaças) return;
+  limparGrupo(mundo.ameaças);
+  mundo.alvoLook = null;
+  const lista = Array.isArray(obstaculos) ? obstaculos : [];
+  for (const o of lista) {
+    mundo.ameaças.add(meshAmeaca(o, pose));
+  }
+  if (lista[0]) mundo.alvoLook = pontoAmeaca(pose, lista[0]);
+}
+
+export function definirAlvoLook(mundo, ponto) {
+  if (mundo) mundo.alvoLook = ponto ?? null;
+}
+
+export function actualizarAmeacas(mundo, dt) {
+  if (!mundo?.ameaças) return;
+  mundo.tAmeaca = (mundo.tAmeaca ?? 0) + dt;
+  const pulse = 0.35 + 0.65 * Math.abs(Math.sin(mundo.tAmeaca * 6));
+  for (const child of mundo.ameaças.children) {
+    if (child.userData.beacon?.material) {
+      child.userData.beacon.material.emissiveIntensity = pulse;
+    }
+    const tr = child.userData.trafego;
+    if (tr) {
+      child.position.x += Math.sin(tr.heading) * tr.speed * dt;
+      child.position.z += Math.cos(tr.heading) * tr.speed * dt;
+    }
+  }
+}
+
 export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
   const pal = ceuDe(cenario);
   const renderer = new THREE.WebGLRenderer({
@@ -263,7 +395,10 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
   const aviao = criarLus222();
   scene.add(aviao);
 
-  return { renderer, scene, camera, aviao, leve, cenario };
+  const ameaças = new THREE.Group();
+  scene.add(ameaças);
+
+  return { renderer, scene, camera, aviao, ameaças, alvoLook: null, tAmeaca: 0, leve, cenario };
 }
 
 export function aplicarPose(mundo, pose) {
@@ -279,9 +414,11 @@ export function aplicarPose(mundo, pose) {
 
 export function actualizarCamara(mundo, pose, dt) {
   const cam = mundo.camera;
-  const back = 13;
-  const side = 18;
-  const up = 7.2;
+  const look = mundo.alvoLook;
+  const dodge = Boolean(pose.dodge || look);
+  const back = dodge ? 20 : 13;
+  const side = dodge ? 24 : 18;
+  const up = dodge ? 10 : 7.2;
   const hx = pose.heading;
   const alvoX = pose.x - Math.sin(hx) * back + Math.cos(hx) * side;
   const alvoZ = pose.z - Math.cos(hx) * back - Math.sin(hx) * side;
@@ -290,7 +427,11 @@ export function actualizarCamara(mundo, pose, dt) {
   cam.position.x += (alvoX - cam.position.x) * k;
   cam.position.y += (alvoY - cam.position.y) * k;
   cam.position.z += (alvoZ - cam.position.z) * k;
-  cam.lookAt(pose.x, pose.y + 0.6, pose.z);
+  if (look) {
+    cam.lookAt((pose.x + look.x) * 0.5, (pose.y + Math.max(look.y, 18)) * 0.5, (pose.z + look.z) * 0.5);
+  } else {
+    cam.lookAt(pose.x, pose.y + 0.6, pose.z);
+  }
 }
 
 export function redimensionar(mundo, largura, altura) {

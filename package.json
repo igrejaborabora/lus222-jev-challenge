@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "O JEV (typesafe-ai/jev) decide missões do LUS-222 — cenário CEiiA/EEA Aircraft. Demo de decisão tipada, não certificável. A regra geométrica nunca se vende como JEV.",
+  "description": "O JEV (typesafe-ai/jev) decide e desvia o LUS-222 — cenário CEiiA/EEA Aircraft. Evasão autónoma visível, não DAA certificável. A regra geométrica nunca se vende como JEV.",
   "license": "MIT",
   "engines": {
     "node": ">=20"

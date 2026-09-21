@@ -122,9 +122,11 @@ export async function GET() {
     perguntas_briefing: Object.keys(PERGUNTAS_BRIEFING),
     perguntas_incidente: Object.keys(PERGUNTAS_INCIDENTE),
     acoes: ['prosseguir', 'desviar_alternativo', 'orbitar', 'regressar_base', 'abortar_emergencia'],
+    manobras_verticais: ['subir', 'descer', 'manter'],
+    manobras_laterais: ['esquerda', 'direita', 'manter'],
     destinos: ['planeado', 'stol_proximo', 'hospital_alternativo', 'origem'],
     ambito:
-      'Demo independente de decisão de missão. Não é DAA certificável, não é autopiloto, não é produto oficial EEA/CEiiA salvo autorização escrita.',
+      'Demo independente: o JEV aplica evasão (vertical/lateral) de imediato. Não é DAA certificável, não é autopiloto, não é produto oficial EEA/CEiiA salvo autorização escrita.',
     como_usar: "POST { momento: 'briefing' | 'incidente', estado }",
     aviso:
       'Sem Gateway a missão JEV não arranca. A regra geométrica corre em paralelo no cliente para o debriefing e nunca se apresenta como JEV.',

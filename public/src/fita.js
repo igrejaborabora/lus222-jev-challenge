@@ -56,32 +56,141 @@ function incidente(id, tipo, resumo, patch, tese) {
   return { id, tipo, resumo, patch, tese };
 }
 
+function obstaculo({
+  tipo,
+  visual,
+  em_rota = false,
+  distancia_m = 200,
+  segundos = 5.2,
+  cima = 40,
+  baixo = -12,
+  esquerda = 16,
+  direita = 16,
+  altura_m = 58,
+  offset_lateral_m = null,
+}) {
+  return {
+    tipo,
+    visual,
+    em_rota,
+    distancia_m,
+    segundos_ate_ao_contacto: segundos,
+    folga_por_cima_m: cima,
+    folga_por_baixo_m: baixo,
+    folga_pela_esquerda_m: esquerda,
+    folga_pela_direita_m: direita,
+    altura_m,
+    offset_lateral_m,
+  };
+}
+
 function trafegoGeometrico(id = 'trafego') {
   return incidente(
     id,
     'trafego',
-    'Tráfego em rota de conflito a 90 s, folga lateral negativa. Único sítio em que a geometria chega.',
+    'Tráfego em rota de conflito a 5 s, folga à esquerda negativa. O JEV sobe e vira à direita — a geometria também vê isto.',
     {
       geometria: {
         obstaculos: [
-          {
+          obstaculo({
             tipo: 'tráfego em rota cruzada',
-            distancia_m: 2200,
-            segundos_ate_ao_contacto: 90,
-            folga_por_cima_m: 40,
-            folga_por_baixo_m: 30,
-            folga_pela_esquerda_m: -8,
-            folga_pela_direita_m: 60,
+            visual: 'trafego',
             em_rota: true,
-          },
+            distancia_m: 190,
+            segundos: 5,
+            cima: 50,
+            baixo: 8,
+            esquerda: -10,
+            direita: 70,
+            altura_m: 8,
+            offset_lateral_m: -14,
+          }),
         ],
       },
     },
     {
       acao: 'desviar_alternativo',
       destinosAceites: ['planeado', 'stol_proximo'],
+      manobraVertical: 'subir',
+      verticaisAceites: ['subir', 'manter'],
+      manobraLateral: 'direita',
+      lateraisAceites: ['direita'],
       deveEscalar: false,
-      nota: 'A regra também acerta — obstáculo em rota.',
+      nota: 'A regra também acerta — obstáculo em rota. Só o JEV manda o avião.',
+    },
+  );
+}
+
+function cumeeira() {
+  return incidente(
+    'cumeeira',
+    'relevo',
+    'Cumeeira à frente do rumo, 190 m. Folga por cima; a esquerda está tapada. O LUS-222 tem de subir e cair à direita.',
+    {
+      geometria: {
+        obstaculos: [
+          obstaculo({
+            tipo: 'cumeeira',
+            visual: 'relevo',
+            em_rota: true,
+            distancia_m: 185,
+            segundos: 4.8,
+            cima: 80,
+            baixo: -40,
+            esquerda: -20,
+            direita: 55,
+            altura_m: 62,
+            offset_lateral_m: -8,
+          }),
+        ],
+      },
+    },
+    {
+      acao: 'desviar_alternativo',
+      acoesAceites: ['desviar_alternativo', 'orbitar'],
+      manobraVertical: 'subir',
+      verticaisAceites: ['subir'],
+      manobraLateral: 'direita',
+      lateraisAceites: ['direita', 'manter'],
+      deveEscalar: false,
+      nota: 'Relevo em rota: a regra também desvia no log; o espectáculo é o JEV a subir.',
+    },
+  );
+}
+
+function torreRadio() {
+  return incidente(
+    'torre_radio',
+    'torre',
+    'Torre de rádio 70 m à esquerda do eixo, 180 m à frente. Folga à direita. Subir ou cair a estibordo.',
+    {
+      geometria: {
+        obstaculos: [
+          obstaculo({
+            tipo: 'torre de rádio',
+            visual: 'torre',
+            em_rota: true,
+            distancia_m: 180,
+            segundos: 4.7,
+            cima: 28,
+            baixo: -60,
+            esquerda: -18,
+            direita: 64,
+            altura_m: 72,
+            offset_lateral_m: -16,
+          }),
+        ],
+      },
+    },
+    {
+      acao: 'desviar_alternativo',
+      acoesAceites: ['desviar_alternativo', 'orbitar'],
+      manobraVertical: 'subir',
+      verticaisAceites: ['subir', 'manter'],
+      manobraLateral: 'direita',
+      lateraisAceites: ['direita'],
+      deveEscalar: false,
+      nota: 'Torre em rota: a geometria vê; o JEV escolhe o eixo e voa.',
     },
   );
 }
@@ -96,7 +205,23 @@ function fitaMedevac(rnd) {
       {
         ambiente: { tecto_ft: tecto, vis_km: 3, vento_kt: 28, luz_dia: true },
         missao: { relogio_s: 1680 },
-        geometria: { obstaculos: [] },
+        geometria: {
+          obstaculos: [
+            obstaculo({
+              tipo: 'frente meteorológica',
+              visual: 'meteo',
+              em_rota: false,
+              distancia_m: 210,
+              segundos: 8,
+              cima: 200,
+              baixo: -20,
+              esquerda: 70,
+              direita: -12,
+              altura_m: 80,
+              offset_lateral_m: 8,
+            }),
+          ],
+        },
       },
       {
         acao: 'desviar_alternativo',
@@ -126,7 +251,9 @@ function fitaMedevac(rnd) {
         nota: 'Pista curta não é obstáculo geométrico.',
       },
     ),
+    cumeeira(),
     trafegoGeometrico(),
+    torreRadio(),
     incidente(
       'turbulencia',
       'integridade',
@@ -203,7 +330,23 @@ function fitaCarga(rnd) {
       {
         ambiente: { vento_kt: 38, tecto_ft: 2200 },
         aeronave: { alcance_restante_km: 180 },
-        geometria: { obstaculos: [] },
+        geometria: {
+          obstaculos: [
+            obstaculo({
+              tipo: 'parede de vento',
+              visual: 'meteo',
+              em_rota: false,
+              distancia_m: 205,
+              segundos: 7,
+              cima: 180,
+              baixo: -10,
+              esquerda: -14,
+              direita: 60,
+              altura_m: 70,
+              offset_lateral_m: -10,
+            }),
+          ],
+        },
       },
       {
         acao: 'desviar_alternativo',
@@ -213,6 +356,7 @@ function fitaCarga(rnd) {
         nota: 'Sem obstáculo: a regra prossegue.',
       },
     ),
+    cumeeira(),
     trafegoGeometrico(),
     incidente(
       'rampa',
@@ -302,6 +446,7 @@ function fitaSar(rnd) {
         nota: 'Contacto incerto — escalar, não inventar certeza.',
       },
     ),
+    torreRadio(),
     trafegoGeometrico(),
     incidente(
       'mar_grosso',
