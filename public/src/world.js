@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
 import { pontoAmeaca } from './decisao.js';
-import { complementoVisual } from './fita.js';
 
 export function perfilGraficoLeve() {
   if (typeof window === 'undefined') return true;
@@ -365,12 +364,14 @@ export function mostrarAmeacas(mundo, obstaculos, pose) {
   if (!mundo?.ameaças) return;
   limparGrupo(mundo.ameaças);
   mundo.alvoLook = null;
-  const lista = complementoVisual(mundo.cenario, Array.isArray(obstaculos) ? obstaculos : []);
+  const lista = (Array.isArray(obstaculos) ? obstaculos : []).filter((o) => o && o.em_rota);
   for (const o of lista) {
     mundo.ameaças.add(meshAmeaca(o, pose, mundo.leve));
   }
-  const foco = lista.find((o) => o.em_rota);
+  const foco = lista[0];
   if (foco) mundo.alvoLook = pontoAmeaca(pose, foco);
+  // Uma vez, no instante do incidente: a malha fica no mundo e o avião
+  // aproxima-se. Repetir isto em cada frame cola a ameaça ao nariz.
   ancorarVisuais(mundo, pose);
 }
 
@@ -440,7 +441,139 @@ export function actualizarAmeacas(mundo, dt) {
   }
 }
 
-export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
+const POSE_PARTIDA = { x: -80, y: 42, z: 40, heading: 0.7 };
+
+function specsFluxo(cenario, leve) {
+  const n = leve ? 2 : 3;
+  if (cenario === 'carga') {
+    return Array.from({ length: n }, (_, i) => ({ along: 52 + i * 130, passo: 130, solo: i === 0, kind: 'aves' }));
+  }
+  if (cenario === 'sar') {
+    return Array.from({ length: n }, (_, i) => ({ along: 70 + i * 150, passo: 150, kind: 'guerra' }));
+  }
+  return Array.from({ length: n }, (_, i) => ({ along: 16 + i * 280, passo: 280, kind: 'canyon' }));
+}
+
+function marcarBases(lista, grupo) {
+  if (!lista) return;
+  for (const item of lista) {
+    const g = item.g || item.group;
+    if (!g) continue;
+    item.baseX = g.position.x;
+    item.baseZ = g.position.z;
+    item.baseY = item.baseY ?? g.position.y;
+  }
+  void grupo;
+}
+
+function criarTileFluxo(cenario, leve, spec) {
+  const o = { em_rota: spec.kind !== 'canyon', folga_pela_esquerda_m: 40, folga_pela_direita_m: 40 };
+  const p = { rumo: 0, altura: 120 };
+  let inner;
+  let offsetY = 0;
+  if (spec.kind === 'aves') {
+    inner = criarAves(p, o, leve, { solo: spec.solo !== false });
+    offsetY = 0;
+  } else if (spec.kind === 'guerra') {
+    inner = criarGuerra(p, o, leve);
+    offsetY = 0;
+  } else {
+    inner = criarCanyon(p, o, leve, { aperto: true });
+    offsetY = -18;
+  }
+  const wrap = new THREE.Group();
+  wrap.add(inner);
+  wrap.userData.offsetY = offsetY;
+  wrap.userData.birds = inner.userData.birds || null;
+  wrap.userData.avioes = inner.userData.avioes || null;
+  marcarBases(wrap.userData.birds);
+  marcarBases(wrap.userData.avioes);
+  return wrap;
+}
+
+function pousarTile(tile, pose, along) {
+  const h = Number(pose?.heading) || 0;
+  const y = Number.isFinite(Number(pose?.y)) ? Number(pose.y) : 42;
+  const x = Number.isFinite(Number(pose?.x)) ? Number(pose.x) : 0;
+  const z = Number.isFinite(Number(pose?.z)) ? Number(pose.z) : 0;
+  tile.position.set(x + Math.sin(h) * along, y + (tile.userData.offsetY || 0), z + Math.cos(h) * along);
+  tile.rotation.y = h;
+}
+
+function reporDeriva(tile) {
+  const aves = tile.userData.birds;
+  if (aves) {
+    for (const b of aves) {
+      b.g.position.x = b.baseX;
+      b.g.position.z = b.baseZ;
+    }
+  }
+  const formacao = tile.userData.avioes;
+  if (formacao) {
+    for (const pl of formacao) {
+      pl.group.position.x = pl.baseX;
+      pl.group.position.z = pl.baseZ;
+    }
+  }
+}
+
+function semearFluxo(scene, { cenario, leve, pose }) {
+  const fluxo = new THREE.Group();
+  const specs = specsFluxo(cenario, leve);
+  const tiles = specs.map((spec) => {
+    const tile = criarTileFluxo(cenario, leve, spec);
+    pousarTile(tile, pose, spec.along);
+    fluxo.add(tile);
+    return tile;
+  });
+  scene.add(fluxo);
+  return { fluxo, tiles, passo: specs[0]?.passo ?? 200 };
+}
+
+/** A cena fica no mundo. O que fica para trás reaparece lá à frente, sem colar ao nariz. */
+export function actualizarFluxo(mundo, pose, dt) {
+  const tiles = mundo?.fluxoTiles;
+  if (!tiles?.length || !pose) return;
+  const h = Number(pose.heading) || 0;
+  const fx = Math.sin(h);
+  const fz = Math.cos(h);
+  const passo = mundo.fluxoPasso || 200;
+  const t = mundo.tAmeaca ?? 0;
+  let maxAlong = 0;
+  const alongs = tiles.map((tile) => {
+    const along = (tile.position.x - pose.x) * fx + (tile.position.z - pose.z) * fz;
+    if (along > maxAlong) maxAlong = along;
+    return along;
+  });
+  tiles.forEach((tile, i) => {
+    if (alongs[i] < -passo * 0.45) {
+      maxAlong += passo;
+      pousarTile(tile, pose, maxAlong);
+      reporDeriva(tile);
+    }
+    const aves = tile.userData.birds;
+    if (aves) {
+      for (const b of aves) {
+        const fase = t * b.rate + b.phase;
+        b.pivL.rotation.z = Math.sin(fase) * 0.65;
+        b.pivR.rotation.z = -Math.sin(fase) * 0.65;
+        b.g.position.y = b.baseY + Math.sin(fase * 0.45) * 1.6;
+        b.g.position.x += Math.sin(b.yaw) * b.speed * dt;
+        b.g.position.z += Math.cos(b.yaw) * b.speed * dt;
+      }
+    }
+    const formacao = tile.userData.avioes;
+    if (formacao) {
+      for (const pl of formacao) {
+        pl.group.position.x += Math.sin(pl.yaw) * pl.speed * dt;
+        pl.group.position.z += Math.cos(pl.yaw) * pl.speed * dt;
+        for (const prop of pl.props) prop.rotation.z += dt * 9;
+      }
+    }
+  });
+}
+
+export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null } = {}) {
   const pal = ceuDe(cenario);
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -484,7 +617,22 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
   const ameaças = new THREE.Group();
   scene.add(ameaças);
 
-  return { renderer, scene, camera, aviao, ameaças, alvoLook: null, tAmeaca: 0, leve, cenario };
+  const fluxo = semearFluxo(scene, { cenario, leve, pose: pose ?? POSE_PARTIDA });
+
+  return {
+    renderer,
+    scene,
+    camera,
+    aviao,
+    ameaças,
+    alvoLook: null,
+    tAmeaca: 0,
+    leve,
+    cenario,
+    fluxo: fluxo.fluxo,
+    fluxoTiles: fluxo.tiles,
+    fluxoPasso: fluxo.passo,
+  };
 }
 
 export function aplicarPose(mundo, pose) {
@@ -563,6 +711,7 @@ export function redimensionar(mundo, largura, altura) {
   mundo.camera.aspect = w / h;
   mundo.camera.updateProjectionMatrix();
   mundo.mundoLargura = w;
+  mundo.mundoAltura = h;
   mundo.renderer.setSize(w, h, false);
 }
 

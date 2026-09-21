@@ -141,9 +141,27 @@ html.flight-active, html.flight-active body {
 #screen-commander.is-active,
 #screen-debrief.is-active {
   align-items: stretch;
+  height: 100dvh;
+  height: 100svh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+  padding: 0 0 env(safe-area-inset-bottom, 0px);
+}
+
+.commander-top {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px;
+  background: rgba(7, 11, 18, .94);
+  border-bottom: 1px solid var(--line);
+}
+.commander-top .btn-ghost {
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 18px;
 }
 
 .panel {
@@ -191,12 +209,12 @@ h2 { font-size: clamp(26px, 5vw, 40px); }
 }
 .carta.is-on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
 .carta-foto {
-  height: 112px;
-  background:
-    linear-gradient(180deg, rgba(7,11,18,.05), rgba(7,11,18,.55)),
-    url('./img/lus-222-hero.webp') center 40% / cover no-repeat;
+  height: 148px;
+  background: #101820;
   border-radius: 13px 13px 0 0;
+  overflow: hidden;
 }
+.carta-foto svg { display: block; width: 100%; height: 148px; }
 .carta h2 { font-size: 26px; margin: 14px 16px 6px; }
 .carta p { margin: 0 16px 8px; color: var(--ink-dim); font-size: 14px; line-height: 1.5; }
 .carta-tese { color: var(--warm) !important; font-size: 13px !important; }
@@ -254,7 +272,14 @@ select:focus-visible, input:focus-visible, button:focus-visible {
   position: relative; padding: 0;
   height: 100dvh; height: 100svh; overflow: hidden;
 }
-canvas { display: block; width: 100%; height: 100%; background: #102033; }
+#screen-live canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #102033;
+}
 
 .hud {
   position: absolute; left: 0; right: 0; top: 0;
