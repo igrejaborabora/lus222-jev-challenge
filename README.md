@@ -33,7 +33,7 @@ api/jev.js             Vercel Function — só responde fonte: 'jev' ou bloqueio
 public/index.html      splash → comandante → missão → debriefing
 public/src/decisao.js  estado + baseline cego
 public/src/fita.js     semente → incidentes (tese escondida)
-public/src/world.js    malha LUS-222 + costa, câmara 3/4
+public/src/world.js    malha LUS-222 + costa, câmara chase atrás da cauda
 public/img/            render do LUS-222 (crédito EEA Aircraft)
 ```
 
