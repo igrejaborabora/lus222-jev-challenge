@@ -21,6 +21,10 @@ export const ACOES = [
   'abortar_emergencia',
 ];
 
+export const MANOBRAS_V = ['subir', 'descer', 'manter'];
+export const MANOBRAS_L = ['esquerda', 'direita', 'manter'];
+export const VISUAIS = ['torre', 'relevo', 'trafego', 'meteo', 'cabo'];
+
 export const DESTINOS = ['planeado', 'stol_proximo', 'hospital_alternativo', 'origem'];
 export const CABINES = ['medevac', 'carga', 'passageiros', 'mista'];
 export const PRIORIDADES = ['tempo', 'combustivel', 'meteorologia', 'integridade', 'carga_critica'];
@@ -54,15 +58,90 @@ function texto(v, fallback, max = 80) {
 }
 
 function lerObstaculo(o) {
+  const visualDefault = o?.em_rota || o?.em_rota_de_colisao ? 'torre' : 'meteo';
   return {
     tipo: texto(o?.tipo, 'desconhecido', 40),
-    distancia_m: round(o?.distancia_m, 0, 8000),
-    segundos_ate_ao_contacto: Number(clamp(num(o?.segundos_ate_ao_contacto, 99), 0, 999).toFixed(1)),
+    distancia_m: round(o?.distancia_m, 0, 8000, 200),
+    segundos_ate_ao_contacto: Number(clamp(num(o?.segundos_ate_ao_contacto, 6), 0, 999).toFixed(1)),
     folga_por_cima_m: round(o?.folga_por_cima_m, -500, 500),
     folga_por_baixo_m: round(o?.folga_por_baixo_m, -500, 500),
     folga_pela_esquerda_m: round(o?.folga_pela_esquerda_m, -500, 500),
     folga_pela_direita_m: round(o?.folga_pela_direita_m, -500, 500),
     em_rota: Boolean(o?.em_rota ?? o?.em_rota_de_colisao),
+    visual: umDe(o?.visual, VISUAIS, visualDefault),
+    altura_m: round(o?.altura_m, 4, 220, 56),
+    offset_lateral_m: o?.offset_lateral_m == null ? null : round(o.offset_lateral_m, -160, 160, 0),
+  };
+}
+
+/** Offset em metros à esquerda (−) / direita (+) do rumo, para colocar o obstáculo no mundo. */
+export function offsetLateral(o) {
+  if (o?.offset_lateral_m != null) return o.offset_lateral_m;
+  const esq = num(o?.folga_pela_esquerda_m, 0);
+  const dir = num(o?.folga_pela_direita_m, 0);
+  if (esq < dir) return -22;
+  if (dir < esq) return 22;
+  return 0;
+}
+
+export function pontoAmeaca(pose, obstaculo) {
+  const d = num(obstaculo?.distancia_m, 200);
+  const lat = offsetLateral(obstaculo);
+  const heading = num(pose?.heading, 0);
+  return {
+    x: num(pose?.x, 0) + Math.sin(heading) * d + Math.cos(heading) * lat,
+    y: obstaculo?.visual === 'trafego' ? num(pose?.y, 42) : 0,
+    z: num(pose?.z, 0) + Math.cos(heading) * d - Math.sin(heading) * lat,
+    visual: umDe(obstaculo?.visual, VISUAIS, 'torre'),
+    altura: round(obstaculo?.altura_m, 4, 220, 56),
+    heading: heading + (obstaculo?.visual === 'trafego' ? Math.PI / 2 : 0),
+  };
+}
+
+/**
+ * Eixos que a regra geométrica escolheria — só folgas.
+ * Nunca manda o avião: o autómato lê só as answers do JEV.
+ */
+export function manobraGeometrica(obstaculo) {
+  if (!obstaculo) return { vertical: 'manter', lateral: 'manter' };
+  const cima = num(obstaculo.folga_por_cima_m, 0);
+  const baixo = num(obstaculo.folga_por_baixo_m, 0);
+  const esq = num(obstaculo.folga_pela_esquerda_m, 0);
+  const dir = num(obstaculo.folga_pela_direita_m, 0);
+
+  let vertical = 'manter';
+  if (cima > baixo && cima > 8) vertical = 'subir';
+  else if (baixo > cima && baixo > 8) vertical = 'descer';
+  else if (cima >= 0 && (cima > 0 || baixo < 0)) vertical = 'subir';
+
+  let lateral = 'manter';
+  if (dir > esq && dir > 4) lateral = 'direita';
+  else if (esq > dir && esq > 4) lateral = 'esquerda';
+
+  return { vertical, lateral };
+}
+
+function inferirEixo(answers, eixo) {
+  const acao = answers?.acaoMissao?.choice;
+  if (eixo === 'vertical') {
+    if (acao === 'abortar_emergencia') return 'descer';
+    if (acao === 'desviar_alternativo') return 'subir';
+    return 'manter';
+  }
+  if (acao === 'desviar_alternativo') return 'direita';
+  if (acao === 'orbitar' || acao === 'regressar_base') return 'esquerda';
+  return 'manter';
+}
+
+/** Lê a evasão do JEV. Se o modelo omitir um eixo, infere da acção — nunca do baseline. */
+export function evasaoDeAnswers(answers) {
+  const vertical = umDe(answers?.manobraVertical?.choice, MANOBRAS_V, null);
+  const lateral = umDe(answers?.manobraLateral?.choice, MANOBRAS_L, null);
+  return {
+    acao: umDe(answers?.acaoMissao?.choice, ACOES, 'prosseguir'),
+    vertical: vertical ?? inferirEixo(answers, 'vertical'),
+    lateral: lateral ?? inferirEixo(answers, 'lateral'),
+    urgencia: round(answers?.urgencia?.score, 0, 3, 1),
   };
 }
 
@@ -178,9 +257,20 @@ export function decisaoGeometrica(estado, momento = 'incidente') {
 
   const acao = abortar ? 'abortar_emergencia' : ameaca ? 'desviar_alternativo' : 'prosseguir';
   const urgencia = abortar ? 3 : ameaca ? 2 : 0;
+  const eixos = manobraGeometrica(ameaca);
 
   return {
     acaoMissao: { type: 'choice', choice: acao, probabilities: probs(ACOES, acao) },
+    manobraVertical: {
+      type: 'choice',
+      choice: eixos.vertical,
+      probabilities: probs(MANOBRAS_V, eixos.vertical),
+    },
+    manobraLateral: {
+      type: 'choice',
+      choice: eixos.lateral,
+      probabilities: probs(MANOBRAS_L, eixos.lateral),
+    },
     destinoPreferido: {
       type: 'choice',
       choice: 'planeado',
@@ -237,4 +327,34 @@ export function etiquetarUrgencia(score) {
 export function etiquetarRiscoMeteo(score) {
   const n = round(score, 0, 3, 0);
   return ['Calmo', 'Atenção', 'Adverso', 'Impedimento'][n] ?? 'Calmo';
+}
+
+export function etiquetarManobraV(manobra) {
+  switch (manobra) {
+    case 'subir':
+      return 'Subir';
+    case 'descer':
+      return 'Descer';
+    case 'manter':
+      return 'Manter';
+    default: {
+      const _x = manobra;
+      return String(_x ?? '—');
+    }
+  }
+}
+
+export function etiquetarManobraL(manobra) {
+  switch (manobra) {
+    case 'esquerda':
+      return 'Esquerda';
+    case 'direita':
+      return 'Direita';
+    case 'manter':
+      return 'Manter';
+    default: {
+      const _x = manobra;
+      return String(_x ?? '—');
+    }
+  }
 }

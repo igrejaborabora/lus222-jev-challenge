@@ -1,14 +1,14 @@
 # JEV comanda o LUS-222
 
-Isto **não** é um simulador de voo. É o modelo [`typesafe-ai/jev`](https://vercel.com/ai-gateway/models/jev) (TypeSafe AI, via **Vercel AI Gateway**) a decidir uma missão do **LUS-222** — o STOL português do CEiiA / EEA Aircraft. O humano é **comandante de missão**: escolhe o cenário e as restrições, aceita ou rejeita escalações ao PIC. Não há joystick.
+Isto **não** é um simulador de voo. É o modelo [`typesafe-ai/jev`](https://vercel.com/ai-gateway/models/jev) (TypeSafe AI, via **Vercel AI Gateway**) a decidir e **desviar** uma missão do **LUS-222** — o STOL português do CEiiA / EEA Aircraft. O humano é **comandante de missão**: escolhe o cenário e observa o dodge. O JEV aplica a acção e os eixos de evasão de imediato. Não há joystick.
 
-O software é o JEV. O LUS-222 é o cenário. A regra geométrica corre em paralelo, cega a meteo, hospital, payload e relógio, só para o debriefing mostrar o que a geometria não vê.
+O software é o JEV. O LUS-222 é o cenário. A regra geométrica corre em paralelo, cega a meteo, hospital, payload e relógio, só para o debriefing — **nunca manda o avião**.
 
 ---
 
 ## Âmbito, dito à cabeça
 
-Demo **independente**. **Não** é Detect-and-Avoid certificável, **não** é autopiloto, **não** é produto oficial da EEA Aircraft ou do CEiiA salvo autorização escrita. A separação mínima e a terminação de voo continuam a pertencer a lógica determinística verificável.
+Demo **independente**. O espectáculo é **evasão autónoma** (subir / virar / desviar à volta de obstáculos visíveis). **Não** é Detect-and-Avoid certificável, **não** é autopiloto, **não** é produto oficial da EEA Aircraft ou do CEiiA salvo autorização escrita. A separação mínima e a terminação de voo continuam a pertencer a lógica determinística verificável.
 
 A comparação **JEV vs regra só é válida com AI Gateway**. Sem chave, a missão JEV **não arranca**. A reserva geométrica **nunca** se apresenta como JEV.
 
@@ -19,9 +19,9 @@ O Jev não gera prosa. Recebe um **estado** e devolve, no mesmo pedido:
 | Momento | Perguntas |
 |---|---|
 | Briefing (1×) | `configuracaoCabine` · `prioridadeOperacional` · `pistaAdequada` · `combustivelSuficiente` |
-| Cada incidente | `acaoMissao` · `destinoPreferido` · `urgencia` · `riscoMeteorologico` · `precisaRevisaoPIC` · `continuarVoo` |
+| Cada incidente | `acaoMissao` · `manobraVertical` · `manobraLateral` · `destinoPreferido` · `urgencia` · `riscoMeteorologico` · `precisaRevisaoPIC` · `continuarVoo` |
 
-`precisaRevisaoPIC` é a feature que um LLM de texto e uma regra de folgas não vendem: se P(true) é alta ou se a melhor escolha fica abaixo de 0,55, a UI **bloqueia a automação** e pede o comandante.
+O LUS-222 voa os eixos do JEV (`subir`/`descer`, `esquerda`/`direita`) no instante da evaluate. `precisaRevisaoPIC` fica só no log — a UI **não** espera Accept/Reject. A regra geométrica calcula os mesmos eixos para o debriefing e não controla a aeronave.
 
 A fita (5–8 incidentes) nasce de uma semente. MEDEVAC Açores, carga Ponte de Sor e SAR costa partilham o motor e diferem na tese.
 
