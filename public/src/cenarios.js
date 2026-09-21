@@ -5,7 +5,7 @@ export const CENARIOS = {
     tese:
       'O JEV desvia do que vês e escolhe hospital, STOL ou órbita; a regra só vê céu livre.',
     paragrafo:
-      'Um doente crítico na Terceira. Tecto baixo, pista curta não pavimentada, relógio clínico a correr. O LUS-222 é o veículo; a decisão é hospital vs STOL vs orbitar.',
+      'Um doente crítico na Terceira. Tecto baixo, pista curta não pavimentada, relógio clínico a correr. No corredor para o hospital o LUS-222 entra num canyon de torres e desvia.',
     origem: 'Lajes, Terceira',
     destino: 'Hospital de Ponta Delgada',
     defaults: {
@@ -42,7 +42,7 @@ export const CENARIOS = {
     tese:
       'O JEV recusa sobrecarga ou manda descarregar; a regra ignora a massa.',
     paragrafo:
-      'Até 2700 kg pela rampa traseira, a partir da FAL. Combustível contra payload, vento de frente. A geometria não pesa a aeronave.',
+      'Até 2700 kg pela rampa traseira, a partir da FAL em Ponte de Sor. À saída, um bando de aves cruza a rota. A geometria não pesa a aeronave.',
     origem: 'FAL Ponte de Sor',
     destino: 'Beja',
     defaults: {
@@ -79,7 +79,7 @@ export const CENARIOS = {
     tese:
       'O JEV escala ao PIC quando a probabilidade máxima é baixa; vidas contra integridade.',
     paragrafo:
-      'Busca e salvamento ao largo, luz do dia a acabar, dois tripulantes. O contacto visual é incerto. Automatizar o claro; perguntar o incerto.',
+      'Busca e salvamento ao largo, luz do dia a acabar, dois tripulantes. Bimotores e asa alta de época cruzam o sector. O contacto visual é incerto.',
     origem: 'Figueira da Foz',
     destino: 'Sector SAR oeste',
     defaults: {
@@ -110,6 +110,13 @@ export const CENARIOS = {
       },
     },
   },
+};
+
+/** Ameaça visual de cada cenário — o que o comandante vê à frente do nariz. */
+export const CENA_VISUAL = {
+  medevac: 'canyon',
+  carga: 'aves',
+  sar: 'guerra',
 };
 
 export const LISTA_CENARIOS = ['medevac', 'carga', 'sar'].map((id) => CENARIOS[id]);

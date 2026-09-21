@@ -56,7 +56,7 @@
     <div class="panel commander">
       <p class="eyebrow">Comandante de missão</p>
       <h1>O humano decide o quê, não como voar</h1>
-      <p class="lead">Três teses, o mesmo motor. O LUS-222 desvia sozinho dos obstáculos que vês. A regra geométrica só entra no debriefing. Sem stick.</p>
+      <p class="lead">Três teses, o mesmo motor. O LUS-222 desvia sozinho. Na missão podes pausar, recuar ao incidente anterior ou voltar a este briefing.</p>
 
       <div class="cartas" id="cartas"></div>
 
@@ -117,12 +117,17 @@
       <div class="hud-block"><span class="hud-label">Almas</span><strong class="hud-value" id="hud-almas">—</strong></div>
       <div class="hud-block"><span class="hud-label">Tecto · vento</span><strong class="hud-value" id="hud-meteo">—</strong></div>
       <div class="hud-block"><span class="hud-label">Relógio</span><strong class="hud-value" id="hud-relogio">—</strong></div>
-      <button class="btn-pause" id="btn-pause" type="button" aria-label="Pausar">II</button>
       <button class="btn-pic-force" id="btn-pic" type="button">Rever como PIC</button>
     </div>
     <p class="hud-next" id="hud-proximo">—</p>
     <p class="hud-evasao" id="hud-evasao">—</p>
 
+    <p class="pausa-banner" id="pausa-banner" hidden>Pausa</p>
+    <nav class="tape-bar" aria-label="Controlo da fita">
+      <button class="btn-tape" id="btn-anterior" type="button" disabled aria-label="Incidente anterior">Anterior</button>
+      <button class="btn-pause" id="btn-pause" type="button" aria-label="Pausar" aria-pressed="false">II</button>
+      <button class="btn-tape" id="btn-briefing" type="button" aria-label="Voltar ao briefing do comandante">Briefing</button>
+    </nav>
     <button class="btn-rail-toggle" type="button" id="btn-abrir-rail">Trilho</button>
     <aside class="rail" id="rail">
       <header>
