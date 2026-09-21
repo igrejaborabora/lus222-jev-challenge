@@ -237,7 +237,7 @@ canvas { display: block; width: 100%; height: 100%; background: #0d1620; touch-a
 .result-actions .btn-primary { flex: 2 1 220px; width: auto; }
 .result-actions .btn-ghost { flex: 1 1 180px; }
 
-@media (pointer: coarse) {
+@media (pointer: coarse), (max-width: 720px) {
   .hint-desktop { display: none; }
   .hint-touch { display: inline; }
   select, input[type="text"] { min-height: 48px; font-size: 16px; }
@@ -258,8 +258,9 @@ canvas { display: block; width: 100%; height: 100%; background: #0d1620; touch-a
   h1 { max-width: none; padding-right: 0; }
   .lead { margin-bottom: 18px; }
   .grid-setup { grid-template-columns: 1fr; }
-  .hud { gap: 10px 14px; justify-content: flex-start; padding-right: 60px; }
-  .hud-block { min-width: 56px; align-items: flex-start; }
+  .hud { gap: 8px 12px; justify-content: flex-start; padding-right: 60px; }
+  .hud-block { min-width: 52px; align-items: flex-start; }
+  .hud-label { font-size: 8px; }
   .btn-pause { position: absolute; top: calc(8px + env(safe-area-inset-top, 0px)); right: 10px; }
   .painel {
     left: calc(8px + env(safe-area-inset-left, 0px));
