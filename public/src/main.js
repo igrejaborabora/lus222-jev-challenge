@@ -14,9 +14,9 @@ import {
 import {
   actualizarHud,
   actualizarRail,
-  esconderBannerPIC,
+  esconderChipJev,
   pintarDebrief,
-  mostrarBannerPIC,
+  mostrarChipJev,
 } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
@@ -34,7 +34,6 @@ const estado = {
   raf: 0,
   ultimo: 0,
   log: null,
-  resolverPic: null,
 };
 
 function mostrar(nome) {
@@ -172,13 +171,6 @@ function esperar(ms) {
   });
 }
 
-function pedirPIC(maxP) {
-  mostrarBannerPIC(maxP);
-  return new Promise((resolve) => {
-    estado.resolverPic = resolve;
-  });
-}
-
 function ciclo(agora) {
   if (estado.ecra !== 'live' || !estado.mundo) return;
   let dt = (agora - estado.ultimo) / 1000;
@@ -231,6 +223,7 @@ async function lancarMissao() {
   };
 
   $('webgl-block').hidden = true;
+  esconderChipJev();
   mostrar('live');
   largarMundo();
 
@@ -296,20 +289,17 @@ async function lancarMissao() {
     actualizarRail({ answers: jev.answers, latencia_ms: jev.latencia_ms, fonte: 'jev', incidente: inc });
 
     const maxP = maxProbabilidade(jev.answers.acaoMissao);
-    let pic = { oferecido: false, forcado: false, aceite: null, sobreposto: false };
-    const precisa = deveEscalarPIC(jev.answers);
-
-    if (precisa) {
-      pic.oferecido = true;
-      mostrarBannerPIC(maxP);
-      const decisao = await pedirPIC(maxP);
-      pic.aceite = decisao === 'aceitar';
-      pic.sobreposto = decisao === 'rejeitar';
-      esconderBannerPIC();
-    }
-
-    const acao = pic.sobreposto ? 'prosseguir' : jev.answers.acaoMissao?.choice ?? 'prosseguir';
-    aplicarAcao(estado.aviao, acao);
+    const pediriaPic = deveEscalarPIC(jev.answers);
+    const pic = {
+      autonomo: true,
+      pediria_pic: pediriaPic,
+      oferecido: pediriaPic,
+      forcado: false,
+      aceite: null,
+      sobreposto: false,
+    };
+    mostrarChipJev(maxP, pediriaPic);
+    aplicarAcao(estado.aviao, jev.answers.acaoMissao?.choice ?? 'prosseguir');
 
     estado.log.incidentes.push(registarIncidente({ estado: missao, incidente: inc, jev, baseline, pic }));
     await esperar(2400);
@@ -330,7 +320,7 @@ function fecharIncompleta(motivo) {
 }
 
 function abrirDebrief() {
-  esconderBannerPIC();
+  esconderChipJev();
   const resumo = resumirMissao(estado.log);
   estado.ultimoResumo = resumo;
   pintarDebrief(resumo);
@@ -370,24 +360,21 @@ function ligarUI() {
     $('btn-pause').setAttribute('aria-label', estado.pausado ? 'Continuar' : 'Pausar');
   });
   $('btn-pic').addEventListener('click', () => {
-    if (estado.resolverPic) return;
-    mostrarBannerPIC(0);
-    pedirPIC(0).then((decisao) => {
-      esconderBannerPIC();
-      const last = estado.log?.incidentes?.at(-1);
-      if (last) {
-        last.pic = { ...(last.pic ?? {}), forcado: true, aceite: decisao === 'aceitar', sobreposto: decisao === 'rejeitar' };
-        last.escalou = true;
-      }
-    });
+    const last = estado.log?.incidentes?.at(-1);
+    if (last) {
+      last.pic = { ...(last.pic ?? {}), forcado: true };
+      last.escalou = true;
+    }
+    $('pic-override').hidden = false;
   });
-  $('btn-pic-aceitar').addEventListener('click', () => {
-    estado.resolverPic?.('aceitar');
-    estado.resolverPic = null;
+  $('btn-pic-rumo').addEventListener('click', () => {
+    aplicarAcao(estado.aviao, 'prosseguir');
+    const last = estado.log?.incidentes?.at(-1);
+    if (last) last.pic = { ...(last.pic ?? {}), forcado: true, sobreposto: true };
+    $('pic-override').hidden = true;
   });
-  $('btn-pic-rejeitar').addEventListener('click', () => {
-    estado.resolverPic?.('rejeitar');
-    estado.resolverPic = null;
+  $('btn-pic-fechar').addEventListener('click', () => {
+    $('pic-override').hidden = true;
   });
   $('btn-abrir-rail').addEventListener('click', () => {
     $('rail').classList.toggle('is-open');
