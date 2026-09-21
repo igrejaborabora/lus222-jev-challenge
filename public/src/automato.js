@@ -36,23 +36,27 @@ export function aplicarEvasao(aviao, { acao, vertical, lateral, urgencia } = {})
 export function passoAutomato(aviao, dt) {
   const t = Math.min(dt, 0.08);
   const u = 0.62 + aviao.urgencia * 0.28;
-  const dodge = aviao.dodgeT > 0 ? 1 : 0.32;
+  // O último eixo continua em força enquanto o pedido seguinte não chega.
+  const eixo = aviao.lateral !== 'manter' || aviao.vertical !== 'manter';
+  const dodge = eixo || aviao.dodgeT > 0 ? 1 : 0.32;
   aviao.dodgeT = Math.max(0, aviao.dodgeT - t);
 
   let alvoBank = 0;
-  let alvoPitch = 0.04;
+  let alvoPitch = 0;
   let alvoSpeed = CRUZEIRO;
   let alvoAlt = 46;
   let turn = 0.03;
 
+  // Na câmara atrás da cauda, heading a subir vira para a esquerda do ecrã
+  // e bank negativo baixa essa asa. Pitch negativo levanta o nariz.
   switch (aviao.lateral) {
     case 'esquerda':
-      turn = -0.78 * u * dodge;
-      alvoBank = 0.52 * u;
-      break;
-    case 'direita':
       turn = 0.78 * u * dodge;
       alvoBank = -0.52 * u;
+      break;
+    case 'direita':
+      turn = -0.78 * u * dodge;
+      alvoBank = 0.52 * u;
       break;
     case 'manter':
       break;
@@ -66,11 +70,11 @@ export function passoAutomato(aviao, dt) {
   switch (aviao.vertical) {
     case 'subir':
       alvoAlt = aviao.y + 26 * dodge + 10;
-      alvoPitch = 0.2 * u;
+      alvoPitch = -0.22 * u;
       break;
     case 'descer':
       alvoAlt = Math.max(16, aviao.y - 16 * dodge);
-      alvoPitch = -0.15 * u;
+      alvoPitch = 0.18 * u;
       break;
     case 'manter':
       break;
@@ -108,7 +112,7 @@ export function passoAutomato(aviao, dt) {
       if (aviao.vertical === 'manter') alvoAlt = 40;
       break;
     case 'abortar_emergencia':
-      alvoPitch = -0.18;
+      alvoPitch = 0.2;
       alvoAlt = Math.min(alvoAlt, 18);
       alvoSpeed = 28;
       if (aviao.lateral === 'manter') alvoBank = 0.2;
@@ -142,6 +146,6 @@ export function poseAviao(aviao) {
     bank: aviao.bank,
     pitch: aviao.pitch,
     hélice: aviao.hélice,
-    dodge: aviao.dodgeT > 0,
+    dodge: aviao.lateral !== 'manter' || aviao.vertical !== 'manter' || aviao.dodgeT > 0,
   };
 }

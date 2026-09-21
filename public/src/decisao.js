@@ -74,7 +74,7 @@ function lerObstaculo(o) {
   };
 }
 
-/** Offset em metros à esquerda (−) / direita (+) do rumo, para colocar o obstáculo no mundo. */
+/** Offset de dados: esquerda (−) / direita (+) do rumo. O mundo espelha o sinal em pontoAmeaca. */
 export function offsetLateral(o) {
   if (o?.offset_lateral_m != null) return o.offset_lateral_m;
   const esq = num(o?.folga_pela_esquerda_m, 0);
@@ -88,7 +88,9 @@ const VISUAIS_NO_AR = new Set(['trafego', 'aves', 'guerra']);
 
 export function pontoAmeaca(pose, obstaculo) {
   const d = num(obstaculo?.distancia_m, 200);
-  const lat = offsetLateral(obstaculo);
+  // Câmara atrás da cauda: o +X da aeronave é a esquerda do ecrã. Sem este
+  // sinal, «Esquerda» inclinava a asa que se vê à direita.
+  const lat = -offsetLateral(obstaculo);
   const heading = num(pose?.heading, 0);
   const visual = umDe(obstaculo?.visual, VISUAIS, 'torre');
   return {

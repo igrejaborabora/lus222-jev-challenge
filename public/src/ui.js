@@ -172,18 +172,16 @@ function coluna(titulo, answers, lat) {
   return d;
 }
 
-export function mostrarChipJev(maxP, pediriaPic, evasao, { repetido = false } = {}) {
+export function mostrarChipJev(_maxP, _pediriaPic, evasao, { latencia_ms = null } = {}) {
   const chip = $('jev-chip');
   if (!chip) return;
-  const p = Number.isFinite(maxP) ? Number(maxP).toFixed(2) : '—';
-  const eixos = evasao
-    ? `${etiquetarManobraV(evasao.vertical)} · ${etiquetarManobraL(evasao.lateral)}`
-    : '';
-  const prefixo = repetido ? 'Repetido · ' : '';
+  const manobra = $('selo-manobra');
+  const ms = $('selo-ms');
+  const vertical = etiquetarManobraV(evasao?.vertical);
+  const lateral = etiquetarManobraL(evasao?.lateral);
+  if (manobra) manobra.textContent = `${vertical} · ${lateral}`;
+  if (ms) ms.textContent = Number.isFinite(latencia_ms) ? `${Math.round(latencia_ms)} ms` : '— ms';
   chip.hidden = false;
-  chip.textContent = pediriaPic
-    ? `${prefixo}JEV desviou · ${eixos} · max P ${p} · PIC no log`
-    : `${prefixo}JEV desviou · ${eixos} · max P ${p}`;
 }
 
 export function esconderChipJev() {
