@@ -416,9 +416,9 @@ export function actualizarCamara(mundo, pose, dt) {
   const cam = mundo.camera;
   const look = mundo.alvoLook;
   const dodge = Boolean(pose.dodge || look);
-  const back = dodge ? 20 : 13;
-  const side = dodge ? 24 : 18;
-  const up = dodge ? 10 : 7.2;
+  const back = dodge ? 28 : 13;
+  const side = dodge ? 22 : 18;
+  const up = dodge ? 12 : 7.2;
   const hx = pose.heading;
   const alvoX = pose.x - Math.sin(hx) * back + Math.cos(hx) * side;
   const alvoZ = pose.z - Math.cos(hx) * back - Math.sin(hx) * side;
@@ -428,7 +428,11 @@ export function actualizarCamara(mundo, pose, dt) {
   cam.position.y += (alvoY - cam.position.y) * k;
   cam.position.z += (alvoZ - cam.position.z) * k;
   if (look) {
-    cam.lookAt((pose.x + look.x) * 0.5, (pose.y + Math.max(look.y, 18)) * 0.5, (pose.z + look.z) * 0.5);
+    cam.lookAt(
+      pose.x + (look.x - pose.x) * 0.2,
+      pose.y + 1.4,
+      pose.z + (look.z - pose.z) * 0.2,
+    );
   } else {
     cam.lookAt(pose.x, pose.y + 0.6, pose.z);
   }
