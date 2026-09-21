@@ -2,10 +2,14 @@
 <html lang="pt-PT">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>SAAM · JEV Decision Demo</title>
 <meta name="description" content="Drone de carga em corredor semi-urbano, em vista FPV: o mesmo percurso voado por um piloto humano, por uma regra geométrica determinística e pelo modelo de decisão typesafe-ai/jev.">
 <meta name="theme-color" content="#080d14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛸</text></svg>">
 <link rel="stylesheet" href="./styles.css">
 <script type="importmap">
@@ -66,9 +70,9 @@
 
       <button class="btn-primary" id="btn-start">Começar pela ronda do piloto humano</button>
 
-      <div class="controls-hint">
-        <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> ou <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> ·
-        arrasta no ecrã nos telemóveis · <kbd>Esc</kbd> para pausar
+      <div class="controls-hint" id="dica-briefing">
+        <span class="hint-desktop"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> ou <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> · <kbd>Esc</kbd> para pausar</span>
+        <span class="hint-touch">Arrasta no ecrã para voar · o botão II pausa</span>
       </div>
 
       <p class="disclaimer">
@@ -89,6 +93,7 @@
       <div class="hud-block"><span class="hud-label">ALTITUDE</span><strong class="hud-value" id="hud-altitude">0 m</strong></div>
       <div class="hud-block"><span class="hud-label">PORTÕES</span><strong class="hud-value" id="hud-portoes">0</strong></div>
       <div class="hud-block"><span class="hud-label">INTEGRIDADE</span><strong class="hud-value" id="hud-integridade">100%</strong></div>
+      <button class="btn-pause" id="btn-pause" type="button" aria-label="Pausar ou continuar">II</button>
     </div>
 
     <div class="progresso"><span id="barra-progresso"></span></div>
@@ -96,6 +101,7 @@
     <aside class="painel" id="painel-decisao" hidden>
       <header>
         <span class="painel-badge" id="painel-titulo">typesafe-ai/jev</span>
+        <span class="painel-fonte" id="painel-fonte" hidden></span>
         <span class="painel-lat" id="painel-latencia">—</span>
       </header>
       <div class="painel-escolha">
@@ -116,7 +122,10 @@
       <p class="painel-nota" id="painel-nota"></p>
     </aside>
 
-    <div class="dica-voo" id="dica-controlos">Setas ou WASD · arrasta no ecrã</div>
+    <div class="stick" id="stick" hidden>
+      <div class="stick-base"><div class="stick-knob" id="stick-knob"></div></div>
+    </div>
+    <div class="dica-voo" id="dica-controlos">Arrasta para voar</div>
 
     <div class="overlay" id="overlay" hidden>
       <div class="overlay-card">

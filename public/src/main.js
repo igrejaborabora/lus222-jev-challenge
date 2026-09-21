@@ -1,5 +1,9 @@
-import { gerarPercurso, criarCena, actualizarCamara, redimensionar, DIFICULDADES, DISTANCIA_ALVO, CORREDOR } from './world.js';
-import { novaRonda, passo, pilotar, pontuar, lerSensores } from './pilots.js';
+import { gerarPercurso, criarCena, actualizarCamara, redimensionar, perfilGraficoLeve, DIFICULDADES, DISTANCIA_ALVO, CORREDOR } from './world.js';
+import { novaRonda, passo, pilotar, pontuar } from './pilots.js';
+
+function ecraToque() {
+  return window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(max-width: 720px)').matches;
+}
 
 const $ = (id) => document.getElementById(id);
 const PASSO = 1 / 120;
@@ -33,18 +37,27 @@ function mostrarEcra(nome) {
   for (const s of document.querySelectorAll('.screen')) s.classList.remove('is-active');
   $(`screen-${nome}`).classList.add('is-active');
   estado.ecra = nome;
+  document.documentElement.classList.toggle('flight-active', nome === 'flight');
   if (nome === 'flight') ajustarCanvas();
+}
+
+function medidasCanvas() {
+  const canvas = $('canvas');
+  const vv = window.visualViewport;
+  const largura = Math.round(canvas.clientWidth || vv?.width || window.innerWidth);
+  const altura = Math.round(canvas.clientHeight || vv?.height || window.innerHeight);
+  return { largura, altura };
 }
 
 function ajustarCanvas() {
   if (!estado.mundo) return;
-  const canvas = $('canvas');
-  const largura = canvas.clientWidth || window.innerWidth;
-  const altura = canvas.clientHeight || Math.round(largura * 9 / 16);
+  const { largura, altura } = medidasCanvas();
   redimensionar(estado.mundo, largura, altura);
 }
 
 addEventListener('resize', ajustarCanvas);
+addEventListener('orientationchange', () => setTimeout(ajustarCanvas, 120));
+if (window.visualViewport) visualViewport.addEventListener('resize', ajustarCanvas);
 
 // ---------------------------------------------------------------- rondas
 
@@ -61,7 +74,7 @@ function arrancar() {
     estado.mundo.renderer.dispose();
     estado.mundo = null;
   }
-  estado.mundo = criarCena($('canvas'), estado.percurso);
+  estado.mundo = criarCena($('canvas'), estado.percurso, { leve: perfilGraficoLeve() });
 
   iniciarRonda(estado.ordem[0]);
 }
@@ -80,7 +93,10 @@ function iniciarRonda(pilotoId) {
   $('hud-piloto-nome').style.color = info.cor;
   $('painel-decisao').hidden = pilotoId === 'humano';
   $('painel-titulo').textContent = pilotoId === 'jev' ? 'typesafe-ai/jev' : 'baseline geométrico';
+  $('painel-fonte').hidden = true;
+  $('painel-fonte').textContent = '';
   $('dica-controlos').hidden = pilotoId !== 'humano';
+  $('stick').hidden = pilotoId !== 'humano' || !ecraToque();
   $('overlay').hidden = true;
 
   mostrarEcra('flight');
@@ -155,6 +171,17 @@ function actualizarHud(r) {
 
   const a = r.jev.ultima?.answers;
   if (a && !a.manobraVertical) return;
+  const fonte = r.jev.ultima?.fonte;
+  const chip = $('painel-fonte');
+  if (r.piloto === 'jev' && fonte) {
+    const modelo = fonte === 'jev';
+    chip.hidden = false;
+    chip.textContent = modelo ? 'JEV' : 'RESERVA';
+    chip.classList.toggle('is-jev', modelo);
+    chip.classList.toggle('is-reserva', !modelo);
+  } else {
+    chip.hidden = true;
+  }
   $('painel-latencia').textContent = r.piloto === 'baseline'
     ? 'local'
     : (r.jev.ultima?.latencia_ms != null ? `${r.jev.ultima.latencia_ms} ms` : '—');
@@ -204,6 +231,7 @@ function mostrarResultados() {
           <div><dt>Integridade</dt><dd>${d.integridade}%</dd></div>
           ${p.id === 'jev'
             ? `<div><dt>Avaliações</dt><dd>${d.chamadas}</dd></div>
+               <div><dt>Fonte</dt><dd>${d.fonte === 'jev' ? 'typesafe-ai/jev' : (d.fonte ?? '—')}</dd></div>
                <div><dt>Latência mediana</dt><dd>${d.latencia != null ? d.latencia + ' ms' : '—'}</dd></div>`
             : p.id === 'baseline'
               ? `<div><dt>Decisões</dt><dd>${d.chamadas}, locais</dd></div>
@@ -229,6 +257,9 @@ function escreverVeredicto(r) {
   const h = r.humano, b = r.baseline, j = r.jev;
   const linhas = [];
 
+  if (j && j.fonte && j.fonte !== 'jev') {
+    linhas.push(`<span class="aviso">A ronda JEV não falou com o modelo: a fonte foi <em>${j.fonte}</em>. Esta pontuação não se compara com o baseline — as duas rondas correram a mesma regra geométrica.</span>`);
+  }
   if (j && b) {
     const dif = j.total - b.total;
     if (dif > 0) {
@@ -305,30 +336,55 @@ function aplicarTeclas() {
   r.intensidade = 1;
 }
 
-// toque: arrastar move o drone na direcção do gesto
+// toque: joystick analógico — o deslocamento define direcção e intensidade
+const STICK_RAIO = 48;
+const STICK_MORTO = 10;
 let toqueBase = null;
 const canvas = $('canvas');
+const knob = $('stick-knob');
+
+function aplicarStick(dx, dy) {
+  const r = estado.ronda;
+  if (!r || r.piloto !== 'humano') return;
+  const dist = Math.hypot(dx, dy);
+  if (dist < STICK_MORTO) {
+    r.cmdX = 0;
+    r.cmdY = 0;
+    r.intensidade = 1;
+    if (knob) knob.style.transform = 'translate(0px, 0px)';
+    return;
+  }
+  const limitado = Math.min(dist, STICK_RAIO);
+  const nx = dx / dist;
+  const ny = dy / dist;
+  r.cmdX = nx;
+  r.cmdY = -ny;
+  r.intensidade = Math.min(1, limitado / STICK_RAIO);
+  if (knob) {
+    knob.style.transform = `translate(${nx * limitado}px, ${ny * limitado}px)`;
+  }
+}
+
 canvas.addEventListener('pointerdown', (e) => {
   if (estado.ronda?.piloto !== 'humano') return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
   canvas.setPointerCapture(e.pointerId);
   toqueBase = { x: e.clientX, y: e.clientY };
+  aplicarStick(0, 0);
 });
 canvas.addEventListener('pointermove', (e) => {
-  const r = estado.ronda;
-  if (!toqueBase || !r || r.piloto !== 'humano') return;
-  const dx = e.clientX - toqueBase.x;
-  const dy = e.clientY - toqueBase.y;
-  r.cmdX = Math.abs(dx) > 16 ? Math.sign(dx) : 0;
-  r.cmdY = Math.abs(dy) > 16 ? -Math.sign(dy) : 0;
-  r.intensidade = 1;
+  if (!toqueBase) return;
+  aplicarStick(e.clientX - toqueBase.x, e.clientY - toqueBase.y);
 });
 const largarToque = () => {
   toqueBase = null;
+  if (knob) knob.style.transform = 'translate(0px, 0px)';
   const r = estado.ronda;
-  if (r && r.piloto === 'humano') { r.cmdX = 0; r.cmdY = 0; }
+  if (r && r.piloto === 'humano') { r.cmdX = 0; r.cmdY = 0; r.intensidade = 1; }
 };
 canvas.addEventListener('pointerup', largarToque);
 canvas.addEventListener('pointercancel', largarToque);
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 function alternarPausa() {
   if (!estado.ronda || estado.ronda.terminada) return;
@@ -372,6 +428,21 @@ $('btn-seed').addEventListener('click', () => {
 });
 $('btn-again').addEventListener('click', () => mostrarEcra('briefing'));
 $('btn-log').addEventListener('click', descarregarLog);
+$('btn-pause').addEventListener('click', (e) => {
+  e.stopPropagation();
+  alternarPausa();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && estado.ecra === 'flight' && estado.ronda && !estado.ronda.terminada && !estado.pausado) {
+    alternarPausa();
+  }
+});
+
+if (ecraToque()) {
+  const ritmo = $('select-ritmo');
+  if (ritmo && ritmo.value === '250') ritmo.value = '400';
+}
 
 if (location.search.includes('debug')) window.__saam = estado;
 

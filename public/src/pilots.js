@@ -46,7 +46,7 @@ export function novaRonda(percurso, piloto, seedRuido = 7) {
     idx: 0,
     ruido: mulberry32(seedRuido),
     log: [],
-    jev: { ultima: null, latencias: [], chamadas: 0, falhas: 0, proximaEm: 0, pendente: false, aviso: '' },
+    jev: { ultima: null, latencias: [], chamadas: 0, falhas: 0, proximaEm: 0, pendente: false, aviso: '', fontes: [] },
   };
 }
 
@@ -179,6 +179,7 @@ export function aplicarDecisao(r, payload) {
   if (!a?.manobraVertical || !a?.manobraLateral) return;
 
   r.jev.ultima = payload;
+  if (payload.fonte) r.jev.fontes.push(payload.fonte);
   if (payload.aviso) r.jev.aviso = payload.aviso;
 
   const v = a.manobraVertical.choice;
@@ -197,7 +198,12 @@ export function aplicarDecisao(r, payload) {
   }
 }
 
-async function pedirDecisao(estado, timeoutMs = 1500) {
+function timeoutDecisaoMs() {
+  if (typeof window === 'undefined') return 1500;
+  return window.matchMedia('(pointer: coarse)').matches ? 2200 : 1500;
+}
+
+async function pedirDecisao(estado, timeoutMs = timeoutDecisaoMs()) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
@@ -365,6 +371,9 @@ export function pontuar(r) {
     chamadas: r.jev.chamadas,
     latencia: lats.length ? lats[Math.floor(lats.length / 2)] : null,
     aviso: r.jev.aviso,
+    fonte: r.jev.fontes.includes('jev') && r.jev.fontes.every((f) => f === 'jev')
+      ? 'jev'
+      : (r.jev.fontes.find((f) => f !== 'jev') ?? r.jev.ultima?.fonte ?? null),
     log: r.log,
   };
 }

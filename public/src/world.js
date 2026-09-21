@@ -176,15 +176,31 @@ export function nomeDoPortao(tipo) {
 
 // ------------------------------------------------------------------ cena
 
-export function criarCena(canvas, percurso) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+export function perfilGraficoLeve() {
+  if (typeof window === 'undefined') return false;
+  const estreito = window.matchMedia('(max-width: 900px)').matches;
+  const toque = window.matchMedia('(pointer: coarse)').matches;
+  const cores = typeof navigator !== 'undefined' && navigator.hardwareConcurrency
+    ? navigator.hardwareConcurrency <= 4
+    : false;
+  return estreito || toque || cores;
+}
+
+export function criarCena(canvas, percurso, opts = {}) {
+  const leve = opts.leve ?? perfilGraficoLeve();
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: !leve,
+    powerPreference: leve ? 'default' : 'high-performance',
+    alpha: false,
+  });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, leve ? 1.25 : 2));
   renderer.setClearColor(0x0d1620);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x16232f, 150, 620);
+  scene.fog = new THREE.Fog(0x16232f, 120, leve ? 460 : 620);
 
-  const camera = new THREE.PerspectiveCamera(72, 16 / 9, 0.5, 1400);
+  const camera = new THREE.PerspectiveCamera(72, 16 / 9, 0.5, leve ? 980 : 1400);
 
   // luz: entardecer urbano
   scene.add(new THREE.HemisphereLight(0x9fc4e0, 0x2a2118, 1.9));
@@ -194,7 +210,7 @@ export function criarCena(canvas, percurso) {
 
   // céu
   const ceu = new THREE.Mesh(
-    new THREE.SphereGeometry(900, 24, 16),
+    new THREE.SphereGeometry(900, leve ? 16 : 24, leve ? 10 : 16),
     new THREE.ShaderMaterial({
       side: THREE.BackSide,
       depthWrite: false,
@@ -211,7 +227,7 @@ export function criarCena(canvas, percurso) {
   // solo
   const solo = new THREE.Mesh(
     new THREE.PlaneGeometry(2600, 3200),
-    new THREE.MeshLambertMaterial({ map: texturaSolo(), color: 0x6f7a6a }),
+    new THREE.MeshLambertMaterial({ map: texturaSolo(leve), color: 0x6f7a6a }),
   );
   solo.rotation.x = -Math.PI / 2;
   solo.position.set(0, 0, -DISTANCIA_ALVO / 2);
@@ -219,14 +235,15 @@ export function criarCena(canvas, percurso) {
 
   // silhueta urbana de fundo (uma só malha instanciada)
   const geoCaixa = new THREE.BoxGeometry(1, 1, 1);
+  const silhueta = leve ? percurso.cidade.filter((_, i) => i % 3 === 0) : percurso.cidade;
   const cidade = new THREE.InstancedMesh(
     geoCaixa,
     new THREE.MeshLambertMaterial({ color: 0x4a5765 }),
-    percurso.cidade.length,
+    silhueta.length,
   );
   const m4 = new THREE.Matrix4();
   const cor = new THREE.Color();
-  percurso.cidade.forEach((b, i) => {
+  silhueta.forEach((b, i) => {
     m4.makeScale(b.larg, b.alt, b.prof);
     m4.setPosition(b.x, b.alt / 2, b.z);
     cidade.setMatrixAt(i, m4);
@@ -236,7 +253,7 @@ export function criarCena(canvas, percurso) {
   scene.add(cidade);
 
   // peças dos portões
-  const matJanelas = new THREE.MeshLambertMaterial({ map: texturaFachada() });
+  const matJanelas = new THREE.MeshLambertMaterial({ map: texturaFachada(leve) });
   const matBetao = new THREE.MeshLambertMaterial({ color: 0x6b7480 });
   const matCabo = new THREE.MeshBasicMaterial({ color: 0x1b1f24 });
   const matGrua = new THREE.MeshLambertMaterial({ color: 0xe0a33a });
@@ -257,7 +274,7 @@ export function criarCena(canvas, percurso) {
       malha.scale.set(p.sx, p.sy, p.sz);
       malha.position.set(p.x, p.y, -p.z);
       if (p.janelas) {
-        malha.material.map = texturaFachada();
+        malha.material.map = texturaFachada(leve);
         malha.material.map.repeat.set(Math.max(1, p.sx / 9), Math.max(1, p.sy / 9));
         malha.material.map.wrapS = malha.material.map.wrapT = THREE.RepeatWrapping;
       }
@@ -289,7 +306,7 @@ export function criarCena(canvas, percurso) {
 
   // ponto de entrega
   const destino = new THREE.Mesh(
-    new THREE.CylinderGeometry(16, 16, 1.5, 24),
+    new THREE.CylinderGeometry(16, 16, 1.5, leve ? 12 : 24),
     new THREE.MeshBasicMaterial({ color: 0x35d6a4, transparent: true, opacity: 0.65 }),
   );
   destino.position.set(0, 1, -DISTANCIA_ALVO);
@@ -336,21 +353,22 @@ function construirFpv() {
   return g;
 }
 
-function texturaSolo() {
+function texturaSolo(leve = false) {
   const c = document.createElement('canvas');
-  c.width = c.height = 256;
+  c.width = c.height = leve ? 128 : 256;
   const x = c.getContext('2d');
+  const n = c.width;
   x.fillStyle = '#3f4a3c';
-  x.fillRect(0, 0, 256, 256);
+  x.fillRect(0, 0, n, n);
   x.fillStyle = '#55604f';
-  for (let i = 0; i < 40; i++) {
-    x.fillRect(Math.random() * 256, Math.random() * 256, 20 + Math.random() * 40, 20 + Math.random() * 40);
+  for (let i = 0; i < (leve ? 16 : 40); i++) {
+    x.fillRect(Math.random() * n, Math.random() * n, 20 + Math.random() * 40, 20 + Math.random() * 40);
   }
   x.strokeStyle = '#2b3329';
-  x.lineWidth = 6;
-  for (let i = 0; i <= 256; i += 64) {
-    x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 256); x.stroke();
-    x.beginPath(); x.moveTo(0, i); x.lineTo(256, i); x.stroke();
+  x.lineWidth = leve ? 4 : 6;
+  for (let i = 0; i <= n; i += n / 4) {
+    x.beginPath(); x.moveTo(i, 0); x.lineTo(i, n); x.stroke();
+    x.beginPath(); x.moveTo(0, i); x.lineTo(n, i); x.stroke();
   }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -358,14 +376,16 @@ function texturaSolo() {
   return t;
 }
 
-function texturaFachada() {
+function texturaFachada(leve = false) {
   const c = document.createElement('canvas');
-  c.width = c.height = 64;
+  c.width = c.height = leve ? 32 : 64;
   const x = c.getContext('2d');
+  const n = c.width;
   x.fillStyle = '#5a6472';
-  x.fillRect(0, 0, 64, 64);
-  for (let iy = 4; iy < 60; iy += 12) {
-    for (let ix = 4; ix < 60; ix += 12) {
+  x.fillRect(0, 0, n, n);
+  const passo = n > 32 ? 12 : 8;
+  for (let iy = 2; iy < n - 2; iy += passo) {
+    for (let ix = 2; ix < n - 2; ix += passo) {
       const aceso = Math.random() < 0.34;
       x.fillStyle = aceso ? '#ffd79a' : '#39424d';
       x.fillRect(ix, iy, 7, 7);
