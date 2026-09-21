@@ -23,7 +23,9 @@ O Jev não gera prosa. Recebe um **estado** e devolve, no mesmo pedido:
 
 O LUS-222 voa os eixos do JEV (`subir`/`descer`, `esquerda`/`direita`) no instante da evaluate. `precisaRevisaoPIC` fica só no log — a UI **não** espera Accept/Reject. A regra geométrica calcula os mesmos eixos para o debriefing e não controla a aeronave.
 
-A fita (5–8 incidentes) nasce de uma semente. MEDEVAC Açores, carga Ponte de Sor e SAR costa partilham o motor e diferem na tese.
+Na missão: **II** pausa (ou Escape), **Anterior** repete o incidente anterior com a decisão já registada — sem novo pedido ao Gateway — e **Briefing** volta ao comandante sem esperar pelo debriefing.
+
+A fita (5–8 incidentes) nasce de uma semente. Cada cenário tem uma ameaça densa à frente do nariz: MEDEVAC num canyon de torres, carga num bando à saída da FAL em Ponte de Sor, SAR com bimotores e asa alta de época. Nos beats sem geometria a mesma cena continua no céu; a regra geométrica não a vê.
 
 ## Arquitectura
 
@@ -33,7 +35,8 @@ api/jev.js             Vercel Function — só responde fonte: 'jev' ou bloqueio
 public/index.html      splash → comandante → missão → debriefing
 public/src/decisao.js  estado + baseline cego
 public/src/fita.js     semente → incidentes (tese escondida)
-public/src/world.js    malha LUS-222 + costa, câmara chase atrás da cauda
+public/src/world.js    malha LUS-222, câmara chase atrás da cauda, cenas
+public/src/cenas.js    canyon, bando e tráfego de época (procedural)
 public/img/            render do LUS-222 (crédito EEA Aircraft)
 ```
 

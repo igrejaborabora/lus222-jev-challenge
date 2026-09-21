@@ -172,17 +172,18 @@ function coluna(titulo, answers, lat) {
   return d;
 }
 
-export function mostrarChipJev(maxP, pediriaPic, evasao) {
+export function mostrarChipJev(maxP, pediriaPic, evasao, { repetido = false } = {}) {
   const chip = $('jev-chip');
   if (!chip) return;
   const p = Number.isFinite(maxP) ? Number(maxP).toFixed(2) : '—';
   const eixos = evasao
     ? `${etiquetarManobraV(evasao.vertical)} · ${etiquetarManobraL(evasao.lateral)}`
     : '';
+  const prefixo = repetido ? 'Repetido · ' : '';
   chip.hidden = false;
   chip.textContent = pediriaPic
-    ? `JEV desviou · ${eixos} · max P ${p} · PIC no log`
-    : `JEV desviou · ${eixos} · max P ${p}`;
+    ? `${prefixo}JEV desviou · ${eixos} · max P ${p} · PIC no log`
+    : `${prefixo}JEV desviou · ${eixos} · max P ${p}`;
 }
 
 export function esconderChipJev() {

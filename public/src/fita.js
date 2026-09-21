@@ -1,4 +1,4 @@
-import { CENARIOS, cenarioPorId } from './cenarios.js';
+import { CENARIOS, CENA_VISUAL, cenarioPorId } from './cenarios.js';
 import { CABINES, RISCOS, lerEstado, mulberry32, round } from './decisao.js';
 
 function umDe(valor, lista, fallback) {
@@ -84,115 +84,113 @@ function obstaculo({
   };
 }
 
-function trafegoGeometrico(id = 'trafego') {
+function ameacaEmRota(visual, lado) {
+  const esquerda = lado < 0 ? -16 : lado > 0 ? 58 : 24;
+  const direita = lado > 0 ? -16 : lado < 0 ? 58 : 24;
+  const lateral = lado < 0 ? 'direita' : lado > 0 ? 'esquerda' : 'manter';
+  const tipo =
+    visual === 'canyon' ? 'corredor de torres' : visual === 'aves' ? 'bando de aves' : 'tráfego de época';
+  return {
+    obstaculo: obstaculo({
+      tipo,
+      visual,
+      em_rota: true,
+      distancia_m: visual === 'canyon' ? 100 : 72,
+      segundos: 4.6,
+      cima: visual === 'canyon' ? 90 : 48,
+      baixo: visual === 'canyon' ? -40 : -6,
+      esquerda,
+      direita,
+      altura_m: visual === 'canyon' ? 120 : 8,
+      offset_lateral_m: 0,
+    }),
+    lateral,
+  };
+}
+
+function corredor(id, resumo, lado) {
+  const { obstaculo: o, lateral } = ameacaEmRota('canyon', lado);
+  return incidente(
+    id,
+    'corredor',
+    resumo,
+    { geometria: { obstaculos: [o] } },
+    {
+      acao: 'desviar_alternativo',
+      acoesAceites: ['desviar_alternativo', 'orbitar'],
+      manobraVertical: 'subir',
+      verticaisAceites: ['subir', 'manter'],
+      manobraLateral: lateral,
+      lateraisAceites: lateral === 'manter' ? ['manter', 'direita', 'esquerda'] : [lateral],
+      deveEscalar: false,
+      nota: 'Canyon em rota: a regra também desvia no log. Só o JEV manda o avião.',
+    },
+  );
+}
+
+function bando(id, resumo, lado) {
+  const { obstaculo: o, lateral } = ameacaEmRota('aves', lado);
+  return incidente(
+    id,
+    'aves',
+    resumo,
+    { geometria: { obstaculos: [o] } },
+    {
+      acao: 'desviar_alternativo',
+      acoesAceites: ['desviar_alternativo', 'orbitar'],
+      manobraVertical: 'subir',
+      verticaisAceites: ['subir', 'manter'],
+      manobraLateral: lateral === 'manter' ? 'direita' : lateral,
+      lateraisAceites: lateral === 'manter' ? ['direita', 'esquerda', 'manter'] : [lateral],
+      deveEscalar: false,
+      nota: 'Bando em rota à saída da FAL: a regra também desvia no log. O espectáculo é o JEV a sair das aves.',
+    },
+  );
+}
+
+function formacao(id, resumo, lado) {
+  const { obstaculo: o, lateral } = ameacaEmRota('guerra', lado);
   return incidente(
     id,
     'trafego',
-    'Tráfego em rota de conflito a 5 s, folga à esquerda negativa. O JEV sobe e vira à direita — a geometria também vê isto.',
-    {
-      geometria: {
-        obstaculos: [
-          obstaculo({
-            tipo: 'tráfego em rota cruzada',
-            visual: 'trafego',
-            em_rota: true,
-            distancia_m: 190,
-            segundos: 5,
-            cima: 50,
-            baixo: 8,
-            esquerda: -10,
-            direita: 70,
-            altura_m: 8,
-            offset_lateral_m: -14,
-          }),
-        ],
-      },
-    },
-    {
-      acao: 'desviar_alternativo',
-      destinosAceites: ['planeado', 'stol_proximo'],
-      manobraVertical: 'subir',
-      verticaisAceites: ['subir', 'manter'],
-      manobraLateral: 'direita',
-      lateraisAceites: ['direita'],
-      deveEscalar: false,
-      nota: 'A regra também acerta — obstáculo em rota. Só o JEV manda o avião.',
-    },
-  );
-}
-
-function cumeeira() {
-  return incidente(
-    'cumeeira',
-    'relevo',
-    'Cumeeira à frente do rumo, 190 m. Folga por cima; a esquerda está tapada. O LUS-222 tem de subir e cair à direita.',
-    {
-      geometria: {
-        obstaculos: [
-          obstaculo({
-            tipo: 'cumeeira',
-            visual: 'relevo',
-            em_rota: true,
-            distancia_m: 185,
-            segundos: 4.8,
-            cima: 80,
-            baixo: -40,
-            esquerda: -20,
-            direita: 55,
-            altura_m: 62,
-            offset_lateral_m: -8,
-          }),
-        ],
-      },
-    },
-    {
-      acao: 'desviar_alternativo',
-      acoesAceites: ['desviar_alternativo', 'orbitar'],
-      manobraVertical: 'subir',
-      verticaisAceites: ['subir'],
-      manobraLateral: 'direita',
-      lateraisAceites: ['direita', 'manter'],
-      deveEscalar: false,
-      nota: 'Relevo em rota: a regra também desvia no log; o espectáculo é o JEV a subir.',
-    },
-  );
-}
-
-function torreRadio() {
-  return incidente(
-    'torre_radio',
-    'torre',
-    'Torre de rádio 70 m à esquerda do eixo, 180 m à frente. Folga à direita. Subir ou cair a estibordo.',
-    {
-      geometria: {
-        obstaculos: [
-          obstaculo({
-            tipo: 'torre de rádio',
-            visual: 'torre',
-            em_rota: true,
-            distancia_m: 180,
-            segundos: 4.7,
-            cima: 28,
-            baixo: -60,
-            esquerda: -18,
-            direita: 64,
-            altura_m: 72,
-            offset_lateral_m: -16,
-          }),
-        ],
-      },
-    },
+    resumo,
+    { geometria: { obstaculos: [o] } },
     {
       acao: 'desviar_alternativo',
       acoesAceites: ['desviar_alternativo', 'orbitar'],
       manobraVertical: 'subir',
       verticaisAceites: ['subir', 'manter'],
-      manobraLateral: 'direita',
-      lateraisAceites: ['direita'],
+      manobraLateral: lateral === 'manter' ? 'direita' : lateral,
+      lateraisAceites: lateral === 'manter' ? ['direita', 'manter'] : [lateral],
       deveEscalar: false,
-      nota: 'Torre em rota: a geometria vê; o JEV escolhe o eixo e voa.',
+      nota: 'Tráfego de época em rota: a regra também vê. Só o JEV manda o LUS-222.',
     },
   );
+}
+
+/** Preenche beats sem a ameaça do cenário. Não entra no estado do JEV — só no ecrã. */
+export function complementoVisual(cenarioId, obstaculos) {
+  const visual = CENA_VISUAL[cenarioId] ?? 'canyon';
+  const lista = Array.isArray(obstaculos) ? [...obstaculos] : [];
+  if (lista.some((o) => o.visual === visual)) return lista;
+  const tipo =
+    visual === 'canyon' ? 'corredor urbano' : visual === 'aves' ? 'bando' : 'tráfego de época';
+  lista.push(
+    obstaculo({
+      tipo,
+      visual,
+      em_rota: false,
+      distancia_m: visual === 'canyon' ? 110 : 78,
+      segundos: 8,
+      cima: 70,
+      baixo: -16,
+      esquerda: 40,
+      direita: 40,
+      altura_m: visual === 'canyon' ? 120 : 8,
+      offset_lateral_m: 0,
+    }),
+  );
+  return lista;
 }
 
 function fitaMedevac(rnd) {
@@ -251,9 +249,21 @@ function fitaMedevac(rnd) {
         nota: 'Pista curta não é obstáculo geométrico.',
       },
     ),
-    cumeeira(),
-    trafegoGeometrico(),
-    torreRadio(),
+    corredor(
+      'canyon_esq',
+      'Corredor urbano: torres dos dois lados e um bloco a invadir o eixo pela esquerda. O LUS-222 sobe e cai à direita.',
+      -1,
+    ),
+    corredor(
+      'canyon_dir',
+      'O canyon aperta pela direita. Folga à esquerda. Subir ou virar a bombordo entre os blocos.',
+      1,
+    ),
+    corredor(
+      'canyon_eixo',
+      'Bloco alto no eixo da rua, a 5 s, com folga por cima. O LUS-222 sobe no corredor.',
+      0,
+    ),
     incidente(
       'turbulencia',
       'integridade',
@@ -356,8 +366,16 @@ function fitaCarga(rnd) {
         nota: 'Sem obstáculo: a regra prossegue.',
       },
     ),
-    cumeeira(),
-    trafegoGeometrico(),
+    bando(
+      'bando_fal',
+      'Bando à saída da FAL, em Ponte de Sor. Dezenas de aves no eixo, mais densas à esquerda. Subir e cair à direita.',
+      -1,
+    ),
+    bando(
+      'bando_cruz',
+      'Segundo bando, mais alto, a cruzar da direita para o eixo da descolagem. A geometria vê as aves; não vê a massa.',
+      1,
+    ),
     incidente(
       'rampa',
       'carga',
@@ -446,8 +464,16 @@ function fitaSar(rnd) {
         nota: 'Contacto incerto — escalar, não inventar certeza.',
       },
     ),
-    torreRadio(),
-    trafegoGeometrico(),
+    formacao(
+      'guerra_cruz',
+      'Bimotor de época a cruzar da esquerda, à altitude do LUS-222. Asa alta mais à frente. Subir e virar à direita.',
+      -1,
+    ),
+    formacao(
+      'guerra_frente',
+      'Formação à frente do rumo: bimotor no eixo e asa alta a estibordo. Folga pela esquerda.',
+      1,
+    ),
     incidente(
       'mar_grosso',
       'ambiente',

@@ -1,5 +1,6 @@
 import { LISTA_CENARIOS, cenarioPorId } from './cenarios.js';
-import { aplicarIncidente, estadoInicial, gerarFita, lerRestricoes } from './fita.js';
+import { estadoInicial, gerarFita, lerRestricoes } from './fita.js';
+import { estadoAteIndice, planoDoBeat, podeVoltar } from './fita-correr.js';
 import { decisaoGeometrica, deveEscalarPIC, evasaoDeAnswers, maxProbabilidade } from './decisao.js';
 import { registarIncidente, resumirMissao } from './debrief.js';
 import { aplicarAcao, aplicarEvasao, novoAutomato, passoAutomato, poseAviao } from './automato.js';
@@ -8,6 +9,7 @@ import {
   actualizarCamara,
   aplicarPose,
   criarCena,
+  ancorarVisuais,
   mostrarAmeacas,
   perfilGraficoLeve,
   redimensionar,
@@ -33,6 +35,9 @@ const estado = {
   aviao: null,
   mundo: null,
   pausado: false,
+  corrida: 0,
+  indice: -1,
+  abortJev: null,
   raf: 0,
   ultimo: 0,
   log: null,
@@ -139,9 +144,25 @@ function restricoesUI() {
   });
 }
 
+function cancelarPedido() {
+  if (!estado.abortJev) return;
+  estado.abortJev.motivo = 'navegação';
+  estado.abortJev.abort();
+  estado.abortJev = null;
+}
+
 async function avaliarJev(momento, estadoMissao) {
+  if (estado.abortJev) {
+    estado.abortJev.motivo = 'navegação';
+    estado.abortJev.abort();
+  }
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), TIMEOUT_JEV_MS);
+  ctrl.motivo = 'navegação';
+  estado.abortJev = ctrl;
+  const t = setTimeout(() => {
+    ctrl.motivo = 'timeout';
+    ctrl.abort();
+  }, TIMEOUT_JEV_MS);
   try {
     const res = await fetch('/api/jev', {
       method: 'POST',
@@ -156,21 +177,54 @@ async function avaliarJev(momento, estadoMissao) {
       throw err;
     }
     return data;
+  } catch (erro) {
+    if (erro?.name === 'AbortError' && ctrl.motivo !== 'timeout') {
+      const cancel = new Error('cancelado');
+      cancel.cancelado = true;
+      throw cancel;
+    }
+    throw erro;
   } finally {
     clearTimeout(t);
   }
 }
 
-function esperar(ms) {
+function vivo(gen) {
+  return gen === estado.corrida && estado.ecra === 'live';
+}
+
+function esperar(ms, gen) {
   return new Promise((resolve) => {
-    const t0 = performance.now();
+    let acc = 0;
+    let last = performance.now();
     const tick = (now) => {
-      if (estado.ecra !== 'live') return resolve();
-      if (!estado.pausado && now - t0 >= ms) return resolve();
+      if (gen !== estado.corrida || estado.ecra !== 'live') return resolve();
+      const dt = Math.min(80, now - last);
+      last = now;
+      if (!estado.pausado) acc += dt;
+      if (acc >= ms) return resolve();
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
   });
+}
+
+function pintarPausa() {
+  const b = $('btn-pause');
+  b.textContent = estado.pausado ? '▶' : 'II';
+  b.setAttribute('aria-label', estado.pausado ? 'Continuar' : 'Pausar');
+  b.setAttribute('aria-pressed', estado.pausado ? 'true' : 'false');
+  $('pausa-banner').hidden = !estado.pausado;
+}
+
+function syncAnterior() {
+  $('btn-anterior').disabled = !(estado.ecra === 'live' && podeVoltar(estado.indice));
+}
+
+function alternarPausa() {
+  if (estado.ecra !== 'live') return;
+  estado.pausado = !estado.pausado;
+  pintarPausa();
 }
 
 function ciclo(agora) {
@@ -183,6 +237,7 @@ function ciclo(agora) {
     const pose = poseAviao(estado.aviao);
     aplicarPose(estado.mundo, pose);
     actualizarAmeacas(estado.mundo, dt);
+    ancorarVisuais(estado.mundo, pose);
     actualizarCamara(estado.mundo, pose, dt);
   }
   estado.mundo.renderer.render(estado.mundo.scene, estado.mundo.camera);
@@ -201,6 +256,94 @@ function largarMundo() {
   estado.mundo = null;
 }
 
+function mostrarMundoActual(obstaculos) {
+  if (estado.mundo && estado.aviao) {
+    mostrarAmeacas(estado.mundo, obstaculos, poseAviao(estado.aviao));
+  }
+}
+
+async function correrFita(desde) {
+  cancelarPedido();
+  const gen = ++estado.corrida;
+  const fita = estado.fita;
+  for (let i = desde; i < fita.incidentes.length; i++) {
+    if (!vivo(gen)) return;
+    estado.indice = i;
+    syncAnterior();
+    const inc = fita.incidentes[i];
+    const missao = estadoAteIndice(estado.missaoBase, fita.incidentes, i);
+    estado.missao = missao;
+    const proximo = fita.incidentes[i + 1]?.resumo ?? 'Fim da fita';
+    const plano = planoDoBeat(estado.log.incidentes, i);
+    const repetido = plano.modo === 'replay';
+    actualizarHud(missao, {
+      fase: `Incidente ${i + 1}/${fita.incidentes.length}${repetido ? ' · repetido' : ''}`,
+      fonte: 'jev',
+      proximo,
+    });
+
+    const ameacas = missao.geometria?.obstaculos ?? [];
+    mostrarMundoActual(ameacas);
+
+    let jev = plano.jev;
+    if (!repetido) {
+      try {
+        jev = await avaliarJev('incidente', missao);
+      } catch (erro) {
+        if (erro?.cancelado || !vivo(gen)) return;
+        return fecharIncompleta(erro.message || 'O Gateway falhou a meio da fita.');
+      }
+      if (!vivo(gen)) return;
+      const pediriaPic = deveEscalarPIC(jev.answers);
+      const pic = {
+        autonomo: true,
+        pediria_pic: pediriaPic,
+        oferecido: pediriaPic,
+        forcado: false,
+        aceite: null,
+        sobreposto: false,
+      };
+      estado.log.incidentes[i] = registarIncidente({
+        estado: missao,
+        incidente: inc,
+        jev,
+        baseline: { fonte: 'regra-geometrica', answers: decisaoGeometrica(missao, 'incidente') },
+        pic,
+      });
+    }
+
+    actualizarRail({ answers: jev.answers, latencia_ms: jev.latencia_ms, fonte: 'jev', incidente: inc });
+    const maxP = maxProbabilidade(jev.answers.acaoMissao);
+    const pediriaPic = deveEscalarPIC(jev.answers);
+    const evasao = repetido ? plano.evasao : evasaoDeAnswers(jev.answers);
+    mostrarChipJev(maxP, pediriaPic, evasao, { repetido });
+    if (estado.aviao) aplicarEvasao(estado.aviao, evasao);
+    await esperar(ameacas.length ? 3800 : 2600, gen);
+  }
+
+  if (vivo(gen)) abrirDebrief();
+}
+
+function voltarIncidente() {
+  if (!podeVoltar(estado.indice) || estado.ecra !== 'live') return;
+  const alvo = estado.indice - 1;
+  estado.indice = alvo;
+  syncAnterior();
+  correrFita(alvo);
+}
+
+function voltarAoBriefing() {
+  estado.corrida += 1;
+  cancelarPedido();
+  estado.pausado = false;
+  estado.indice = -1;
+  pintarPausa();
+  syncAnterior();
+  esconderChipJev();
+  largarMundo();
+  mostrar('commander');
+}
+
 async function lancarMissao() {
   if (!estado.gateway?.gateway_configurado) {
     mostrar('splash');
@@ -208,13 +351,20 @@ async function lancarMissao() {
     return;
   }
 
+  cancelarPedido();
+  const gen = ++estado.corrida;
   const restricoes = restricoesUI();
   const cenario = cenarioPorId(estado.cenario);
   const fita = gerarFita(cenario.id, restricoes.semente);
-  let missao = estadoInicial(cenario.id, restricoes);
+  const missao = estadoInicial(cenario.id, restricoes);
   estado.fita = fita;
+  estado.missaoBase = missao;
+  estado.missao = missao;
   estado.aviao = novoAutomato();
   estado.pausado = false;
+  estado.indice = -1;
+  pintarPausa();
+  syncAnterior();
   estado.log = {
     cenario,
     semente: restricoes.semente,
@@ -245,9 +395,11 @@ async function lancarMissao() {
 
   actualizarHud(missao, { fase: 'Briefing', fonte: '…', proximo: fita.incidentes[0]?.resumo });
   $('rail-incidente').textContent = 'JEV a ler o briefing…';
+  mostrarMundoActual([]);
 
   try {
     const jev = await avaliarJev('briefing', missao);
+    if (!vivo(gen)) return;
     estado.log.briefing = {
       jev,
       baseline: { fonte: 'regra-geometrica', answers: decisaoGeometrica(missao, 'briefing') },
@@ -269,52 +421,13 @@ async function lancarMissao() {
       incidente: missao.incidente,
     });
   } catch (erro) {
+    if (erro?.cancelado || !vivo(gen)) return;
     return fecharIncompleta(erro.message || 'O Gateway falhou no briefing.');
   }
 
-  await esperar(900);
-
-  for (let i = 0; i < fita.incidentes.length; i++) {
-    const inc = fita.incidentes[i];
-    missao = aplicarIncidente(missao, inc);
-    estado.missao = missao;
-    const proximo = fita.incidentes[i + 1]?.resumo ?? 'Fim da fita';
-    actualizarHud(missao, { fase: `Incidente ${i + 1}/${fita.incidentes.length}`, fonte: 'jev', proximo });
-
-    const ameacas = missao.geometria?.obstaculos ?? [];
-    if (estado.mundo && estado.aviao) {
-      mostrarAmeacas(estado.mundo, ameacas, poseAviao(estado.aviao));
-    }
-
-    let jev;
-    try {
-      jev = await avaliarJev('incidente', missao);
-    } catch (erro) {
-      return fecharIncompleta(erro.message || 'O Gateway falhou a meio da fita.');
-    }
-
-    const baseline = { fonte: 'regra-geometrica', answers: decisaoGeometrica(missao, 'incidente') };
-    actualizarRail({ answers: jev.answers, latencia_ms: jev.latencia_ms, fonte: 'jev', incidente: inc });
-
-    const maxP = maxProbabilidade(jev.answers.acaoMissao);
-    const pediriaPic = deveEscalarPIC(jev.answers);
-    const pic = {
-      autonomo: true,
-      pediria_pic: pediriaPic,
-      oferecido: pediriaPic,
-      forcado: false,
-      aceite: null,
-      sobreposto: false,
-    };
-    const evasao = evasaoDeAnswers(jev.answers);
-    mostrarChipJev(maxP, pediriaPic, evasao);
-    aplicarEvasao(estado.aviao, evasao);
-
-    estado.log.incidentes.push(registarIncidente({ estado: missao, incidente: inc, jev, baseline, pic }));
-    await esperar(ameacas.length ? 3800 : 2200);
-  }
-
-  abrirDebrief();
+  await esperar(900, gen);
+  if (!vivo(gen)) return;
+  await correrFita(0);
 }
 
 function fecharIncompleta(motivo) {
@@ -363,13 +476,11 @@ function ligarUI() {
   });
   $('btn-missao').addEventListener('click', () => lancarMissao());
 
-  $('btn-pause').addEventListener('click', () => {
-    estado.pausado = !estado.pausado;
-    $('btn-pause').textContent = estado.pausado ? '▶' : 'II';
-    $('btn-pause').setAttribute('aria-label', estado.pausado ? 'Continuar' : 'Pausar');
-  });
+  $('btn-pause').addEventListener('click', () => alternarPausa());
+  $('btn-anterior').addEventListener('click', () => voltarIncidente());
+  $('btn-briefing').addEventListener('click', () => voltarAoBriefing());
   $('btn-pic').addEventListener('click', () => {
-    const last = estado.log?.incidentes?.at(-1);
+    const last = estado.log?.incidentes?.[estado.indice];
     if (last) {
       last.pic = { ...(last.pic ?? {}), forcado: true };
       last.escalou = true;
@@ -378,7 +489,7 @@ function ligarUI() {
   });
   $('btn-pic-rumo').addEventListener('click', () => {
     aplicarAcao(estado.aviao, 'prosseguir');
-    const last = estado.log?.incidentes?.at(-1);
+    const last = estado.log?.incidentes?.[estado.indice];
     if (last) last.pic = { ...(last.pic ?? {}), forcado: true, sobreposto: true };
     $('pic-override').hidden = true;
   });
@@ -401,6 +512,7 @@ function ligarUI() {
       try {
         estado.mundo = criarCena($('canvas'), { leve: perfilGraficoLeve(), cenario: estado.cenario });
         ajustarCanvas();
+        mostrarMundoActual(estado.missao?.geometria?.obstaculos ?? []);
         arrancarLoop();
       } catch {
         $('webgl-block').hidden = false;
@@ -409,9 +521,13 @@ function ligarUI() {
   });
 
   document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape' && estado.ecra === 'live') {
-      estado.pausado = !estado.pausado;
-      $('btn-pause').textContent = estado.pausado ? '▶' : 'II';
+    if (estado.ecra !== 'live') return;
+    if (ev.key === 'Escape') {
+      ev.preventDefault();
+      alternarPausa();
+    } else if (ev.key === 'ArrowLeft') {
+      ev.preventDefault();
+      voltarIncidente();
     }
   });
 

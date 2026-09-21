@@ -1,5 +1,7 @@
 import * as THREE from 'three';
+import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
 import { pontoAmeaca } from './decisao.js';
+import { complementoVisual } from './fita.js';
 
 export function perfilGraficoLeve() {
   if (typeof window === 'undefined') return true;
@@ -172,7 +174,7 @@ export function criarLus222() {
 function ceuDe(cenario) {
   switch (cenario) {
     case 'sar':
-      return { top: 0x1a2744, fog: 0x243044, hemi: 0x8aa0b8, dir: 0xffc48a };
+      return { top: 0x2a3c58, fog: 0x3a4e68, hemi: 0xb7c6d4, dir: 0xffd2a8 };
     case 'medevac':
       return { top: 0x4d6a82, fog: 0x6a8496, hemi: 0xc5d4de, dir: 0xf0e6d0 };
     case 'carga':
@@ -183,6 +185,24 @@ function ceuDe(cenario) {
       return { top: 0x3d7ec9, fog: 0x6ea0d4, hemi: 0xd7e8ff, dir: 0xfff4dc };
     }
   }
+}
+
+function campoFal(leve) {
+  const g = new THREE.Group();
+  const relva = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), mat(0x6d7a46));
+  relva.rotation.x = -Math.PI / 2;
+  relva.position.y = -0.6;
+  g.add(relva);
+  const pista = new THREE.Mesh(new THREE.BoxGeometry(22, 0.3, 420), mat(0x3e4348));
+  pista.position.set(40, -0.2, -80);
+  g.add(pista);
+  const n = leve ? 4 : 8;
+  for (let i = 0; i < n; i++) {
+    const seara = new THREE.Mesh(new THREE.BoxGeometry(80, 0.2, 36), mat(i % 2 ? 0x8a7a40 : 0x5e6a38));
+    seara.position.set(-180 + (i % 4) * 90, -0.35, -200 + Math.floor(i / 4) * 80);
+    g.add(seara);
+  }
+  return g;
 }
 
 function ilha(leve) {
@@ -250,13 +270,30 @@ function anelChao(cor) {
   return ring;
 }
 
-function meshAmeaca(o, pose) {
+function meshAmeaca(o, pose, leve) {
   const p = pontoAmeaca(pose, o);
   const g = new THREE.Group();
   g.position.set(p.x, 0, p.z);
   g.userData.visual = p.visual;
 
   switch (p.visual) {
+    case 'canyon':
+    case 'aves':
+    case 'guerra': {
+      const construir = {
+        canyon: criarCanyon,
+        aves: criarAves,
+        guerra: criarGuerra,
+      }[p.visual];
+      const cena = construir(p, o, leve);
+      g.add(cena);
+      g.userData.ancora = cena;
+      g.userData.obstaculo = o;
+      g.userData.rumo0 = numHeading(pose);
+      if (cena.userData.birds) g.userData.birds = cena.userData.birds;
+      if (cena.userData.avioes) g.userData.avioes = cena.userData.avioes;
+      break;
+    }
     case 'torre': {
       const h = p.altura;
       const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.6, h, 8), mat(0x2a2e33));
@@ -328,11 +365,40 @@ export function mostrarAmeacas(mundo, obstaculos, pose) {
   if (!mundo?.ameaças) return;
   limparGrupo(mundo.ameaças);
   mundo.alvoLook = null;
-  const lista = Array.isArray(obstaculos) ? obstaculos : [];
+  const lista = complementoVisual(mundo.cenario, Array.isArray(obstaculos) ? obstaculos : []);
   for (const o of lista) {
-    mundo.ameaças.add(meshAmeaca(o, pose));
+    mundo.ameaças.add(meshAmeaca(o, pose, mundo.leve));
   }
-  if (lista[0]) mundo.alvoLook = pontoAmeaca(pose, lista[0]);
+  const foco = lista.find((o) => o.em_rota);
+  if (foco) mundo.alvoLook = pontoAmeaca(pose, foco);
+  ancorarVisuais(mundo, pose);
+}
+
+function numHeading(pose) {
+  const h = Number(pose?.heading);
+  return Number.isFinite(h) ? h : 0;
+}
+
+/** Mantém canyon, bando e formação à frente do nariz e à altitude do LUS-222. */
+export function ancorarVisuais(mundo, pose) {
+  if (!mundo?.ameaças || !pose) return;
+  const h = numHeading(pose);
+  const y = Number.isFinite(Number(pose.y)) ? Number(pose.y) : 42;
+  for (const child of mundo.ameaças.children) {
+    const ancora = child.userData.ancora;
+    const o = child.userData.obstaculo;
+    if (!ancora || !o) continue;
+    const p = pontoAmeaca(pose, o);
+    child.position.set(p.x, 0, p.z);
+    ancora.rotation.y = h;
+    ancora.position.y = ancora.userData.kind === 'canyon' ? y - 16 : y;
+    const hero = ancora.userData.hero;
+    if (!hero) continue;
+    const base = Number(ancora.userData.heroBaseX) || 0;
+    const dH = h - (Number(child.userData.rumo0) || h);
+    const deriva = o.em_rota ? Math.max(-48, Math.min(48, -dH * 52)) : 0;
+    hero.position.x = base + deriva;
+  }
 }
 
 export function definirAlvoLook(mundo, ponto) {
@@ -352,6 +418,25 @@ export function actualizarAmeacas(mundo, dt) {
       child.position.x += Math.sin(tr.heading) * tr.speed * dt;
       child.position.z += Math.cos(tr.heading) * tr.speed * dt;
     }
+    const aves = child.userData.birds;
+    if (aves) {
+      for (const b of aves) {
+        const fase = mundo.tAmeaca * b.rate + b.phase;
+        b.pivL.rotation.z = Math.sin(fase) * 0.65;
+        b.pivR.rotation.z = -Math.sin(fase) * 0.65;
+        b.g.position.y = b.baseY + Math.sin(fase * 0.45) * 1.6;
+        b.g.position.x += Math.sin(b.yaw) * b.speed * dt;
+        b.g.position.z += Math.cos(b.yaw) * b.speed * dt;
+      }
+    }
+    const formacao = child.userData.avioes;
+    if (formacao) {
+      for (const pl of formacao) {
+        pl.group.position.x += Math.sin(pl.yaw) * pl.speed * dt;
+        pl.group.position.z += Math.cos(pl.yaw) * pl.speed * dt;
+        for (const prop of pl.props) prop.rotation.z += dt * 22;
+      }
+    }
   }
 }
 
@@ -367,7 +452,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
   renderer.setClearColor(pal.top, 1);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(pal.fog, 80, 520);
+  scene.fog = new THREE.Fog(pal.fog, 160, 980);
   scene.background = new THREE.Color(pal.top);
 
   const camera = new THREE.PerspectiveCamera(48, 1, 0.4, 2000);
@@ -390,7 +475,8 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
   ocean.position.y = -12;
   scene.add(ocean);
 
-  scene.add(ilha(leve));
+  if (cenario === 'carga') scene.add(campoFal(leve));
+  else scene.add(ilha(leve));
 
   const aviao = criarLus222();
   scene.add(aviao);

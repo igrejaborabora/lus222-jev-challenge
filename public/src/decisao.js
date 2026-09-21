@@ -23,7 +23,7 @@ export const ACOES = [
 
 export const MANOBRAS_V = ['subir', 'descer', 'manter'];
 export const MANOBRAS_L = ['esquerda', 'direita', 'manter'];
-export const VISUAIS = ['torre', 'relevo', 'trafego', 'meteo', 'cabo'];
+export const VISUAIS = ['torre', 'relevo', 'trafego', 'meteo', 'cabo', 'canyon', 'aves', 'guerra'];
 
 export const DESTINOS = ['planeado', 'stol_proximo', 'hospital_alternativo', 'origem'];
 export const CABINES = ['medevac', 'carga', 'passageiros', 'mista'];
@@ -84,17 +84,21 @@ export function offsetLateral(o) {
   return 0;
 }
 
+const VISUAIS_NO_AR = new Set(['trafego', 'aves', 'guerra']);
+
 export function pontoAmeaca(pose, obstaculo) {
   const d = num(obstaculo?.distancia_m, 200);
   const lat = offsetLateral(obstaculo);
   const heading = num(pose?.heading, 0);
+  const visual = umDe(obstaculo?.visual, VISUAIS, 'torre');
   return {
     x: num(pose?.x, 0) + Math.sin(heading) * d + Math.cos(heading) * lat,
-    y: obstaculo?.visual === 'trafego' ? num(pose?.y, 42) : 0,
+    y: VISUAIS_NO_AR.has(visual) ? num(pose?.y, 42) : 0,
     z: num(pose?.z, 0) + Math.cos(heading) * d - Math.sin(heading) * lat,
-    visual: umDe(obstaculo?.visual, VISUAIS, 'torre'),
+    visual,
     altura: round(obstaculo?.altura_m, 4, 220, 56),
-    heading: heading + (obstaculo?.visual === 'trafego' ? Math.PI / 2 : 0),
+    rumo: heading,
+    heading: heading + (visual === 'trafego' ? Math.PI / 2 : 0),
   };
 }
 
