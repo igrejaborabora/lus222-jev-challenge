@@ -1,52 +1,57 @@
-import { gerarPercurso, criarCena, actualizarCamara, redimensionar, perfilGraficoLeve, DIFICULDADES, DISTANCIA_ALVO, CORREDOR } from './world.js';
-import { novaRonda, passo, pilotar, pontuar } from './pilots.js';
-
-function ecraToque() {
-  return window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(max-width: 720px)').matches;
-}
+import { LISTA_CENARIOS, cenarioPorId } from './cenarios.js';
+import { aplicarIncidente, estadoInicial, gerarFita, lerRestricoes } from './fita.js';
+import { decisaoGeometrica, deveEscalarPIC, maxProbabilidade } from './decisao.js';
+import { registarIncidente, resumirMissao } from './debrief.js';
+import { aplicarAcao, novoAutomato, passoAutomato, poseAviao } from './automato.js';
+import {
+  actualizarCamara,
+  aplicarPose,
+  criarCena,
+  perfilGraficoLeve,
+  redimensionar,
+  webglDisponivel,
+} from './world.js';
+import {
+  actualizarHud,
+  actualizarRail,
+  esconderBannerPIC,
+  pintarDebrief,
+  mostrarBannerPIC,
+} from './ui.js';
 
 const $ = (id) => document.getElementById(id);
-const PASSO = 1 / 120;
-
-const PILOTOS = [
-  { id: 'humano', nome: 'HUMANO', cor: '#35d6a4' },
-  { id: 'baseline', nome: 'BASELINE', cor: '#7aa7ff' },
-  { id: 'jev', nome: 'JEV', cor: '#ffb547' },
-];
+const TIMEOUT_JEV_MS = 4000;
 
 const estado = {
-  ecra: 'briefing',
-  percurso: null,
+  ecra: 'splash',
+  gateway: null,
+  cenario: 'medevac',
+  fita: null,
+  missao: null,
+  aviao: null,
   mundo: null,
-  seed: 222,
-  dificuldade: 'entrega',
-  ritmo: 250,
-  ordem: [],
-  passo: 0,
-  ronda: null,
-  resultados: {},
   pausado: false,
   raf: 0,
   ultimo: 0,
-  acumulador: 0,
+  log: null,
+  resolverPic: null,
 };
 
-// ---------------------------------------------------------------- ecrãs
-
-function mostrarEcra(nome) {
+function mostrar(nome) {
   for (const s of document.querySelectorAll('.screen')) s.classList.remove('is-active');
   $(`screen-${nome}`).classList.add('is-active');
   estado.ecra = nome;
-  document.documentElement.classList.toggle('flight-active', nome === 'flight');
-  if (nome === 'flight') ajustarCanvas();
+  document.documentElement.classList.toggle('flight-active', nome === 'live');
+  if (nome === 'live') ajustarCanvas();
 }
 
 function medidasCanvas() {
   const canvas = $('canvas');
   const vv = window.visualViewport;
-  const largura = Math.round(canvas.clientWidth || vv?.width || window.innerWidth);
-  const altura = Math.round(canvas.clientHeight || vv?.height || window.innerHeight);
-  return { largura, altura };
+  return {
+    largura: Math.round(canvas.clientWidth || vv?.width || window.innerWidth),
+    altura: Math.round(canvas.clientHeight || vv?.height || window.innerHeight),
+  };
 }
 
 function ajustarCanvas() {
@@ -59,391 +64,363 @@ addEventListener('resize', ajustarCanvas);
 addEventListener('orientationchange', () => setTimeout(ajustarCanvas, 120));
 if (window.visualViewport) visualViewport.addEventListener('resize', ajustarCanvas);
 
-// ---------------------------------------------------------------- rondas
-
-function arrancar() {
-  estado.seed = Number($('input-seed').value) || 222;
-  estado.dificuldade = $('select-dificuldade').value;
-  estado.ritmo = Number($('select-ritmo').value);
-  estado.percurso = gerarPercurso(estado.seed, estado.dificuldade);
-  estado.resultados = {};
-  estado.ordem = PILOTOS.map((p) => p.id);
-  estado.passo = 0;
-
-  if (estado.mundo) {
-    estado.mundo.renderer.dispose();
-    estado.mundo = null;
+async function sondarGateway() {
+  const dot = $('dot-gateway');
+  const txt = $('txt-gateway');
+  const btn = $('btn-entrar');
+  const btnMissao = $('btn-missao');
+  try {
+    const res = await fetch('/api/jev', { cache: 'no-store' });
+    const data = await res.json();
+    estado.gateway = data;
+    if (data.gateway_configurado) {
+      dot.className = 'dot ok';
+      txt.textContent = `AI Gateway ligado · ${data.modelo}`;
+      btn.disabled = false;
+      btnMissao.disabled = false;
+      $('gateway-block').hidden = true;
+      return true;
+    }
+  } catch {
+    estado.gateway = { gateway_configurado: false };
   }
-  estado.mundo = criarCena($('canvas'), estado.percurso, { leve: perfilGraficoLeve() });
-
-  iniciarRonda(estado.ordem[0]);
+  dot.className = 'dot warn';
+  txt.textContent = 'AI Gateway em baixo — a missão JEV não arranca';
+  btn.disabled = true;
+  btnMissao.disabled = true;
+  $('gateway-block').hidden = false;
+  return false;
 }
 
-function iniciarRonda(pilotoId) {
-  // repõe o estado dos portões para que a ronda seja idêntica para todos
-  for (const p of estado.percurso.portoes) p.atingido = false;
+function pintarCartoes() {
+  const box = $('cartas');
+  box.replaceChildren();
+  for (const c of LISTA_CENARIOS) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'carta' + (c.id === estado.cenario ? ' is-on' : '');
+    btn.dataset.id = c.id;
+    const fig = document.createElement('div');
+    fig.className = 'carta-foto';
+    const h = document.createElement('h2');
+    h.textContent = c.nome;
+    const p = document.createElement('p');
+    p.textContent = c.paragrafo;
+    const tese = document.createElement('p');
+    tese.className = 'carta-tese';
+    tese.textContent = c.tese;
+    btn.append(fig, h, p, tese);
+    btn.addEventListener('click', () => {
+      estado.cenario = c.id;
+      pintarCartoes();
+      syncCabine();
+    });
+    box.append(btn);
+  }
+}
 
-  estado.ronda = novaRonda(estado.percurso, pilotoId, estado.seed + 11);
-  estado.pausado = false;
-  estado.ultimo = performance.now();
-  estado.acumulador = 0;
+function syncCabine() {
+  const c = cenarioPorId(estado.cenario);
+  const sel = $('select-cabine');
+  if (![...sel.options].some((o) => o.value === c.defaults.aeronave.config_cabine)) return;
+  if (!sel.dataset.tocado) sel.value = c.defaults.aeronave.config_cabine;
+  $('select-trip').value = String(c.defaults.aeronave.tripulantes);
+}
 
-  const info = PILOTOS.find((p) => p.id === pilotoId);
-  $('hud-piloto-nome').textContent = info.nome;
-  $('hud-piloto-nome').style.color = info.cor;
-  $('painel-decisao').hidden = pilotoId === 'humano';
-  $('painel-titulo').textContent = pilotoId === 'jev' ? 'typesafe-ai/jev' : 'baseline geométrico';
-  $('painel-fonte').hidden = true;
-  $('painel-fonte').textContent = '';
-  $('dica-controlos').hidden = pilotoId !== 'humano';
-  $('stick').hidden = pilotoId !== 'humano' || !ecraToque();
-  $('overlay').hidden = true;
+function restricoesUI() {
+  return lerRestricoes({
+    nunca_desviar: $('chk-nunca').checked,
+    preferir_stol: $('chk-stol').checked,
+    risco_maximo: $('select-risco').value,
+    tripulantes: Number($('select-trip').value),
+    config_cabine: $('select-cabine').value,
+    semente: Number($('input-seed').value) || 222,
+  });
+}
 
-  mostrarEcra('flight');
-  cancelAnimationFrame(estado.raf);
-  estado.raf = requestAnimationFrame(ciclo);
+async function avaliarJev(momento, estadoMissao) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TIMEOUT_JEV_MS);
+  try {
+    const res = await fetch('/api/jev', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ momento, estado: estadoMissao }),
+      signal: ctrl.signal,
+    });
+    const data = await res.json();
+    if (!res.ok || data.fonte !== 'jev') {
+      const err = new Error(data.mensagem || 'bloqueio');
+      err.bloqueio = data;
+      throw err;
+    }
+    return data;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function esperar(ms) {
+  return new Promise((resolve) => {
+    const t0 = performance.now();
+    const tick = (now) => {
+      if (estado.ecra !== 'live') return resolve();
+      if (!estado.pausado && now - t0 >= ms) return resolve();
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+function pedirPIC(maxP) {
+  mostrarBannerPIC(maxP);
+  return new Promise((resolve) => {
+    estado.resolverPic = resolve;
+  });
 }
 
 function ciclo(agora) {
-  const r = estado.ronda;
-  if (!r) return;
-
-  if (!estado.pausado) {
-    let dt = (agora - estado.ultimo) / 1000;
-    if (dt > 0.25) dt = 0.25;
-    estado.acumulador += dt;
-
-    pilotar(r, agora, estado.ritmo);
-
-    while (estado.acumulador >= PASSO) {
-      passo(r, PASSO);
-      estado.acumulador -= PASSO;
-      if (r.terminada) break;
-    }
-    actualizarCamara(estado.mundo, { x: r.x, y: r.y, s: r.s, vx: r.vx, vy: r.vy }, dt);
-  }
+  if (estado.ecra !== 'live' || !estado.mundo) return;
+  let dt = (agora - estado.ultimo) / 1000;
+  if (dt > 0.08) dt = 0.08;
   estado.ultimo = agora;
-
+  if (!estado.pausado && estado.aviao) {
+    passoAutomato(estado.aviao, dt);
+    const pose = poseAviao(estado.aviao);
+    aplicarPose(estado.mundo, pose);
+    actualizarCamara(estado.mundo, pose, dt);
+  }
   estado.mundo.renderer.render(estado.mundo.scene, estado.mundo.camera);
-  actualizarHud(r);
-
-  if (r.terminada) { terminarRonda(r); return; }
   estado.raf = requestAnimationFrame(ciclo);
 }
 
-function terminarRonda(r) {
-  estado.resultados[r.piloto] = pontuar(r);
-  estado.passo++;
-
-  if (estado.passo >= estado.ordem.length) { mostrarResultados(); return; }
-
-  const seguinte = estado.ordem[estado.passo];
-  const info = PILOTOS.find((p) => p.id === seguinte);
-  const res = estado.resultados[r.piloto];
-
-  $('overlay').hidden = false;
-  $('overlay-title').textContent = {
-    entregue: 'Carga entregue',
-    abortada: 'Missão abortada',
-    perdida: 'Aeronave perdida',
-  }[res.desfecho] ?? 'Ronda concluída';
-  $('overlay-text').innerHTML =
-    `<strong>${PILOTOS.find((p) => p.id === r.piloto).nome}</strong>: ${res.distancia} m, ` +
-    `${res.portoes} portões limpos, ${res.embates} embate(s), integridade ${res.integridade}%.` +
-    `<br><br>A seguir, o mesmo corredor voado por <strong>${info.nome}</strong>.`;
-  $('overlay-btn').textContent = `Lançar a ronda ${info.nome}`;
-  $('overlay-btn').onclick = () => iniciarRonda(seguinte);
+function arrancarLoop() {
+  cancelAnimationFrame(estado.raf);
+  estado.ultimo = performance.now();
+  estado.raf = requestAnimationFrame(ciclo);
 }
 
-// ---------------------------------------------------------------- HUD
+function largarMundo() {
+  cancelAnimationFrame(estado.raf);
+  if (estado.mundo?.renderer) estado.mundo.renderer.dispose();
+  estado.mundo = null;
+}
 
-function actualizarHud(r) {
-  $('hud-dist').textContent = Math.round(r.s);
-  $('hud-portoes').textContent = r.portoesLimpos;
-  $('hud-integridade').textContent = `${Math.round(r.integridade)}%`;
-  $('hud-integridade').classList.toggle('baixo', r.integridade <= 40);
-  $('hud-altitude').textContent = `${Math.round(r.y)} m`;
+async function lancarMissao() {
+  if (!estado.gateway?.gateway_configurado) {
+    mostrar('splash');
+    await sondarGateway();
+    return;
+  }
 
-  const barra = $('barra-progresso');
-  if (barra) barra.style.width = `${(r.s / DISTANCIA_ALVO) * 100}%`;
+  const restricoes = restricoesUI();
+  const cenario = cenarioPorId(estado.cenario);
+  const fita = gerarFita(cenario.id, restricoes.semente);
+  let missao = estadoInicial(cenario.id, restricoes);
+  estado.fita = fita;
+  estado.aviao = novoAutomato();
+  estado.pausado = false;
+  estado.log = {
+    cenario,
+    semente: restricoes.semente,
+    restricoes,
+    briefing: null,
+    incidentes: [],
+    incompleta: false,
+    motivoIncompleta: null,
+  };
 
-  if (r.piloto === 'humano') return;
+  $('webgl-block').hidden = true;
+  mostrar('live');
+  largarMundo();
 
-  const a = r.jev.ultima?.answers;
-  if (a && !a.manobraVertical) return;
-  const fonte = r.jev.ultima?.fonte;
-  const chip = $('painel-fonte');
-  if (r.piloto === 'jev' && fonte) {
-    const modelo = fonte === 'jev';
-    chip.hidden = false;
-    chip.textContent = modelo ? 'JEV' : 'RESERVA';
-    chip.classList.toggle('is-jev', modelo);
-    chip.classList.toggle('is-reserva', !modelo);
+  if (!webglDisponivel()) {
+    $('webgl-block').hidden = false;
   } else {
-    chip.hidden = true;
-  }
-  $('painel-latencia').textContent = r.piloto === 'baseline'
-    ? 'local'
-    : (r.jev.ultima?.latencia_ms != null ? `${r.jev.ultima.latencia_ms} ms` : '—');
-  if (!a) return;
-
-  const barras = (probs, chaves) => chaves.map((k) => {
-    const v = Math.min(1, Math.max(0, Number(probs?.[k] ?? 0)));
-    return `<div class="bar-row"><span class="bar-name">${k}</span>` +
-      `<span class="bar-track"><span class="bar-fill" style="width:${(v * 100).toFixed(0)}%"></span></span>` +
-      `<span class="bar-val">${(v * 100).toFixed(0)}</span></div>`;
-  }).join('');
-
-  $('painel-manobra-v').textContent = a.manobraVertical.choice;
-  $('painel-barras-v').innerHTML = barras(a.manobraVertical.probabilities, ['subir', 'manter', 'descer']);
-  $('painel-manobra-l').textContent = a.manobraLateral.choice;
-  $('painel-barras-l').innerHTML = barras(a.manobraLateral.probabilities, ['esquerda', 'manter', 'direita']);
-
-  const urg = ['sem risco', 'vigiar', 'actuar já', 'emergência'];
-  const s = Math.min(3, Math.max(0, Math.round(a.urgencia?.score ?? 0)));
-  $('painel-urgencia').textContent = `${urg[s]} (${(a.urgencia?.score ?? 0).toFixed(2)})`;
-  $('painel-colisao').textContent = `${((a.colisaoIminente?.probability ?? 0) * 100).toFixed(0)}%`;
-  $('painel-abortar').textContent = `${((a.abortarMissao?.probability ?? 0) * 100).toFixed(0)}%`;
-  $('painel-nota').textContent = r.jev.aviso || '';
-}
-
-// ---------------------------------------------------------------- resultados
-
-function mostrarResultados() {
-  const r = estado.resultados;
-  const vencedor = PILOTOS
-    .map((p) => ({ id: p.id, total: r[p.id]?.total ?? 0 }))
-    .sort((a, b) => b.total - a.total)[0];
-
-  $('tabela-resultados').innerHTML = PILOTOS.map((p) => {
-    const d = r[p.id];
-    if (!d) return '';
-    const ganhou = p.id === vencedor.id;
-    return `
-      <div class="score-col${ganhou ? ' winner' : ''}">
-        <h3 style="color:${p.cor}">${p.nome}</h3>
-        <div class="score-total">${d.total.toLocaleString('pt-PT')}</div>
-        <dl>
-          <div><dt>Desfecho</dt><dd>${d.desfecho}</dd></div>
-          <div><dt>Distância</dt><dd>${d.distancia.toLocaleString('pt-PT')} m</dd></div>
-          <div><dt>Portões limpos</dt><dd>${d.portoes}</dd></div>
-          <div><dt>Embates</dt><dd>${d.embates}</dd></div>
-          <div><dt>Integridade</dt><dd>${d.integridade}%</dd></div>
-          ${p.id === 'jev'
-            ? `<div><dt>Avaliações</dt><dd>${d.chamadas}</dd></div>
-               <div><dt>Fonte</dt><dd>${d.fonte === 'jev' ? 'typesafe-ai/jev' : (d.fonte ?? '—')}</dd></div>
-               <div><dt>Latência mediana</dt><dd>${d.latencia != null ? d.latencia + ' ms' : '—'}</dd></div>`
-            : p.id === 'baseline'
-              ? `<div><dt>Decisões</dt><dd>${d.chamadas}, locais</dd></div>
-                 <div><dt>Latência</dt><dd>0 ms</dd></div>`
-              : `<div><dt>Energia de comando</dt><dd>${d.energia}</dd></div>`}
-        </dl>
-      </div>`;
-  }).join('');
-
-  $('verdict').innerHTML = escreverVeredicto(r);
-  const empatados = PILOTOS.filter((p) => (r[p.id]?.total ?? -1) === vencedor.total);
-  $('result-title').textContent = empatados.length > 1
-    ? `Empate entre ${empatados.map((p) => p.nome).join(' e ')}`
-    : `${PILOTOS.find((p) => p.id === vencedor.id).nome} com a melhor pontuação`;
-  mostrarEcra('results');
-}
-
-/**
- * O veredicto diz o que os números mostram, incluindo quando o modelo perde.
- * Uma demo que só sabe ganhar não serve para falar com engenheiros.
- */
-function escreverVeredicto(r) {
-  const h = r.humano, b = r.baseline, j = r.jev;
-  const linhas = [];
-
-  if (j && j.fonte && j.fonte !== 'jev') {
-    linhas.push(`<span class="aviso">A ronda JEV não falou com o modelo: a fonte foi <em>${j.fonte}</em>. Esta pontuação não se compara com o baseline — as duas rondas correram a mesma regra geométrica.</span>`);
-  }
-  if (j && b) {
-    const dif = j.total - b.total;
-    if (dif > 0) {
-      linhas.push(`O Jev superou o baseline determinístico por <strong>${dif.toLocaleString('pt-PT')} pontos</strong>, com ${j.chamadas} avaliações e mediana de ${j.latencia ?? '—'} ms.`);
-    } else if (dif < 0) {
-      linhas.push(`O baseline determinístico superou o Jev por <strong>${Math.abs(dif).toLocaleString('pt-PT')} pontos</strong> — o esperado num problema puramente geométrico. O Jev decidiu ${j.chamadas} vezes, com mediana de ${j.latencia ?? '—'} ms.`);
-    } else {
-      linhas.push('Jev e baseline empataram.');
+    try {
+      estado.mundo = criarCena($('canvas'), { leve: perfilGraficoLeve(), cenario: cenario.id });
+      ajustarCanvas();
+      aplicarPose(estado.mundo, poseAviao(estado.aviao));
+      arrancarLoop();
+    } catch {
+      $('webgl-block').hidden = false;
     }
   }
-  if (h && j) {
-    const dif = j.total - h.total;
-    linhas.push(dif >= 0
-      ? `Face ao piloto humano, o Jev ficou ${dif.toLocaleString('pt-PT')} pontos acima.`
-      : `O piloto humano ficou ${Math.abs(dif).toLocaleString('pt-PT')} pontos acima do Jev.`);
+
+  actualizarHud(missao, { fase: 'Briefing', fonte: '…', proximo: fita.incidentes[0]?.resumo });
+  $('rail-incidente').textContent = 'JEV a ler o briefing…';
+
+  try {
+    const jev = await avaliarJev('briefing', missao);
+    estado.log.briefing = {
+      jev,
+      baseline: { fonte: 'regra-geometrica', answers: decisaoGeometrica(missao, 'briefing') },
+    };
+    actualizarHud(missao, { fase: 'Briefing', fonte: 'jev', proximo: fita.incidentes[0]?.resumo });
+    actualizarRail({
+      answers: {
+        acaoMissao: {
+          choice: 'prosseguir',
+          probabilities: { prosseguir: 1 },
+        },
+        destinoPreferido: { choice: 'planeado' },
+        urgencia: { score: 0 },
+        riscoMeteorologico: { score: 0 },
+        precisaRevisaoPIC: { probability: 0 },
+      },
+      latencia_ms: jev.latencia_ms,
+      fonte: 'jev',
+      incidente: missao.incidente,
+    });
+  } catch (erro) {
+    return fecharIncompleta(erro.message || 'O Gateway falhou no briefing.');
   }
 
-  linhas.push(
-    'Como se comparou: ambos os decisores automáticos receberam as mesmas amostras de sensor, com o mesmo ruído e à mesma cadência. ' +
-    'Num sistema real a regra determinística correria localmente a 60 Hz, com latência e custo nulos — uma vantagem que aqui lhe foi retirada de propósito para isolar o decisor.',
-    'O que esta pista não mede: a evasão geométrica é exactamente o caso em que a regra determinística deve ganhar, e num sistema real é ela que tem de decidir a separação mínima. ' +
-    'O valor do modelo aparece na decisão de <em>abortar</em>, que depende do contexto da missão, e na triagem em volume — cada resposta traz a probabilidade por opção, registável e reproduzível.',
-  );
+  await esperar(900);
 
-  if (j?.aviso) linhas.push(`<span class="aviso">${j.aviso}</span>`);
-  return linhas.map((l) => `<p>${l}</p>`).join('');
+  for (let i = 0; i < fita.incidentes.length; i++) {
+    const inc = fita.incidentes[i];
+    missao = aplicarIncidente(missao, inc);
+    estado.missao = missao;
+    const proximo = fita.incidentes[i + 1]?.resumo ?? 'Fim da fita';
+    actualizarHud(missao, { fase: `Incidente ${i + 1}/${fita.incidentes.length}`, fonte: 'jev', proximo });
+
+    let jev;
+    try {
+      jev = await avaliarJev('incidente', missao);
+    } catch (erro) {
+      return fecharIncompleta(erro.message || 'O Gateway falhou a meio da fita.');
+    }
+
+    const baseline = { fonte: 'regra-geometrica', answers: decisaoGeometrica(missao, 'incidente') };
+    actualizarRail({ answers: jev.answers, latencia_ms: jev.latencia_ms, fonte: 'jev', incidente: inc });
+
+    const maxP = maxProbabilidade(jev.answers.acaoMissao);
+    let pic = { oferecido: false, forcado: false, aceite: null, sobreposto: false };
+    const precisa = deveEscalarPIC(jev.answers);
+
+    if (precisa) {
+      pic.oferecido = true;
+      mostrarBannerPIC(maxP);
+      const decisao = await pedirPIC(maxP);
+      pic.aceite = decisao === 'aceitar';
+      pic.sobreposto = decisao === 'rejeitar';
+      esconderBannerPIC();
+    }
+
+    const acao = pic.sobreposto ? 'prosseguir' : jev.answers.acaoMissao?.choice ?? 'prosseguir';
+    aplicarAcao(estado.aviao, acao);
+
+    estado.log.incidentes.push(registarIncidente({ estado: missao, incidente: inc, jev, baseline, pic }));
+    await esperar(2400);
+  }
+
+  abrirDebrief();
+}
+
+function fecharIncompleta(motivo) {
+  estado.log.incompleta = true;
+  estado.log.motivoIncompleta = motivo;
+  actualizarHud(estado.missao ?? estadoInicial(estado.cenario, restricoesUI()), {
+    fase: 'Bloqueio',
+    fonte: 'bloqueio',
+    proximo: '—',
+  });
+  abrirDebrief();
+}
+
+function abrirDebrief() {
+  esconderBannerPIC();
+  const resumo = resumirMissao(estado.log);
+  estado.ultimoResumo = resumo;
+  pintarDebrief(resumo);
+  mostrar('debrief');
 }
 
 function descarregarLog() {
-  const payload = {
-    gerado_em: new Date().toISOString(),
-    semente: estado.seed,
-    dificuldade: estado.dificuldade,
-    ritmo_ms: estado.ritmo,
-    corredor: { ...CORREDOR, distancia_alvo_m: DISTANCIA_ALVO },
-    resultados: Object.fromEntries(
-      Object.entries(estado.resultados).map(([k, v]) => [k, { ...v, log: undefined }]),
-    ),
-    decisoes: Object.fromEntries(
-      Object.entries(estado.resultados).map(([k, v]) => [k, v.log]),
-    ),
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(estado.ultimoResumo ?? estado.log, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `jev-decisoes-seed${estado.seed}-${estado.dificuldade}.json`;
+  a.download = `lus222-jev-${estado.cenario}-${restricoesUI().semente}.json`;
   a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  URL.revokeObjectURL(a.href);
 }
 
-// ---------------------------------------------------------------- controlos
+function ligarUI() {
+  pintarCartoes();
+  syncCabine();
 
-const teclas = new Set();
+  $('btn-entrar').addEventListener('click', () => {
+    if (!estado.gateway?.gateway_configurado) return;
+    mostrar('commander');
+  });
+  $('btn-retry-gateway').addEventListener('click', () => sondarGateway());
+  $('btn-voltar-splash').addEventListener('click', () => mostrar('splash'));
+  $('select-cabine').addEventListener('change', () => {
+    $('select-cabine').dataset.tocado = '1';
+  });
+  $('btn-seed').addEventListener('click', () => {
+    $('input-seed').value = String(1 + Math.floor(Math.random() * 900));
+  });
+  $('btn-missao').addEventListener('click', () => lancarMissao());
 
-addEventListener('keydown', (e) => {
-  if (estado.ecra !== 'flight') return;
-  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'w', 'a', 's', 'd'].includes(e.key.toLowerCase())) e.preventDefault();
-  if (e.key === 'Escape') { alternarPausa(); return; }
-  teclas.add(e.key.toLowerCase());
-  aplicarTeclas();
-});
-addEventListener('keyup', (e) => { teclas.delete(e.key.toLowerCase()); aplicarTeclas(); });
-addEventListener('blur', () => { teclas.clear(); aplicarTeclas(); });
+  $('btn-pause').addEventListener('click', () => {
+    estado.pausado = !estado.pausado;
+    $('btn-pause').textContent = estado.pausado ? '▶' : 'II';
+    $('btn-pause').setAttribute('aria-label', estado.pausado ? 'Continuar' : 'Pausar');
+  });
+  $('btn-pic').addEventListener('click', () => {
+    if (estado.resolverPic) return;
+    mostrarBannerPIC(0);
+    pedirPIC(0).then((decisao) => {
+      esconderBannerPIC();
+      const last = estado.log?.incidentes?.at(-1);
+      if (last) {
+        last.pic = { ...(last.pic ?? {}), forcado: true, aceite: decisao === 'aceitar', sobreposto: decisao === 'rejeitar' };
+        last.escalou = true;
+      }
+    });
+  });
+  $('btn-pic-aceitar').addEventListener('click', () => {
+    estado.resolverPic?.('aceitar');
+    estado.resolverPic = null;
+  });
+  $('btn-pic-rejeitar').addEventListener('click', () => {
+    estado.resolverPic?.('rejeitar');
+    estado.resolverPic = null;
+  });
+  $('btn-abrir-rail').addEventListener('click', () => {
+    $('rail').classList.toggle('is-open');
+  });
 
-function aplicarTeclas() {
-  const r = estado.ronda;
-  if (!r || r.piloto !== 'humano') return;
-  const sobe = teclas.has('arrowup') || teclas.has('w');
-  const desce = teclas.has('arrowdown') || teclas.has('s');
-  const esq = teclas.has('arrowleft') || teclas.has('a');
-  const dir = teclas.has('arrowright') || teclas.has('d');
-  r.cmdY = sobe && !desce ? 1 : desce && !sobe ? -1 : 0;
-  r.cmdX = dir && !esq ? 1 : esq && !dir ? -1 : 0;
-  r.intensidade = 1;
-}
-
-// toque: joystick analógico — o deslocamento define direcção e intensidade
-const STICK_RAIO = 48;
-const STICK_MORTO = 10;
-let toqueBase = null;
-const canvas = $('canvas');
-const knob = $('stick-knob');
-
-function aplicarStick(dx, dy) {
-  const r = estado.ronda;
-  if (!r || r.piloto !== 'humano') return;
-  const dist = Math.hypot(dx, dy);
-  if (dist < STICK_MORTO) {
-    r.cmdX = 0;
-    r.cmdY = 0;
-    r.intensidade = 1;
-    if (knob) knob.style.transform = 'translate(0px, 0px)';
-    return;
-  }
-  const limitado = Math.min(dist, STICK_RAIO);
-  const nx = dx / dist;
-  const ny = dy / dist;
-  r.cmdX = nx;
-  r.cmdY = -ny;
-  r.intensidade = Math.min(1, limitado / STICK_RAIO);
-  if (knob) {
-    knob.style.transform = `translate(${nx * limitado}px, ${ny * limitado}px)`;
-  }
-}
-
-canvas.addEventListener('pointerdown', (e) => {
-  if (estado.ronda?.piloto !== 'humano') return;
-  if (e.pointerType === 'mouse' && e.button !== 0) return;
-  canvas.setPointerCapture(e.pointerId);
-  toqueBase = { x: e.clientX, y: e.clientY };
-  aplicarStick(0, 0);
-});
-canvas.addEventListener('pointermove', (e) => {
-  if (!toqueBase) return;
-  aplicarStick(e.clientX - toqueBase.x, e.clientY - toqueBase.y);
-});
-const largarToque = () => {
-  toqueBase = null;
-  if (knob) knob.style.transform = 'translate(0px, 0px)';
-  const r = estado.ronda;
-  if (r && r.piloto === 'humano') { r.cmdX = 0; r.cmdY = 0; r.intensidade = 1; }
-};
-canvas.addEventListener('pointerup', largarToque);
-canvas.addEventListener('pointercancel', largarToque);
-canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-
-function alternarPausa() {
-  if (!estado.ronda || estado.ronda.terminada) return;
-  estado.pausado = !estado.pausado;
-  $('overlay').hidden = !estado.pausado;
-  if (estado.pausado) {
-    $('overlay-title').textContent = 'Pausa';
-    $('overlay-text').textContent = 'O corredor continua onde o deixaste.';
-    $('overlay-btn').textContent = 'Continuar';
-    $('overlay-btn').onclick = alternarPausa;
-  } else {
-    estado.ultimo = performance.now();
-    estado.raf = requestAnimationFrame(ciclo);
-  }
-}
-
-// ---------------------------------------------------------------- arranque
-
-async function verificarGateway() {
-  const dot = $('dot-gateway');
-  const txt = $('txt-gateway');
-  try {
-    const r = await fetch('/api/jev');
-    const j = await r.json();
-    if (j.gateway_configurado) {
-      dot.classList.add('ok');
-      txt.textContent = `AI Gateway ligado · ${j.modelo}`;
-    } else {
-      dot.classList.add('warn');
-      txt.textContent = 'AI Gateway sem credenciais — a ronda JEV corre com o baseline geométrico.';
+  $('btn-outro').addEventListener('click', () => {
+    largarMundo();
+    mostrar('commander');
+  });
+  $('btn-repetir').addEventListener('click', () => lancarMissao());
+  $('btn-log').addEventListener('click', descarregarLog);
+  $('btn-retry-webgl').addEventListener('click', () => {
+    if (webglDisponivel() && estado.missao) {
+      $('webgl-block').hidden = true;
+      try {
+        estado.mundo = criarCena($('canvas'), { leve: perfilGraficoLeve(), cenario: estado.cenario });
+        ajustarCanvas();
+        arrancarLoop();
+      } catch {
+        $('webgl-block').hidden = false;
+      }
     }
-  } catch {
-    dot.classList.add('warn');
-    txt.textContent = 'Endpoint /api/jev indisponível — a ronda JEV corre com o baseline geométrico.';
-  }
+  });
+
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && estado.ecra === 'live') {
+      estado.pausado = !estado.pausado;
+      $('btn-pause').textContent = estado.pausado ? '▶' : 'II';
+    }
+  });
+
+  setTimeout(() => $('splash').classList.add('is-ready'), 2200);
 }
 
-$('btn-start').addEventListener('click', arrancar);
-$('btn-seed').addEventListener('click', () => {
-  $('input-seed').value = String(Math.floor(Math.random() * 999999));
-});
-$('btn-again').addEventListener('click', () => mostrarEcra('briefing'));
-$('btn-log').addEventListener('click', descarregarLog);
-$('btn-pause').addEventListener('click', (e) => {
-  e.stopPropagation();
-  alternarPausa();
-});
-
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden && estado.ecra === 'flight' && estado.ronda && !estado.ronda.terminada && !estado.pausado) {
-    alternarPausa();
-  }
-});
-
-if (ecraToque()) {
-  const ritmo = $('select-ritmo');
-  if (ritmo && ritmo.value === '250') ritmo.value = '400';
-}
-
-if (location.search.includes('debug')) window.__saam = estado;
-
-verificarGateway();
+ligarUI();
+sondarGateway();

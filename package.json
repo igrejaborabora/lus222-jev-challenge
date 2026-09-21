@@ -1,15 +1,17 @@
 {
   "name": "lus222-jev-challenge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Jogo em browser com o LUS 222 — o avião português do CEiiA/EEA Aircraft — em que o modelo JEV (TypeSafe AI, via Vercel AI Gateway) decide as manobras de evasão de obstáculos e compete contra o piloto humano.",
+  "description": "O JEV (typesafe-ai/jev) decide missões do LUS-222 — cenário CEiiA/EEA Aircraft. Demo de decisão tipada, não certificável. A regra geométrica nunca se vende como JEV.",
   "license": "MIT",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "npx --yes serve public -l 43123",
+    "preview": "vercel dev --listen 43123",
+    "test": "node --test lib/*.test.mjs",
     "deploy": "vercel deploy --prod"
   },
   "dependencies": {
