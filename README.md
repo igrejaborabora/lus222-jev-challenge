@@ -92,6 +92,8 @@ Se o Gateway não responder, ou não estiver configurado, a decisão passa para 
 
 `public/brand.svg` é um espaço reservado. Substitua-o pelo ficheiro da sua própria marca antes de apresentar. **Não coloque a marca de terceiros sem autorização**: com o logótipo de uma organização aplicado, a página deixa de se ler como demonstração e passa a parecer um produto oficial dessa organização.
 
+No telemóvel: viewport com `viewport-fit=cover`, joystick analógico ao arrastar, botão II para pausar, HUD e painel de decisão com safe-area, e perfil gráfico mais leve (pixel ratio limitado, sem antialias, menos silhueta urbana). O ritmo de avaliação parte de 400 ms em ecrãs de toque.
+
 ## Correr localmente
 
 ```bash
