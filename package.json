@@ -9,7 +9,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "npx --yes serve public -l 43123",
+    "preview": "vercel dev --listen 43123",
     "test": "node --test lib/*.test.mjs",
     "deploy": "vercel deploy --prod"
   },

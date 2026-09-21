@@ -20,7 +20,7 @@ import {
 } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
-const TIMEOUT_JEV_MS = 2200;
+const TIMEOUT_JEV_MS = 4000;
 
 const estado = {
   ecra: 'splash',

@@ -45,7 +45,7 @@ Sem bundler. Three.js no CDN. A chave do Gateway **nunca** entra no browser.
 npm install
 cp .env.example .env    # AI_GATEWAY_API_KEY
 npm test                # contrato e baseline, sem rede
-npx vercel dev
+npx vercel dev          # se o Development Command do projecto for `npm run dev`, use `npm run preview`
 ```
 
 A chave obtém-se no dashboard da Vercel, **AI Gateway → API Keys**. Em produção, com o Gateway activo no projecto, o OIDC pode dispensar a variável.
