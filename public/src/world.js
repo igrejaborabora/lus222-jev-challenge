@@ -1,419 +1,302 @@
 import * as THREE from 'three';
 
-/**
- * Mundo 3D: corredor de voo semi-urbano gerado a partir de uma semente.
- *
- * Tudo é medido em metros. O drone avança ao longo de -Z; cada "portão" é um
- * conjunto de obstáculos com uma abertura livre no meio. Os sensores reportam
- * folgas relativas a essa abertura, e é sobre esses números que os três pilotos
- * — humano, baseline geométrico e Jev — decidem.
- */
-
-export const CORREDOR = {
-  LIMITE_LATERAL: 55,   // m — meia-largura do corredor
-  ALT_MIN: 12,          // m — altitude mínima de voo
-  ALT_MAX: 155,         // m — tecto do corredor
-  RAIO_DRONE: 3.2,      // m — meia-caixa de colisão
-};
-
-export const DIFICULDADES = {
-  ensaio:  { espaco: [170, 220], abertura: [26, 19], label: 'Ensaio' },
-  entrega: { espaco: [115, 155], abertura: [19, 13], label: 'Entrega' },
-  denso:   { espaco: [95, 125], abertura: [17, 12], label: 'Urbano denso' },
-};
-
-export const V_FRENTE = 26;         // m/s — velocidade de cruzeiro (~94 km/h)
-export const DISTANCIA_ALVO = 1300; // m até ao ponto de entrega (~50 s por ronda)
-
-export function mulberry32(seed) {
-  let a = seed >>> 0;
-  return function () {
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const lerp = (a, b, t) => a + (b - a) * t;
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-
-const TIPOS_PORTAO = ['canyon', 'cabo', 'grua', 'trafego', 'canyon', 'grua'];
-
-const NOMES = {
-  edificio: 'edifício',
-  cabo: 'cabo de alta tensão',
-  grua: 'grua de construção',
-  drone: 'drone em rota cruzada',
-  antena: 'mastro de antena',
-  laje: 'plataforma elevada',
-};
-
-/**
- * Gera os portões do corredor. A abertura só pode deslocar-se entre portões
- * consecutivos o que o drone consegue acompanhar — nenhuma semente produz um
- * percurso impossível.
- */
-export function gerarPercurso(seed, dificuldade) {
-  const rnd = mulberry32(seed);
-  const cfg = DIFICULDADES[dificuldade] ?? DIFICULDADES.entrega;
-  const { LIMITE_LATERAL: L, ALT_MIN, ALT_MAX } = CORREDOR;
-
-  const portoes = [];
-  let z = 200;
-  let ax = 0;
-  let ay = (ALT_MIN + ALT_MAX) / 2;
-
-  while (z < DISTANCIA_ALVO - 110) {
-    const espaco = lerp(cfg.espaco[0], cfg.espaco[1], rnd());
-    const hw = cfg.abertura[0] * lerp(0.9, 1.15, rnd());
-    const hh = cfg.abertura[1] * lerp(0.9, 1.15, rnd());
-
-    // o quanto o drone consegue deslocar-se até ao próximo portão
-    const alcance = 0.45 * 12 * (espaco / V_FRENTE);
-    const alvoX = lerp(-L + hw + 6, L - hw - 6, rnd());
-    const alvoY = lerp(ALT_MIN + hh + 4, ALT_MAX - hh - 4, rnd());
-
-    ax = clamp(ax + clamp(alvoX - ax, -alcance, alcance), -L + hw + 6, L - hw - 6);
-    ay = clamp(ay + clamp(alvoY - ay, -alcance, alcance), ALT_MIN + hh + 4, ALT_MAX - hh - 4);
-
-    const tipo = TIPOS_PORTAO[Math.floor(rnd() * TIPOS_PORTAO.length)];
-    portoes.push({
-      z, tipo,
-      abertura: { x: ax, y: ay, hw, hh },
-      pecas: construirPecas(tipo, z, { x: ax, y: ay, hw, hh }, rnd),
-      passado: false,
-    });
-
-    z += espaco;
-  }
-
-  // silhueta urbana de fundo, fora do corredor
-  const cidade = [];
-  for (let i = 0; i < 260; i++) {
-    const lado = rnd() < 0.5 ? -1 : 1;
-    const x = lado * (L + 25 + rnd() * 320);
-    const zz = -rnd() * (DISTANCIA_ALVO + 500) + 250;
-    const alt = 18 + rnd() * 110;
-    const larg = 14 + rnd() * 26;
-    cidade.push({ x, z: zz, alt, larg, prof: 14 + rnd() * 26, tom: rnd() });
-  }
-
-  return { portoes, cidade, cfg, seed };
-}
-
-/** As peças físicas que rodeiam a abertura. Cada uma é uma caixa em metros. */
-function construirPecas(tipo, z, ab, rnd) {
-  const { LIMITE_LATERAL: L, ALT_MIN, ALT_MAX } = CORREDOR;
-  const pecas = [];
-  const esqFim = ab.x - ab.hw;
-  const dirIni = ab.x + ab.hw;
-  const baixoFim = ab.y - ab.hh;
-  const cimaIni = ab.y + ab.hh;
-
-  const caixa = (nome, x, y, zz, sx, sy, sz, extra = {}) =>
-    pecas.push({ nome, x, y, z: zz, sx, sy, sz, ...extra });
-
-  if (tipo === 'canyon') {
-    // torres de habitação dos dois lados, abertura entre elas
-    if (esqFim > -L) caixa('edificio', (-L + esqFim) / 2, (ALT_MAX + ALT_MIN) / 2 - 10, z,
-      Math.max(6, esqFim + L), ALT_MAX + 40, 13, { janelas: true, tom: rnd() });
-    if (dirIni < L) caixa('edificio', (dirIni + L) / 2, (ALT_MAX + ALT_MIN) / 2 - 10, z,
-      Math.max(6, L - dirIni), ALT_MAX + 40, 13, { janelas: true, tom: rnd() });
-    if (baixoFim > ALT_MIN + 4) caixa('laje', ab.x, (ALT_MIN - 20 + baixoFim) / 2, z,
-      ab.hw * 2, baixoFim - (ALT_MIN - 20), 20, { tom: rnd() });
-    if (cimaIni < ALT_MAX - 4) caixa('laje', ab.x, (cimaIni + ALT_MAX + 40) / 2, z,
-      ab.hw * 2, ALT_MAX + 40 - cimaIni, 20, { tom: rnd() });
-  } else if (tipo === 'cabo') {
-    // linha de alta tensão a atravessar o corredor: passa-se por cima ou por baixo
-    if (baixoFim > ALT_MIN) caixa('cabo', 0, baixoFim - 1.2, z, L * 2 + 40, 2.4, 2.4, { cabo: true });
-    if (cimaIni < ALT_MAX) caixa('cabo', 0, cimaIni + 1.2, z, L * 2 + 40, 2.4, 2.4, { cabo: true });
-    caixa('antena', -L - 6, (ALT_MIN + ALT_MAX) / 2, z, 5, ALT_MAX + 40, 5, { tom: 0.3 });
-    caixa('antena', L + 6, (ALT_MIN + ALT_MAX) / 2, z, 5, ALT_MAX + 40, 5, { tom: 0.3 });
-    if (esqFim > -L) caixa('edificio', (-L + esqFim) / 2, (ALT_MIN + ALT_MAX) / 2 - 10, z,
-      Math.max(4, esqFim + L), ALT_MAX + 40, 12, { janelas: true, tom: rnd() });
-    if (dirIni < L) caixa('edificio', (dirIni + L) / 2, (ALT_MIN + ALT_MAX) / 2 - 10, z,
-      Math.max(4, L - dirIni), ALT_MAX + 40, 12, { janelas: true, tom: rnd() });
-  } else if (tipo === 'grua') {
-    // torre + lança horizontal; a abertura fica de um dos lados da torre
-    const ladoTorre = ab.x > 0 ? -1 : 1;
-    const torreX = ladoTorre * (L * 0.45);
-    caixa('grua', torreX, (ALT_MIN + ALT_MAX) / 2, z, 4.5, ALT_MAX + 30, 4.5, { grua: true });
-    if (cimaIni < ALT_MAX - 4) caixa('grua', 0, cimaIni + 2.5, z, L * 2, 5, 5, { grua: true });
-    if (baixoFim > ALT_MIN + 4) caixa('grua', 0, baixoFim - 2.5, z, L * 2, 5, 5, { grua: true });
-    if (esqFim > -L) caixa('edificio', (-L + esqFim) / 2, (ALT_MIN + ALT_MAX) / 2 - 12, z,
-      Math.max(4, esqFim + L), ALT_MAX + 40, 12, { janelas: true, tom: rnd() });
-    if (dirIni < L) caixa('edificio', (dirIni + L) / 2, (ALT_MIN + ALT_MAX) / 2 - 12, z,
-      Math.max(4, L - dirIni), ALT_MAX + 40, 12, { janelas: true, tom: rnd() });
-  } else {
-    // tráfego: drones parados em formação, abertura entre eles
-    const n = 5;
-    for (let i = 0; i < n; i++) {
-      const dx = lerp(-L + 8, L - 8, i / (n - 1));
-      if (Math.abs(dx - ab.x) < ab.hw + 5) continue;
-      caixa('drone', dx, ab.y + (rnd() - 0.5) * 30, z, 7, 3, 7, { trafego: true });
-    }
-    if (baixoFim > ALT_MIN + 4) caixa('laje', ab.x, (ALT_MIN - 20 + baixoFim) / 2, z,
-      ab.hw * 2.2, baixoFim - (ALT_MIN - 20), 16, { tom: rnd() });
-    if (cimaIni < ALT_MAX - 4) caixa('drone', ab.x, cimaIni + 4, z, ab.hw * 2, 6, 7, { trafego: true });
-    if (esqFim > -L) caixa('edificio', (-L + esqFim) / 2, (ALT_MIN + ALT_MAX) / 2 - 14, z,
-      Math.max(4, esqFim + L), ALT_MAX + 40, 12, { janelas: true, tom: rnd() });
-    if (dirIni < L) caixa('edificio', (dirIni + L) / 2, (ALT_MIN + ALT_MAX) / 2 - 14, z,
-      Math.max(4, L - dirIni), ALT_MAX + 40, 12, { janelas: true, tom: rnd() });
-  }
-
-  return pecas;
-}
-
-export function nomeDoPortao(tipo) {
-  return {
-    canyon: NOMES.edificio,
-    cabo: NOMES.cabo,
-    grua: NOMES.grua,
-    trafego: NOMES.drone,
-  }[tipo] ?? 'obstáculo';
-}
-
-// ------------------------------------------------------------------ cena
-
 export function perfilGraficoLeve() {
-  if (typeof window === 'undefined') return false;
-  const estreito = window.matchMedia('(max-width: 900px)').matches;
-  const toque = window.matchMedia('(pointer: coarse)').matches;
-  const cores = typeof navigator !== 'undefined' && navigator.hardwareConcurrency
-    ? navigator.hardwareConcurrency <= 4
-    : false;
-  return estreito || toque || cores;
+  if (typeof window === 'undefined') return true;
+  return (
+    window.matchMedia('(pointer: coarse)').matches ||
+    window.matchMedia('(max-width: 720px)').matches ||
+    (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+  );
 }
 
-export function criarCena(canvas, percurso, opts = {}) {
-  const leve = opts.leve ?? perfilGraficoLeve();
-  const renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: !leve,
-    powerPreference: leve ? 'default' : 'high-performance',
-    alpha: false,
-  });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, leve ? 1.25 : 2));
-  renderer.setClearColor(0x0d1620);
+function mat(color, extras = {}) {
+  return new THREE.MeshLambertMaterial({ color, ...extras });
+}
 
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x16232f, 120, leve ? 460 : 620);
+function textoDecalque(texto, { w = 512, h = 128, fill = '#f4f6f8', bg = null, size = 72 } = {}) {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+  if (bg) {
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+  } else {
+    ctx.clearRect(0, 0, w, h);
+  }
+  ctx.fillStyle = fill;
+  ctx.font = `600 ${size}px "IBM Plex Sans", system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(texto, w / 2, h / 2);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
 
-  const camera = new THREE.PerspectiveCamera(72, 16 / 9, 0.5, leve ? 980 : 1400);
-
-  // luz: entardecer urbano
-  scene.add(new THREE.HemisphereLight(0x9fc4e0, 0x2a2118, 1.9));
-  const sol = new THREE.DirectionalLight(0xffd9a0, 1.5);
-  sol.position.set(-60, 90, -150);
-  scene.add(sol);
-
-  // céu
-  const ceu = new THREE.Mesh(
-    new THREE.SphereGeometry(900, leve ? 16 : 24, leve ? 10 : 16),
-    new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      depthWrite: false,
-      uniforms: {
-        alto: { value: new THREE.Color(0x0c1a28) },
-        baixo: { value: new THREE.Color(0xd08a4e) },
-      },
-      vertexShader: 'varying float h; void main(){ h = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader: 'uniform vec3 alto; uniform vec3 baixo; varying float h; void main(){ gl_FragColor = vec4(mix(baixo, alto, clamp(h*1.5+0.18,0.0,1.0)), 1.0); }',
-    }),
+function placa(texto, w, h, opts) {
+  const geo = new THREE.PlaneGeometry(w, h);
+  const map = textoDecalque(texto, opts);
+  const mesh = new THREE.Mesh(
+    geo,
+    new THREE.MeshBasicMaterial({ map, transparent: true, side: THREE.DoubleSide, depthWrite: false }),
   );
-  scene.add(ceu);
+  return mesh;
+}
 
-  // solo
-  const solo = new THREE.Mesh(
-    new THREE.PlaneGeometry(2600, 3200),
-    new THREE.MeshLambertMaterial({ map: texturaSolo(leve), color: 0x6f7a6a }),
-  );
-  solo.rotation.x = -Math.PI / 2;
-  solo.position.set(0, 0, -DISTANCIA_ALVO / 2);
-  scene.add(solo);
+/** Boneco honesto do LUS-222: asa alta, dois turboprops, T-tail, trem fixo. */
+export function criarLus222() {
+  const g = new THREE.Group();
+  const white = mat(0xf3f5f7);
+  const navy = mat(0x1a2744);
+  const dark = mat(0x1c1f24);
+  const glass = mat(0x1b2430, { transparent: true, opacity: 0.72 });
+  const tyre = mat(0x151515);
 
-  // silhueta urbana de fundo (uma só malha instanciada)
-  const geoCaixa = new THREE.BoxGeometry(1, 1, 1);
-  const silhueta = leve ? percurso.cidade.filter((_, i) => i % 3 === 0) : percurso.cidade;
-  const cidade = new THREE.InstancedMesh(
-    geoCaixa,
-    new THREE.MeshLambertMaterial({ color: 0x4a5765 }),
-    silhueta.length,
-  );
-  const m4 = new THREE.Matrix4();
-  const cor = new THREE.Color();
-  silhueta.forEach((b, i) => {
-    m4.makeScale(b.larg, b.alt, b.prof);
-    m4.setPosition(b.x, b.alt / 2, b.z);
-    cidade.setMatrixAt(i, m4);
-    cidade.setColorAt(i, cor.setHSL(0.58, 0.1, 0.16 + b.tom * 0.16));
-  });
-  cidade.instanceMatrix.needsUpdate = true;
-  scene.add(cidade);
+  const fuse = new THREE.Mesh(new THREE.CapsuleGeometry(0.92, 8.4, 6, 14), white);
+  fuse.rotation.z = Math.PI / 2;
+  fuse.position.set(0, 0, 0);
+  g.add(fuse);
 
-  // peças dos portões
-  const matJanelas = new THREE.MeshLambertMaterial({ map: texturaFachada(leve) });
-  const matBetao = new THREE.MeshLambertMaterial({ color: 0x6b7480 });
-  const matCabo = new THREE.MeshBasicMaterial({ color: 0x1b1f24 });
-  const matGrua = new THREE.MeshLambertMaterial({ color: 0xe0a33a });
-  const matDrone = new THREE.MeshLambertMaterial({ color: 0xcfd8e2 });
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.92, 14, 12, 0, Math.PI * 2, 0, Math.PI / 2), white);
+  nose.rotation.x = Math.PI / 2;
+  nose.position.set(0, -0.04, 5.05);
+  g.add(nose);
 
-  for (const portao of percurso.portoes) {
-    for (const p of portao.pecas) {
-      const mat =
-        p.cabo ? matCabo :
-        p.grua ? matGrua :
-        p.trafego ? matDrone :
-        p.janelas ? matJanelas.clone() : matBetao.clone();
+  const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.62, 12, 10, 0, Math.PI * 2, 0, 1.2), glass);
+  cockpit.scale.set(1.15, 0.72, 0.9);
+  cockpit.position.set(0, 0.42, 3.7);
+  g.add(cockpit);
 
-      if (p.janelas && mat.color) mat.color.setHSL(0.57, 0.08, 0.42 + (p.tom ?? 0.5) * 0.22);
-      else if (!p.cabo && !p.grua && !p.trafego && mat.color) mat.color.setHSL(0.09, 0.06, 0.38 + (p.tom ?? 0.5) * 0.18);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(14.6, 0.16, 2.3), white);
+  wing.position.set(0, 1.05, 0.15);
+  g.add(wing);
 
-      const malha = new THREE.Mesh(geoCaixa, mat);
-      malha.scale.set(p.sx, p.sy, p.sz);
-      malha.position.set(p.x, p.y, -p.z);
-      if (p.janelas) {
-        malha.material.map = texturaFachada(leve);
-        malha.material.map.repeat.set(Math.max(1, p.sx / 9), Math.max(1, p.sy / 9));
-        malha.material.map.wrapS = malha.material.map.wrapT = THREE.RepeatWrapping;
-      }
-      scene.add(malha);
-    }
+  const root = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.55, 1.6), white);
+  root.position.set(0, 0.72, 0.15);
+  g.add(root);
 
-    // moldura luminosa a marcar a abertura livre — quatro barras, porque a
-    // espessura de linha do WebGL é sempre 1px e uma LineSegments desaparece à distância
-    const ab = portao.abertura;
-    const matMoldura = new THREE.MeshBasicMaterial({ color: 0x35d6a4, transparent: true, opacity: 0.55 });
-    const E = 0.9;
-    const barras = [
-      [ab.hw * 2 + E, E, ab.x, ab.y + ab.hh],
-      [ab.hw * 2 + E, E, ab.x, ab.y - ab.hh],
-      [E, ab.hh * 2, ab.x - ab.hw, ab.y],
-      [E, ab.hh * 2, ab.x + ab.hw, ab.y],
-    ];
-    const moldura = new THREE.Group();
-    for (const [sx, sy, px, py] of barras) {
-      const b = new THREE.Mesh(geoCaixa, matMoldura);
-      b.scale.set(sx, sy, E);
-      b.position.set(px, py, 0);
-      moldura.add(b);
-    }
-    moldura.position.set(0, 0, -portao.z);
-    scene.add(moldura);
-    portao.moldura = moldura;
+  const props = [];
+  for (const side of [-1, 1]) {
+    const nacelle = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 1.5, 6, 10), white);
+    nacelle.rotation.z = Math.PI / 2;
+    nacelle.position.set(side * 3.15, 0.78, 0.85);
+    g.add(nacelle);
+
+    const spinner = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), dark);
+    spinner.position.set(side * 3.15, 0.78, 1.78);
+    g.add(spinner);
+
+    const prop = new THREE.Group();
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.85, 0.16), dark);
+    const blade2 = blade.clone();
+    blade2.rotation.z = Math.PI / 2;
+    prop.add(blade, blade2);
+    prop.position.set(side * 3.15, 0.78, 1.86);
+    g.add(prop);
+    props.push(prop);
   }
 
-  // ponto de entrega
-  const destino = new THREE.Mesh(
-    new THREE.CylinderGeometry(16, 16, 1.5, leve ? 12 : 24),
-    new THREE.MeshBasicMaterial({ color: 0x35d6a4, transparent: true, opacity: 0.65 }),
-  );
-  destino.position.set(0, 1, -DISTANCIA_ALVO);
-  scene.add(destino);
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.16, 2.35, 1.35), navy);
+  fin.position.set(0, 1.35, -4.15);
+  g.add(fin);
 
-  const fpv = construirFpv();
-  camera.add(fpv);
-  scene.add(camera);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.12, 1.05), white);
+  tail.position.set(0, 2.48, -4.15);
+  g.add(tail);
 
-  return { renderer, scene, camera, fpv, destino };
+  const lus = placa('LUS+222', 1.15, 0.32, { fill: '#f4f6f8', size: 70, w: 512, h: 140 });
+  lus.position.set(0.09, 1.45, -4.16);
+  lus.rotation.y = Math.PI / 2;
+  g.add(lus);
+  const lus2 = lus.clone();
+  lus2.position.x = -0.09;
+  lus2.rotation.y = -Math.PI / 2;
+  g.add(lus2);
+
+  const eea = placa('EEAIRCRAFT', 1.7, 0.18, { fill: '#1a2744', size: 64, w: 640, h: 120 });
+  eea.position.set(0.93, 0.12, 3.15);
+  eea.rotation.y = Math.PI / 2;
+  g.add(eea);
+  const eea2 = eea.clone();
+  eea2.position.x = -0.93;
+  eea2.rotation.y = -Math.PI / 2;
+  g.add(eea2);
+
+  const reg = placa('CS-001', 0.95, 0.16, { fill: '#1a2744', size: 68, w: 512, h: 120 });
+  reg.position.set(0.93, -0.15, -2.4);
+  reg.rotation.y = Math.PI / 2;
+  g.add(reg);
+  const reg2 = reg.clone();
+  reg2.position.x = -0.93;
+  reg2.rotation.y = -Math.PI / 2;
+  g.add(reg2);
+
+  for (let i = 0; i < 9; i++) {
+    const win = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.16, 4, 8), glass);
+    win.rotation.z = Math.PI / 2;
+    win.position.set(0.9, 0.18, 2.15 - i * 0.52);
+    g.add(win);
+    const win2 = win.clone();
+    win2.position.x = -0.9;
+    g.add(win2);
+  }
+
+  const leg = (x, y, z) => {
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.15, 6), dark);
+    strut.position.set(x, y, z);
+    g.add(strut);
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 10), tyre);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(x, y - 0.62, z);
+    g.add(wheel);
+  };
+  leg(0, -0.85, 3.35);
+  leg(1.15, -0.95, -0.35);
+  leg(-1.15, -0.95, -0.35);
+
+  g.userData.props = props;
+  g.scale.set(1.15, 1.15, 1.15);
+  return g;
 }
 
-/**
- * Estrutura do drone nos cantos do campo de visão, como numa câmara FPV real:
- * vêem-se as pontas dos braços e o disco das hélices, nada mais.
- */
-function construirFpv() {
+function ceuDe(cenario) {
+  switch (cenario) {
+    case 'sar':
+      return { top: 0x1a2744, fog: 0x243044, hemi: 0x8aa0b8, dir: 0xffc48a };
+    case 'medevac':
+      return { top: 0x4d6a82, fog: 0x6a8496, hemi: 0xc5d4de, dir: 0xf0e6d0 };
+    case 'carga':
+      return { top: 0x3d7ec9, fog: 0x6ea0d4, hemi: 0xd7e8ff, dir: 0xfff4dc };
+    default: {
+      const _x = cenario;
+      void _x;
+      return { top: 0x3d7ec9, fog: 0x6ea0d4, hemi: 0xd7e8ff, dir: 0xfff4dc };
+    }
+  }
+}
+
+function ilha(leve) {
   const g = new THREE.Group();
-  const matBraco = new THREE.MeshLambertMaterial({ color: 0x232c36 });
-  const matHelice = new THREE.MeshBasicMaterial({
-    color: 0x9fb4c6, transparent: true, opacity: 0.22, side: THREE.DoubleSide,
-  });
-  const geoBraco = new THREE.BoxGeometry(0.34, 0.028, 0.028);
-  const geoHelice = new THREE.RingGeometry(0.085, 0.1, 24);
+  const land = mat(0x6b7a4e);
+  const sand = mat(0xb59a6a);
+  const dirt = mat(0x7a5a38);
+  const rock = mat(0x5a5e58);
 
-  // afastado do near plane e encostado aos cantos: só se vê o quadro, nunca o corredor
-  const Z = -1.7;
-  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-    const x = sx * 1.34;
-    const y = sy > 0 ? 0.62 : -0.74;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(220, 260, 10, leve ? 10 : 20), land);
+  body.position.set(30, -6, -40);
+  g.add(body);
 
-    const braco = new THREE.Mesh(geoBraco, matBraco);
-    braco.position.set(x - sx * 0.15, y - sy * 0.04, Z);
-    braco.rotation.z = -sx * sy * 0.36;
-    g.add(braco);
+  const beach = new THREE.Mesh(new THREE.CylinderGeometry(250, 280, 3, leve ? 10 : 18), sand);
+  beach.position.set(30, -10.2, -40);
+  g.add(beach);
 
-    const helice = new THREE.Mesh(geoHelice, matHelice);
-    helice.position.set(x, y, Z - 0.04);
-    helice.rotation.x = -Math.PI / 2;   // plano puro: lê-se como disco de hélice, não como argola
-    helice.userData.helice = true;
-    g.add(helice);
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(18, 0.4, 140), dirt);
+  strip.position.set(-10, -0.4, 10);
+  strip.rotation.y = 0.18;
+  g.add(strip);
+
+  const marks = 6;
+  for (let i = 0; i < marks; i++) {
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.42, 8), mat(0xe8d8b0));
+    dash.position.set(-10 + i * 0.4, -0.18, 50 - i * 18);
+    dash.rotation.y = 0.18;
+    g.add(dash);
+  }
+
+  const n = leve ? 4 : 9;
+  for (let i = 0; i < n; i++) {
+    const h = 8 + (i % 4) * 5;
+    const hill = new THREE.Mesh(new THREE.ConeGeometry(16 + i * 2, h, 6), rock);
+    hill.position.set(-40 + i * 28, h / 2 - 4, -90 - (i % 3) * 20);
+    g.add(hill);
   }
 
   return g;
 }
 
-function texturaSolo(leve = false) {
-  const c = document.createElement('canvas');
-  c.width = c.height = leve ? 128 : 256;
-  const x = c.getContext('2d');
-  const n = c.width;
-  x.fillStyle = '#3f4a3c';
-  x.fillRect(0, 0, n, n);
-  x.fillStyle = '#55604f';
-  for (let i = 0; i < (leve ? 16 : 40); i++) {
-    x.fillRect(Math.random() * n, Math.random() * n, 20 + Math.random() * 40, 20 + Math.random() * 40);
-  }
-  x.strokeStyle = '#2b3329';
-  x.lineWidth = leve ? 4 : 6;
-  for (let i = 0; i <= n; i += n / 4) {
-    x.beginPath(); x.moveTo(i, 0); x.lineTo(i, n); x.stroke();
-    x.beginPath(); x.moveTo(0, i); x.lineTo(n, i); x.stroke();
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(40, 50);
-  return t;
+export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
+  const pal = ceuDe(cenario);
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: !leve,
+    alpha: false,
+    powerPreference: leve ? 'low-power' : 'default',
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, leve ? 1.25 : 1.75));
+  renderer.setClearColor(pal.top, 1);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(pal.fog, 80, 520);
+  scene.background = new THREE.Color(pal.top);
+
+  const camera = new THREE.PerspectiveCamera(48, 1, 0.4, 2000);
+  camera.position.set(-18, 10, 22);
+
+  const hemi = new THREE.HemisphereLight(pal.hemi, 0x2a3328, 0.95);
+  scene.add(hemi);
+  const sun = new THREE.DirectionalLight(pal.dir, 1.05);
+  sun.position.set(-80, 90, 40);
+  scene.add(sun);
+
+  const ocean = new THREE.Mesh(
+    new THREE.PlaneGeometry(2400, 2400),
+    mat(cenario === 'sar' ? 0x1c3348 : 0x2a6f9a),
+  );
+  ocean.rotation.x = -Math.PI / 2;
+  ocean.position.y = -12;
+  scene.add(ocean);
+
+  scene.add(ilha(leve));
+
+  const aviao = criarLus222();
+  scene.add(aviao);
+
+  return { renderer, scene, camera, aviao, leve, cenario };
 }
 
-function texturaFachada(leve = false) {
-  const c = document.createElement('canvas');
-  c.width = c.height = leve ? 32 : 64;
-  const x = c.getContext('2d');
-  const n = c.width;
-  x.fillStyle = '#5a6472';
-  x.fillRect(0, 0, n, n);
-  const passo = n > 32 ? 12 : 8;
-  for (let iy = 2; iy < n - 2; iy += passo) {
-    for (let ix = 2; ix < n - 2; ix += passo) {
-      const aceso = Math.random() < 0.34;
-      x.fillStyle = aceso ? '#ffd79a' : '#39424d';
-      x.fillRect(ix, iy, 7, 7);
-    }
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
+export function aplicarPose(mundo, pose) {
+  if (!mundo?.aviao) return;
+  mundo.aviao.position.set(pose.x, pose.y, pose.z);
+  mundo.aviao.rotation.order = 'YXZ';
+  mundo.aviao.rotation.y = pose.heading;
+  mundo.aviao.rotation.z = pose.bank;
+  mundo.aviao.rotation.x = pose.pitch;
+  const props = mundo.aviao.userData.props ?? [];
+  for (const p of props) p.rotation.z = pose.hélice;
 }
 
-/** Actualiza a câmara FPV a partir do estado de voo. */
-export function actualizarCamara(mundo, voo, dt) {
-  const { camera, fpv } = mundo;
-  camera.position.set(voo.x, voo.y, -voo.s);
-
-  // inclinação proporcional à velocidade: o veículo aponta para onde acelera
-  const alvoRoll = -voo.vx / 62;
-  const alvoPitch = voo.vy / 78;
-  camera.rotation.z += (alvoRoll - camera.rotation.z) * Math.min(1, dt * 5);
-  camera.rotation.x += (alvoPitch - camera.rotation.x) * Math.min(1, dt * 5);
-
-  for (const filho of fpv.children) {
-    if (filho.userData.helice) filho.rotation.z += dt * 40;
-  }
+export function actualizarCamara(mundo, pose, dt) {
+  const cam = mundo.camera;
+  const back = 18;
+  const side = 10;
+  const up = 6.5;
+  const hx = pose.heading;
+  const alvoX = pose.x - Math.sin(hx) * back + Math.cos(hx) * side;
+  const alvoZ = pose.z - Math.cos(hx) * back - Math.sin(hx) * side;
+  const alvoY = pose.y + up;
+  const k = 1 - Math.exp(-3.2 * Math.min(dt, 0.08));
+  cam.position.x += (alvoX - cam.position.x) * k;
+  cam.position.y += (alvoY - cam.position.y) * k;
+  cam.position.z += (alvoZ - cam.position.z) * k;
+  cam.lookAt(pose.x, pose.y + 0.6, pose.z);
 }
 
 export function redimensionar(mundo, largura, altura) {
-  mundo.renderer.setSize(largura, altura, false);
-  mundo.camera.aspect = largura / altura;
+  if (!mundo) return;
+  const w = Math.max(1, largura);
+  const h = Math.max(1, altura);
+  mundo.camera.aspect = w / h;
   mundo.camera.updateProjectionMatrix();
+  mundo.mundoLargura = w;
+  mundo.renderer.setSize(w, h, false);
+}
+
+export function webglDisponivel() {
+  try {
+    const c = document.createElement('canvas');
+    return Boolean(c.getContext('webgl2') || c.getContext('webgl'));
+  } catch {
+    return false;
+  }
 }
