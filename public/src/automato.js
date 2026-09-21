@@ -127,7 +127,9 @@ export function passoAutomato(aviao, dt) {
   aviao.y += (alvoAlt - aviao.y) * 0.85 * t;
   aviao.x += Math.sin(aviao.heading) * aviao.speed * t;
   aviao.z += Math.cos(aviao.heading) * aviao.speed * t;
-  aviao.hélice += aviao.speed * t * 18;
+  // ~2,5 voltas/s. O ritmo antigo (velocidade × 18) caía perto da simetria
+  // da cruz e a hélice lia-se parada.
+  aviao.hélice += t * 16;
   return aviao;
 }
 

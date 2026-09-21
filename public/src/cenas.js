@@ -99,18 +99,24 @@ const BLOCOS = [
 ];
 
 /** Canyon tipo Nova Iorque: rua, quarteirões e torres à frente do nariz. y=0 é a rua. */
-export function criarCanyon(p, o, leve) {
+export function criarCanyon(p, o, leve, opcoes = {}) {
   const g = new THREE.Group();
   g.rotation.y = p.rumo ?? 0;
+  const aperto = opcoes.aperto ? 0.55 : 1;
   const pedra = mat(0x6b655c);
   const pedra2 = mat(0x4e4840);
   const vidro = new THREE.MeshLambertMaterial({ color: 0xd5dde6, map: texturaJanelas() });
   const lista = leve ? TORRES.filter((_, i) => i % 2 === 0) : TORRES;
   lista.forEach((t, i) => {
-    g.add(torre({ ...t, pedra: i % 2 ? pedra2 : pedra, vidro }));
+    g.add(torre({ ...t, x: t.x * aperto, pedra: i % 2 ? pedra2 : pedra, vidro }));
   });
   const blocos = leve ? BLOCOS.slice(0, 2) : BLOCOS;
-  for (const b of blocos) g.add(torre({ ...b, pedra: pedra2, vidro }));
+  for (const b of blocos) g.add(torre({ ...b, x: b.x * aperto, pedra: pedra2, vidro }));
+  if (opcoes.aperto) {
+    g.add(torre({ x: -11, z: 40, w: 14, d: 16, h: 118, pedra, vidro }));
+    g.add(torre({ x: 12, z: 86, w: 16, d: 18, h: 140, pedra: pedra2, vidro }));
+    if (!leve) g.add(torre({ x: -12, z: 132, w: 14, d: 15, h: 96, pedra, vidro }));
+  }
 
   if (o?.em_rota) {
     const lado = ladoTapado(o);
@@ -207,12 +213,14 @@ function aerodromo() {
 }
 
 /** Bando em Ponte de Sor — aves individuais à altitude de voo, pista da FAL por baixo. */
-export function criarAves(p, o, leve) {
+export function criarAves(p, o, leve, opcoes = {}) {
   const g = new THREE.Group();
   g.rotation.y = p.rumo ?? 0;
-  const solo = aerodromo();
-  solo.position.set(0, -18, -24);
-  g.add(solo);
+  if (opcoes.solo !== false) {
+    const solo = aerodromo();
+    solo.position.set(0, -18, -24);
+    g.add(solo);
+  }
   const n = leve ? 22 : 40;
   const birds = [];
   const bloqueia = Boolean(o?.em_rota);

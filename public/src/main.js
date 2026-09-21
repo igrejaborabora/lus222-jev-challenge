@@ -7,9 +7,9 @@ import { aplicarAcao, aplicarEvasao, novoAutomato, passoAutomato, poseAviao } fr
 import {
   actualizarAmeacas,
   actualizarCamara,
+  actualizarFluxo,
   aplicarPose,
   criarCena,
-  ancorarVisuais,
   mostrarAmeacas,
   perfilGraficoLeve,
   redimensionar,
@@ -53,16 +53,18 @@ function mostrar(nome) {
 
 function medidasCanvas() {
   const canvas = $('canvas');
-  const vv = window.visualViewport;
+  const r = canvas.getBoundingClientRect();
   return {
-    largura: Math.round(canvas.clientWidth || vv?.width || window.innerWidth),
-    altura: Math.round(canvas.clientHeight || vv?.height || window.innerHeight),
+    largura: Math.round(r.width || window.innerWidth),
+    altura: Math.round(r.height || window.innerHeight),
   };
 }
 
 function ajustarCanvas() {
   if (!estado.mundo) return;
   const { largura, altura } = medidasCanvas();
+  if (largura < 2 || altura < 2) return;
+  if (estado.mundo.mundoLargura === largura && estado.mundo.mundoAltura === altura) return;
   redimensionar(estado.mundo, largura, altura);
 }
 
@@ -98,6 +100,47 @@ async function sondarGateway() {
   return false;
 }
 
+const NS = 'http://www.w3.org/2000/svg';
+
+const MINIATURAS = {
+  medevac: `<rect width="320" height="148" fill="#243646"/>
+    <polygon points="160,148 132,148 118,72 202,72 188,148" fill="#2a3138"/>
+    <g fill="#3c4652"><rect x="6" y="8" width="42" height="140"/><rect x="52" y="28" width="30" height="120"/><rect x="86" y="46" width="24" height="102"/></g>
+    <g fill="#2c3542"><rect x="214" y="40" width="26" height="108"/><rect x="246" y="18" width="32" height="130"/><rect x="282" y="4" width="34" height="144"/></g>
+    <g fill="#e4c48a"><rect x="16" y="22" width="6" height="8"/><rect x="28" y="40" width="6" height="8"/><rect x="62" y="48" width="5" height="7"/><rect x="258" y="36" width="6" height="8"/><rect x="292" y="24" width="6" height="8"/><rect x="224" y="62" width="5" height="7"/></g>
+    <rect y="116" width="320" height="32" fill="#070b12" fill-opacity="0.72"/>
+    <text x="14" y="138" fill="#f4f1ea" font-size="15" font-family="IBM Plex Sans, sans-serif" font-weight="600" letter-spacing="1.5">CANYON DE TORRES</text>`,
+  carga: `<rect width="320" height="96" fill="#8ec8ef"/>
+    <rect y="96" width="320" height="52" fill="#6a7544"/>
+    <rect x="146" y="96" width="28" height="52" fill="#3a3e42"/>
+    <g fill="#e6e2d6"><rect x="156" y="104" width="8" height="10"/><rect x="156" y="122" width="8" height="10"/><rect x="156" y="140" width="8" height="8"/></g>
+    <rect x="18" y="108" width="46" height="22" fill="#8a7358"/><rect x="250" y="112" width="50" height="20" fill="#8a7358"/>
+    <g fill="none" stroke="#14171b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M48 34 l10 -8 l10 8"/><path d="M78 48 l10 -8 l10 8"/><path d="M108 30 l10 -8 l10 8"/>
+      <path d="M150 42 l11 -9 l11 9"/><path d="M188 28 l10 -8 l10 8"/><path d="M214 50 l10 -8 l10 8"/>
+      <path d="M246 36 l10 -8 l10 8"/><path d="M36 62 l9 -7 l9 7"/><path d="M96 66 l9 -7 l9 7"/>
+      <path d="M168 64 l9 -7 l9 7"/><path d="M230 70 l9 -7 l9 7"/>
+    </g>
+    <rect y="116" width="320" height="32" fill="#070b12" fill-opacity="0.72"/>
+    <text x="14" y="138" fill="#f4f1ea" font-size="15" font-family="IBM Plex Sans, sans-serif" font-weight="600" letter-spacing="1.5">BANDO NA FAL</text>`,
+  sar: `<defs><linearGradient id="sar-ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#243044"/><stop offset="0.62" stop-color="#c46a3a"/><stop offset="1" stop-color="#1c3348"/></linearGradient></defs>
+    <rect width="320" height="148" fill="url(#sar-ceu)"/>
+    <rect y="112" width="320" height="36" fill="#163044"/>
+    <g fill="#5c6840"><ellipse cx="92" cy="58" rx="40" ry="8"/><polygon points="70,56 18,74 18,48"/><polygon points="118,56 168,66 168,50"/><rect x="58" y="36" width="4" height="18"/><rect x="74" y="36" width="4" height="18"/><rect x="52" y="34" width="28" height="4"/></g>
+    <g fill="#c2b48a"><ellipse cx="230" cy="78" rx="34" ry="7"/><polygon points="214,76 168,90 168,68"/><polygon points="250,76 292,84 292,70"/><rect x="200" y="58" width="3" height="16"/><rect x="214" y="58" width="3" height="16"/><rect x="196" y="56" width="24" height="3"/><g fill="#111"><rect x="188" y="74" width="10" height="3"/><rect x="202" y="74" width="10" height="3"/><rect x="216" y="74" width="10" height="3"/></g></g>
+    <rect y="116" width="320" height="32" fill="#070b12" fill-opacity="0.72"/>
+    <text x="14" y="138" fill="#f4f1ea" font-size="15" font-family="IBM Plex Sans, sans-serif" font-weight="600" letter-spacing="1.5">AVIÕES DE ÉPOCA</text>`,
+};
+
+function miniatura(id) {
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 320 148');
+  svg.setAttribute('aria-hidden', 'true');
+  const html = MINIATURAS[id] ?? MINIATURAS.medevac;
+  svg.innerHTML = html;
+  return svg;
+}
+
 function pintarCartoes() {
   const box = $('cartas');
   box.replaceChildren();
@@ -107,7 +150,8 @@ function pintarCartoes() {
     btn.className = 'carta' + (c.id === estado.cenario ? ' is-on' : '');
     btn.dataset.id = c.id;
     const fig = document.createElement('div');
-    fig.className = 'carta-foto';
+    fig.className = 'carta-foto carta-foto-' + c.id;
+    fig.append(miniatura(c.id));
     const h = document.createElement('h2');
     h.textContent = c.nome;
     const p = document.createElement('p');
@@ -229,19 +273,25 @@ function alternarPausa() {
 
 function ciclo(agora) {
   if (estado.ecra !== 'live' || !estado.mundo) return;
+  estado.raf = requestAnimationFrame(ciclo);
   let dt = (agora - estado.ultimo) / 1000;
+  if (!Number.isFinite(dt) || dt < 0) dt = 0;
   if (dt > 0.08) dt = 0.08;
   estado.ultimo = agora;
-  if (!estado.pausado && estado.aviao) {
-    passoAutomato(estado.aviao, dt);
-    const pose = poseAviao(estado.aviao);
-    aplicarPose(estado.mundo, pose);
-    actualizarAmeacas(estado.mundo, dt);
-    ancorarVisuais(estado.mundo, pose);
-    actualizarCamara(estado.mundo, pose, dt);
+  try {
+    ajustarCanvas();
+    if (!estado.pausado && estado.aviao) {
+      passoAutomato(estado.aviao, dt);
+      const pose = poseAviao(estado.aviao);
+      aplicarPose(estado.mundo, pose);
+      actualizarAmeacas(estado.mundo, dt);
+      actualizarFluxo(estado.mundo, pose, dt);
+      actualizarCamara(estado.mundo, pose, dt);
+    }
+    estado.mundo.renderer.render(estado.mundo.scene, estado.mundo.camera);
+  } catch {
+    /* o pedido ao JEV não pode matar o frame seguinte */
   }
-  estado.mundo.renderer.render(estado.mundo.scene, estado.mundo.camera);
-  estado.raf = requestAnimationFrame(ciclo);
 }
 
 function arrancarLoop() {
@@ -342,6 +392,8 @@ function voltarAoBriefing() {
   esconderChipJev();
   largarMundo();
   mostrar('commander');
+  const ecra = $('screen-commander');
+  if (ecra) ecra.scrollTop = 0;
 }
 
 async function lancarMissao() {
@@ -384,7 +436,11 @@ async function lancarMissao() {
     $('webgl-block').hidden = false;
   } else {
     try {
-      estado.mundo = criarCena($('canvas'), { leve: perfilGraficoLeve(), cenario: cenario.id });
+      estado.mundo = criarCena($('canvas'), {
+        leve: perfilGraficoLeve(),
+        cenario: cenario.id,
+        pose: poseAviao(estado.aviao),
+      });
       ajustarCanvas();
       aplicarPose(estado.mundo, poseAviao(estado.aviao));
       arrancarLoop();
@@ -467,7 +523,11 @@ function ligarUI() {
     mostrar('commander');
   });
   $('btn-retry-gateway').addEventListener('click', () => sondarGateway());
-  $('btn-voltar-splash').addEventListener('click', () => mostrar('splash'));
+  $('btn-voltar-splash').addEventListener('click', () => {
+    $('splash')?.classList.add('is-ready');
+    mostrar('splash');
+    window.scrollTo(0, 0);
+  });
   $('select-cabine').addEventListener('change', () => {
     $('select-cabine').dataset.tocado = '1';
   });
@@ -503,6 +563,8 @@ function ligarUI() {
   $('btn-outro').addEventListener('click', () => {
     largarMundo();
     mostrar('commander');
+    const ecra = $('screen-commander');
+    if (ecra) ecra.scrollTop = 0;
   });
   $('btn-repetir').addEventListener('click', () => lancarMissao());
   $('btn-log').addEventListener('click', descarregarLog);
@@ -510,7 +572,11 @@ function ligarUI() {
     if (webglDisponivel() && estado.missao) {
       $('webgl-block').hidden = true;
       try {
-        estado.mundo = criarCena($('canvas'), { leve: perfilGraficoLeve(), cenario: estado.cenario });
+        estado.mundo = criarCena($('canvas'), {
+          leve: perfilGraficoLeve(),
+          cenario: estado.cenario,
+          pose: estado.aviao ? poseAviao(estado.aviao) : undefined,
+        });
         ajustarCanvas();
         mostrarMundoActual(estado.missao?.geometria?.obstaculos ?? []);
         arrancarLoop();

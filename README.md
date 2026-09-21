@@ -23,9 +23,9 @@ O Jev não gera prosa. Recebe um **estado** e devolve, no mesmo pedido:
 
 O LUS-222 voa os eixos do JEV (`subir`/`descer`, `esquerda`/`direita`) no instante da evaluate. `precisaRevisaoPIC` fica só no log — a UI **não** espera Accept/Reject. A regra geométrica calcula os mesmos eixos para o debriefing e não controla a aeronave.
 
-Na missão: **II** pausa (ou Escape), **Anterior** repete o incidente anterior com a decisão já registada — sem novo pedido ao Gateway — e **Briefing** volta ao comandante sem esperar pelo debriefing.
+Na missão: **II** pausa (ou Escape), **Anterior** repete o incidente anterior com a decisão já registada — sem novo pedido ao Gateway — e **Briefing** volta ao comandante sem esperar pelo debriefing. No comandante, **Voltar** (sempre visível no topo) regressa ao splash do JEV.
 
-A fita (5–8 incidentes) nasce de uma semente. Cada cenário tem uma ameaça densa à frente do nariz: MEDEVAC num canyon de torres, carga num bando à saída da FAL em Ponte de Sor, SAR com bimotores e asa alta de época. Nos beats sem geometria a mesma cena continua no céu; a regra geométrica não a vê.
+A fita (5–8 incidentes) nasce de uma semente. Cada cenário tem uma cena própria, já no cartão e à frente do nariz desde o primeiro frame: MEDEVAC num canyon de torres, carga num bando à saída da FAL em Ponte de Sor, SAR com bimotores e asa alta de época. O LUS-222 continua a voar enquanto o Gateway responde. O dodge é uma manobra visível. A regra geométrica não vê a cena de enchimento.
 
 ## Arquitectura
 
