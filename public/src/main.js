@@ -333,7 +333,6 @@ async function correrFita(desde) {
     });
 
     const ameacas = missao.geometria?.obstaculos ?? [];
-    mostrarMundoActual(ameacas);
 
     let jev = plano.jev;
     if (!repetido) {
@@ -366,7 +365,8 @@ async function correrFita(desde) {
     const maxP = maxProbabilidade(jev.answers.acaoMissao);
     const pediriaPic = deveEscalarPIC(jev.answers);
     const evasao = repetido ? plano.evasao : evasaoDeAnswers(jev.answers);
-    mostrarChipJev(maxP, pediriaPic, evasao, { repetido });
+    mostrarChipJev(maxP, pediriaPic, evasao, { repetido, latencia_ms: jev.latencia_ms });
+    mostrarMundoActual(ameacas);
     if (estado.aviao) aplicarEvasao(estado.aviao, evasao);
     await esperar(ameacas.length ? 3800 : 2600, gen);
   }

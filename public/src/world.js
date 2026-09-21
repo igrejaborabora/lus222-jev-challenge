@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
-import { pontoAmeaca } from './decisao.js';
+import { offsetLateral, pontoAmeaca } from './decisao.js';
 
 export function perfilGraficoLeve() {
   if (typeof window === 'undefined') return true;
@@ -402,7 +402,8 @@ function meshAmeaca(o, pose, leve) {
         aves: criarAves,
         guerra: criarGuerra,
       }[p.visual];
-      const cena = construir(p, o, leve);
+      const opcoes = p.visual === 'aves' ? { corredorX: offsetLateral(o) } : {};
+      const cena = construir(p, o, leve, opcoes);
       g.add(cena);
       g.userData.ancora = cena;
       g.userData.obstaculo = o;
@@ -541,11 +542,9 @@ export function actualizarAmeacas(mundo, dt) {
     if (aves) {
       for (const b of aves) {
         const fase = mundo.tAmeaca * b.rate + b.phase;
-        b.pivL.rotation.z = Math.sin(fase) * 0.65;
-        b.pivR.rotation.z = -Math.sin(fase) * 0.65;
-        b.g.position.y = b.baseY + Math.sin(fase * 0.45) * 1.6;
-        b.g.position.x += Math.sin(b.yaw) * b.speed * dt;
-        b.g.position.z += Math.cos(b.yaw) * b.speed * dt;
+        b.pivL.rotation.z = Math.sin(fase) * 0.5;
+        b.pivR.rotation.z = -Math.sin(fase) * 0.5;
+        b.g.position.y = b.baseY + Math.sin(fase * 0.45) * 0.45;
       }
     }
     const formacao = child.userData.avioes;
@@ -673,11 +672,9 @@ export function actualizarFluxo(mundo, pose, dt) {
     if (aves) {
       for (const b of aves) {
         const fase = t * b.rate + b.phase;
-        b.pivL.rotation.z = Math.sin(fase) * 0.65;
-        b.pivR.rotation.z = -Math.sin(fase) * 0.65;
-        b.g.position.y = b.baseY + Math.sin(fase * 0.45) * 1.6;
-        b.g.position.x += Math.sin(b.yaw) * b.speed * dt;
-        b.g.position.z += Math.cos(b.yaw) * b.speed * dt;
+        b.pivL.rotation.z = Math.sin(fase) * 0.5;
+        b.pivR.rotation.z = -Math.sin(fase) * 0.5;
+        b.g.position.y = b.baseY + Math.sin(fase * 0.45) * 0.45;
       }
     }
     const formacao = tile.userData.avioes;

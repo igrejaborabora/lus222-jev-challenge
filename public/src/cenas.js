@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { planoBando } from './bando.js';
 
 function mat(color, extras = {}) {
   return new THREE.MeshLambertMaterial({ color, ...extras });
@@ -152,23 +153,29 @@ export function criarCanyon(p, o, leve, opcoes = {}) {
   return g;
 }
 
+/** Ave legível: corpo roliço, asas curtas com diedro. A ponta fica dentro do raio de planoBando. */
 function criarAve(cor) {
   const g = new THREE.Group();
-  const corpo = new THREE.Mesh(new THREE.SphereGeometry(0.38, 7, 6), mat(cor));
-  corpo.scale.set(0.55, 0.42, 1.25);
+  const corpo = new THREE.Mesh(new THREE.SphereGeometry(0.34, 8, 6), mat(cor));
+  corpo.scale.set(0.72, 0.58, 1.35);
+  const bico = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.26, 5), mat(0xc4a574));
+  bico.rotation.x = Math.PI / 2;
+  bico.position.set(0, 0.02, 0.52);
   const pivL = new THREE.Group();
   const pivR = new THREE.Group();
-  pivL.position.set(-0.12, 0.05, 0.05);
-  pivR.position.set(0.12, 0.05, 0.05);
-  const asaL = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.06, 0.42), mat(cor));
-  asaL.position.set(-0.78, 0, 0);
-  const asaR = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.06, 0.42), mat(cor));
-  asaR.position.set(0.78, 0, 0);
+  pivL.position.set(-0.16, 0.08, 0.02);
+  pivR.position.set(0.16, 0.08, 0.02);
+  const asaL = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.34), mat(cor));
+  asaL.position.set(-0.46, 0, 0);
+  asaL.rotation.z = 0.22;
+  const asaR = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.34), mat(cor));
+  asaR.position.set(0.46, 0, 0);
+  asaR.rotation.z = -0.22;
   pivL.add(asaL);
   pivR.add(asaR);
-  const cauda = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 0.55), mat(cor));
-  cauda.position.set(0, 0.04, -0.55);
-  g.add(corpo, pivL, pivR, cauda);
+  const cauda = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.045, 0.4), mat(cor));
+  cauda.position.set(0, 0.06, -0.46);
+  g.add(corpo, bico, pivL, pivR, cauda);
   return { g, pivL, pivR };
 }
 
@@ -212,7 +219,16 @@ function aerodromo() {
   return g;
 }
 
-/** Bando em Ponte de Sor — aves individuais à altitude de voo, pista da FAL por baixo. */
+/** +1 = esquerda do ecrã. O ladoTapado das torres fica no referencial antigo dos dados. */
+function ladoEcra(o) {
+  const esq = Number(o?.folga_pela_esquerda_m ?? 0);
+  const dir = Number(o?.folga_pela_direita_m ?? 0);
+  if (esq < dir) return 1;
+  if (dir < esq) return -1;
+  return 0;
+}
+
+/** Bando em Ponte de Sor — aves soltas à altitude de voo, pista da FAL por baixo. */
 export function criarAves(p, o, leve, opcoes = {}) {
   const g = new THREE.Group();
   g.rotation.y = p.rumo ?? 0;
@@ -221,47 +237,28 @@ export function criarAves(p, o, leve, opcoes = {}) {
     solo.position.set(0, -18, -24);
     g.add(solo);
   }
-  const n = leve ? 22 : 40;
+  const plano = planoBando({
+    n: leve ? 12 : 16,
+    ladoEcra: ladoEcra(o),
+    corredorX: Number(opcoes.corredorX) || 0,
+  });
   const birds = [];
-  const bloqueia = Boolean(o?.em_rota);
-  const lado = ladoTapado(o);
-  const hero = new THREE.Group();
-  g.add(hero);
-  if (bloqueia) g.userData.hero = hero;
-  for (let i = 0; i < n; i++) {
-    const u = (i * 0.61803398875) % 1;
-    const v = (i * 0.38196601125) % 1;
-    const w = (i * 0.7548776662) % 1;
-    let x = (u - 0.5) * (bloqueia ? 64 : 86);
-    if (!bloqueia && Math.abs(x) < 14) x += Math.sign(x || 1) * 16;
-    if (bloqueia) x += lado * 5;
-    let z = -36 + v * 78;
-    let y = -6 + w * 16;
-    let escala = 7.4 + (i % 5) * 1.1;
-    const perto = i < (leve ? 8 : 12);
-    if (perto) {
-      const col = i % 4;
-      const fila = Math.floor(i / 4);
-      x = lado * (4 + col * 7) + (col - 1.5) * 5;
-      z = -22 - fila * 8;
-      y = (fila - 1) * 4.5 + (col % 2 ? 2.2 : -1.4);
-      escala = 13.5;
-    }
+  for (let i = 0; i < plano.length; i++) {
+    const slot = plano[i];
     const ave = criarAve(CORES_AVE[i % CORES_AVE.length]);
-    ave.g.position.set(x, y, z);
-    ave.g.scale.setScalar(escala);
-    const yaw = bloqueia ? lado * -0.45 + (i % 5) * 0.12 : (i % 9) * 0.35 - 0.8;
-    ave.g.rotation.y = yaw;
-    (perto && bloqueia ? hero : g).add(ave.g);
+    ave.g.position.set(slot.x, slot.y, slot.z);
+    ave.g.scale.setScalar(slot.escala);
+    ave.g.rotation.y = slot.yaw;
+    g.add(ave.g);
     birds.push({
       g: ave.g,
       pivL: ave.pivL,
       pivR: ave.pivR,
-      baseY: y,
-      rate: 5.5 + (i % 4) * 0.8,
-      phase: i * 0.7,
-      yaw,
-      speed: perto ? 1.2 : 3 + (i % 3),
+      baseY: slot.y,
+      rate: slot.rate,
+      phase: slot.phase,
+      yaw: slot.yaw,
+      speed: 0,
     });
   }
   g.userData.kind = 'aves';
