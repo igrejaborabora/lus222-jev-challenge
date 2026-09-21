@@ -371,7 +371,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
   scene.background = new THREE.Color(pal.top);
 
   const camera = new THREE.PerspectiveCamera(48, 1, 0.4, 2000);
-  camera.position.set(-22, 12, 8);
+  camera.position.set(-95, 50, 22);
 
   const hemi = new THREE.HemisphereLight(pal.hemi, 0x2a3328, 1.05);
   scene.add(hemi);
@@ -412,30 +412,62 @@ export function aplicarPose(mundo, pose) {
   for (const p of props) p.rotation.z = pose.hélice;
 }
 
+/**
+ * Vista chase: cravada atrás e ligeiramente acima da cauda do LUS-222, a
+ * olhar para a rota à frente do nariz — o comandante vê o que o piloto vê,
+ * mas de fora, como num simulador de voo. O avião fica no terço inferior
+ * do quadro, os obstáculos entram pelo fundo e o dodge lê-se no bank e na
+ * fuga da ameaça para a borda. Só contas escalares por frame (sem alocações)
+ * para aguentar o perfil leve no telemóvel.
+ */
 export function actualizarCamara(mundo, pose, dt) {
   const cam = mundo.camera;
   const look = mundo.alvoLook;
   const dodge = Boolean(pose.dodge || look);
-  const back = dodge ? 28 : 13;
-  const side = dodge ? 22 : 18;
-  const up = dodge ? 12 : 7.2;
-  const hx = pose.heading;
-  const alvoX = pose.x - Math.sin(hx) * back + Math.cos(hx) * side;
-  const alvoZ = pose.z - Math.cos(hx) * back - Math.sin(hx) * side;
+  // Ecrã estreito (telemóvel em pé): afasta a cauda para a asa caber no quadro.
+  const fit = Math.min(1, Math.max(0.55, (cam.aspect || 1) / 1.2));
+  const back = (dodge ? 36 : 24) / fit;
+  const up = (dodge ? 11 : 8) / fit;
+  const ahead = dodge ? 56 : 48;
+  const fx = Math.sin(pose.heading);
+  const fz = Math.cos(pose.heading);
+
+  const alvoX = pose.x - fx * back;
   const alvoY = pose.y + up;
-  const k = 1 - Math.exp(-3.2 * Math.min(dt, 0.08));
-  cam.position.x += (alvoX - cam.position.x) * k;
-  cam.position.y += (alvoY - cam.position.y) * k;
-  cam.position.z += (alvoZ - cam.position.z) * k;
-  if (look) {
-    cam.lookAt(
-      pose.x + (look.x - pose.x) * 0.2,
-      pose.y + 1.4,
-      pose.z + (look.z - pose.z) * 0.2,
-    );
+  const alvoZ = pose.z - fz * back;
+  if (!mundo.camaraPronta) {
+    cam.position.set(alvoX, alvoY, alvoZ);
+    mundo.camaraPronta = true;
   } else {
-    cam.lookAt(pose.x, pose.y + 0.6, pose.z);
+    const t = Math.min(dt, 0.08);
+    const k = 1 - Math.exp(-3.4 * t);
+    const ky = 1 - Math.exp(-7 * t); // vertical quase rígido: não larga a cauda na subida/descida do dodge
+    cam.position.x += (alvoX - cam.position.x) * k;
+    cam.position.y += (alvoY - cam.position.y) * ky;
+    cam.position.z += (alvoZ - cam.position.z) * k;
   }
+
+  // Mira à frente do nariz, ao nível do avião — a rota fica no centro e a
+  // subida/descida lê-se contra o horizonte. Com ameaça à frente, puxa a
+  // mira um pouco para ela (limitado a ~19°) sem virar a vista; ameaça já
+  // atrás do nariz não arrasta a câmara.
+  let miraX = pose.x + fx * ahead;
+  const miraY = pose.y + 2.2;
+  let miraZ = pose.z + fz * ahead;
+  if (look) {
+    const peso = 0.3 * fit; // ecrã estreito: menos puxão, o avião não encosta à borda
+    const ax = miraX + (look.x - miraX) * peso - pose.x;
+    const az = miraZ + (look.z - miraZ) * peso - pose.z;
+    const frente = ax * fx + az * fz;
+    if (frente > 12) {
+      const lat = az * fx - ax * fz;
+      const latMax = frente * 0.35;
+      const latC = Math.max(-latMax, Math.min(latMax, lat));
+      miraX = pose.x + fx * frente - fz * latC;
+      miraZ = pose.z + fz * frente + fx * latC;
+    }
+  }
+  cam.lookAt(miraX, miraY, miraZ);
 }
 
 export function redimensionar(mundo, largura, altura) {
