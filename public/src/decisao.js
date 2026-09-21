@@ -202,7 +202,7 @@ export function etiquetarAcao(acao) {
     case 'orbitar':
       return 'Orbitar';
     case 'regressar_base':
-      return 'Regressar à base';
+      return 'Regressar';
     case 'abortar_emergencia':
       return 'Emergência';
     default: {

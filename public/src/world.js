@@ -44,119 +44,127 @@ function placa(texto, w, h, opts) {
   return mesh;
 }
 
-/** Boneco honesto do LUS-222: asa alta, dois turboprops, T-tail, trem fixo. */
+/** Boneco honesto do LUS-222: nariz +Z, asa alta, dois turboprops, T-tail, trem fixo. */
 export function criarLus222() {
   const g = new THREE.Group();
-  const white = mat(0xf3f5f7);
+  const white = mat(0xf4f6f8);
   const navy = mat(0x1a2744);
   const dark = mat(0x1c1f24);
-  const glass = mat(0x1b2430, { transparent: true, opacity: 0.72 });
+  const glass = mat(0x101820);
   const tyre = mat(0x151515);
 
-  const fuse = new THREE.Mesh(new THREE.CapsuleGeometry(0.92, 8.4, 6, 14), white);
-  fuse.rotation.z = Math.PI / 2;
-  fuse.position.set(0, 0, 0);
+  const fuse = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.78, 8.4, 18), white);
+  fuse.rotation.x = Math.PI / 2;
   g.add(fuse);
 
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.92, 14, 12, 0, Math.PI * 2, 0, Math.PI / 2), white);
-  nose.rotation.x = Math.PI / 2;
-  nose.position.set(0, -0.04, 5.05);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.82, 16, 12), white);
+  nose.scale.set(1, 0.92, 1.35);
+  nose.position.z = 4.25;
   g.add(nose);
 
-  const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.62, 12, 10, 0, Math.PI * 2, 0, 1.2), glass);
-  cockpit.scale.set(1.15, 0.72, 0.9);
-  cockpit.position.set(0, 0.42, 3.7);
+  const tailcone = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.22, 2.6, 14), white);
+  tailcone.rotation.x = Math.PI / 2;
+  tailcone.position.z = -5.3;
+  g.add(tailcone);
+
+  const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 10), glass);
+  cockpit.scale.set(1.05, 0.62, 0.85);
+  cockpit.position.set(0, 0.48, 3.55);
   g.add(cockpit);
 
-  const wing = new THREE.Mesh(new THREE.BoxGeometry(14.6, 0.16, 2.3), white);
-  wing.position.set(0, 1.05, 0.15);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(16.8, 0.13, 2.7), white);
+  wing.position.set(0, 1.18, 0.25);
   g.add(wing);
-
-  const root = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.55, 1.6), white);
-  root.position.set(0, 0.72, 0.15);
+  const root = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 1.8), white);
+  root.position.set(0, 0.82, 0.2);
   g.add(root);
 
   const props = [];
   for (const side of [-1, 1]) {
-    const nacelle = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 1.5, 6, 10), white);
-    nacelle.rotation.z = Math.PI / 2;
-    nacelle.position.set(side * 3.15, 0.78, 0.85);
+    const nacelle = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.26, 2.05, 12), white);
+    nacelle.rotation.x = Math.PI / 2;
+    nacelle.position.set(side * 3.45, 0.78, 0.95);
     g.add(nacelle);
 
-    const spinner = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), dark);
-    spinner.position.set(side * 3.15, 0.78, 1.78);
+    const spinner = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), dark);
+    spinner.position.set(side * 3.45, 0.78, 2.08);
     g.add(spinner);
 
+    const disc = new THREE.Mesh(
+      new THREE.CircleGeometry(1.05, 18),
+      mat(0x2a2e33, { transparent: true, opacity: 0.28, side: THREE.DoubleSide }),
+    );
+    disc.position.set(side * 3.45, 0.78, 2.12);
+    g.add(disc);
+
     const prop = new THREE.Group();
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.85, 0.16), dark);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.05, 0.14), dark);
     const blade2 = blade.clone();
     blade2.rotation.z = Math.PI / 2;
     prop.add(blade, blade2);
-    prop.position.set(side * 3.15, 0.78, 1.86);
+    prop.position.set(side * 3.45, 0.78, 2.16);
     g.add(prop);
     props.push(prop);
   }
 
-  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.16, 2.35, 1.35), navy);
-  fin.position.set(0, 1.35, -4.15);
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.7, 1.55), navy);
+  fin.position.set(0, 1.55, -5.55);
   g.add(fin);
+  const stab = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.12, 1.25), white);
+  stab.position.set(0, 2.9, -5.55);
+  g.add(stab);
 
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.12, 1.05), white);
-  tail.position.set(0, 2.48, -4.15);
-  g.add(tail);
-
-  const lus = placa('LUS+222', 1.15, 0.32, { fill: '#f4f6f8', size: 70, w: 512, h: 140 });
-  lus.position.set(0.09, 1.45, -4.16);
+  const lus = placa('LUS+222', 1.2, 0.34, { fill: '#f4f6f8', size: 70, w: 512, h: 140 });
+  lus.position.set(0.08, 1.55, -5.56);
   lus.rotation.y = Math.PI / 2;
   g.add(lus);
   const lus2 = lus.clone();
-  lus2.position.x = -0.09;
+  lus2.position.x = -0.08;
   lus2.rotation.y = -Math.PI / 2;
   g.add(lus2);
 
-  const eea = placa('EEAIRCRAFT', 1.7, 0.18, { fill: '#1a2744', size: 64, w: 640, h: 120 });
-  eea.position.set(0.93, 0.12, 3.15);
+  const eea = placa('EEAIRCRAFT', 1.8, 0.18, { fill: '#1a2744', size: 64, w: 640, h: 120 });
+  eea.position.set(0.83, 0.1, 2.9);
   eea.rotation.y = Math.PI / 2;
   g.add(eea);
   const eea2 = eea.clone();
-  eea2.position.x = -0.93;
+  eea2.position.x = -0.83;
   eea2.rotation.y = -Math.PI / 2;
   g.add(eea2);
 
   const reg = placa('CS-001', 0.95, 0.16, { fill: '#1a2744', size: 68, w: 512, h: 120 });
-  reg.position.set(0.93, -0.15, -2.4);
+  reg.position.set(0.8, -0.12, -2.5);
   reg.rotation.y = Math.PI / 2;
   g.add(reg);
   const reg2 = reg.clone();
-  reg2.position.x = -0.93;
+  reg2.position.x = -0.8;
   reg2.rotation.y = -Math.PI / 2;
   g.add(reg2);
 
   for (let i = 0; i < 9; i++) {
-    const win = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.16, 4, 8), glass);
-    win.rotation.z = Math.PI / 2;
-    win.position.set(0.9, 0.18, 2.15 - i * 0.52);
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.22, 0.32), glass);
+    win.position.set(0.8, 0.18, 2.2 - i * 0.52);
     g.add(win);
     const win2 = win.clone();
-    win2.position.x = -0.9;
+    win2.position.x = -0.8;
     g.add(win2);
   }
 
   const leg = (x, y, z) => {
-    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.15, 6), dark);
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.2, 6), dark);
     strut.position.set(x, y, z);
     g.add(strut);
     const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 10), tyre);
     wheel.rotation.z = Math.PI / 2;
-    wheel.position.set(x, y - 0.62, z);
+    wheel.position.set(x, y - 0.65, z);
     g.add(wheel);
   };
-  leg(0, -0.85, 3.35);
-  leg(1.15, -0.95, -0.35);
-  leg(-1.15, -0.95, -0.35);
+  leg(0, -0.88, 3.2);
+  leg(1.2, -0.98, -0.4);
+  leg(-1.2, -0.98, -0.4);
 
   g.userData.props = props;
-  g.scale.set(1.15, 1.15, 1.15);
+  g.scale.set(1.35, 1.35, 1.35);
   return g;
 }
 
@@ -231,13 +239,16 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
   scene.background = new THREE.Color(pal.top);
 
   const camera = new THREE.PerspectiveCamera(48, 1, 0.4, 2000);
-  camera.position.set(-18, 10, 22);
+  camera.position.set(-22, 12, 8);
 
-  const hemi = new THREE.HemisphereLight(pal.hemi, 0x2a3328, 0.95);
+  const hemi = new THREE.HemisphereLight(pal.hemi, 0x2a3328, 1.05);
   scene.add(hemi);
-  const sun = new THREE.DirectionalLight(pal.dir, 1.05);
-  sun.position.set(-80, 90, 40);
+  const sun = new THREE.DirectionalLight(pal.dir, 1.35);
+  sun.position.set(-90, 70, 30);
   scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.35);
+  fill.position.set(40, 30, -20);
+  scene.add(fill);
 
   const ocean = new THREE.Mesh(
     new THREE.PlaneGeometry(2400, 2400),
@@ -268,9 +279,9 @@ export function aplicarPose(mundo, pose) {
 
 export function actualizarCamara(mundo, pose, dt) {
   const cam = mundo.camera;
-  const back = 18;
-  const side = 10;
-  const up = 6.5;
+  const back = 13;
+  const side = 18;
+  const up = 7.2;
   const hx = pose.heading;
   const alvoX = pose.x - Math.sin(hx) * back + Math.cos(hx) * side;
   const alvoZ = pose.z - Math.cos(hx) * back - Math.sin(hx) * side;

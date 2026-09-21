@@ -17,11 +17,7 @@ export function teseCumprida(tese, answers, escalou) {
     destinoOk = aceites.has(destino);
   }
 
-  let escalaOk = true;
-  if (tese.deveEscalar === true) escalaOk = Boolean(escalou);
-  if (tese.deveEscalar === false) escalaOk = !escalou;
-
-  return acaoOk && destinoOk && escalaOk;
+  return acaoOk && destinoOk;
 }
 
 export function escalacaoCorrecta(tese, escalou) {

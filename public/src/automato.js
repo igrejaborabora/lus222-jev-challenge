@@ -6,7 +6,7 @@ export function novoAutomato() {
     x: -80,
     y: 42,
     z: 40,
-    heading: 0.15,
+    heading: 0.7,
     bank: 0,
     pitch: 0,
     speed: CRUZEIRO,
