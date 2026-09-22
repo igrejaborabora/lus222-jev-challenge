@@ -1,0 +1,1671 @@
+{
+  "versao": 3,
+  "cenario": "porto",
+  "perfil": "ilustrativo-2",
+  "semente": 222,
+  "restricoes": {
+    "payload_kg": 620,
+    "risco_maximo": "medio",
+    "preferir_stol": false,
+    "nunca_desviar": false
+  },
+  "gravadoEm": "2026-09-22T11:13:59.657Z",
+  "briefing": {
+    "versao_contrato": 3,
+    "fonte": "jev",
+    "modelo": "typesafe-ai/jev",
+    "momento": "briefing",
+    "latencia_ms": 507,
+    "answers": {
+      "configuracaoCabine": {
+        "type": "choice",
+        "choice": "passageiros",
+        "probabilities": {
+          "medevac": 0,
+          "passageiros": 0.96,
+          "mista": 0.04,
+          "carga": 0
+        }
+      },
+      "prioridadeOperacional": {
+        "type": "choice",
+        "choice": "integridade",
+        "probabilities": {
+          "meteorologia": 0.03,
+          "integridade": 0.96,
+          "combustivel": 0,
+          "carga_critica": 0,
+          "tempo": 0.01
+        }
+      },
+      "pistaAdequada": {
+        "type": "boolean",
+        "probability": 0.92
+      },
+      "combustivelSuficiente": {
+        "type": "boolean",
+        "probability": 0.86
+      }
+    },
+    "usage": {
+      "inputTokens": 1905,
+      "outputTokens": 168,
+      "totalTokens": 2073
+    },
+    "confidence": {
+      "configuracaoCabine": 0.94,
+      "prioridadeOperacional": 0.95
+    }
+  },
+  "eventos": {
+    "baloes": {
+      "versao_contrato": 3,
+      "fonte": "jev",
+      "modelo": "typesafe-ai/jev",
+      "momento": "incidente",
+      "latencia_ms": 436,
+      "answers": {
+        "acaoMissao": {
+          "type": "choice",
+          "choice": "prosseguir",
+          "probabilities": {
+            "regressar_base": 0,
+            "prosseguir": 0.97,
+            "abortar_emergencia": 0.02,
+            "desviar_alternativo": 0.01,
+            "orbitar": 0
+          }
+        },
+        "manobraVertical": {
+          "type": "choice",
+          "choice": "subir",
+          "probabilities": {
+            "manter": 0.15,
+            "subir": 0.76,
+            "descer": 0.09
+          }
+        },
+        "manobraLateral": {
+          "type": "choice",
+          "choice": "direita",
+          "probabilities": {
+            "direita": 0.97,
+            "manter": 0.01,
+            "esquerda": 0.02
+          }
+        },
+        "destinoPreferido": {
+          "type": "choice",
+          "choice": "aeroporto_alternativo",
+          "probabilities": {
+            "stol_proximo": 0,
+            "origem": 0.42,
+            "planeado": 0.14,
+            "aeroporto_alternativo": 0.44,
+            "hospital_alternativo": 0
+          }
+        },
+        "urgencia": {
+          "type": "score",
+          "score": 2.43,
+          "probabilities": {
+            "0": 0.02,
+            "1": 0.12,
+            "2": 0.28,
+            "3": 0.58
+          }
+        },
+        "riscoMeteorologico": {
+          "type": "score",
+          "score": 0.64,
+          "probabilities": {
+            "0": 0.5,
+            "1": 0.37,
+            "2": 0.13,
+            "3": 0
+          }
+        },
+        "precisaRevisaoPIC": {
+          "type": "boolean",
+          "probability": 0.61
+        },
+        "continuarVoo": {
+          "type": "boolean",
+          "probability": 0.89
+        }
+      },
+      "usage": {
+        "inputTokens": 3091,
+        "outputTokens": 303,
+        "totalTokens": 3394
+      },
+      "confidence": {
+        "acaoMissao": 0.96,
+        "manobraVertical": 0.64,
+        "manobraLateral": 0.96,
+        "destinoPreferido": 0.28,
+        "urgencia": 0.43,
+        "riscoMeteorologico": 0.36
+      }
+    },
+    "trafego_porto": {
+      "versao_contrato": 3,
+      "fonte": "jev",
+      "modelo": "typesafe-ai/jev",
+      "momento": "incidente",
+      "latencia_ms": 439,
+      "answers": {
+        "acaoMissao": {
+          "type": "choice",
+          "choice": "prosseguir",
+          "probabilities": {
+            "desviar_alternativo": 0.02,
+            "orbitar": 0.01,
+            "prosseguir": 0.96,
+            "abortar_emergencia": 0.01,
+            "regressar_base": 0
+          }
+        },
+        "manobraVertical": {
+          "type": "choice",
+          "choice": "subir",
+          "probabilities": {
+            "manter": 0.11,
+            "descer": 0.05,
+            "subir": 0.84
+          }
+        },
+        "manobraLateral": {
+          "type": "choice",
+          "choice": "esquerda",
+          "probabilities": {
+            "direita": 0.14,
+            "manter": 0.01,
+            "esquerda": 0.85
+          }
+        },
+        "destinoPreferido": {
+          "type": "choice",
+          "choice": "aeroporto_alternativo",
+          "probabilities": {
+            "aeroporto_alternativo": 0.76,
+            "planeado": 0.16,
+            "stol_proximo": 0,
+            "origem": 0.08,
+            "hospital_alternativo": 0
+          }
+        },
+        "urgencia": {
+          "type": "score",
+          "score": 2.33,
+          "probabilities": {
+            "0": 0.04,
+            "1": 0.12,
+            "2": 0.32,
+            "3": 0.52
+          }
+        },
+        "riscoMeteorologico": {
+          "type": "score",
+          "score": 0.54,
+          "probabilities": {
+            "0": 0.59,
+            "1": 0.29,
+            "2": 0.12,
+            "3": 0
+          }
+        },
+        "precisaRevisaoPIC": {
+          "type": "boolean",
+          "probability": 0.67
+        },
+        "continuarVoo": {
+          "type": "boolean",
+          "probability": 0.91
+        }
+      },
+      "usage": {
+        "inputTokens": 3081,
+        "outputTokens": 304,
+        "totalTokens": 3385
+      },
+      "confidence": {
+        "acaoMissao": 0.94,
+        "manobraVertical": 0.77,
+        "manobraLateral": 0.78,
+        "destinoPreferido": 0.7,
+        "urgencia": 0.33,
+        "riscoMeteorologico": 0.46
+      }
+    },
+    "anoitecer": {
+      "versao_contrato": 3,
+      "fonte": "jev",
+      "modelo": "typesafe-ai/jev",
+      "momento": "incidente",
+      "latencia_ms": 414,
+      "answers": {
+        "acaoMissao": {
+          "type": "choice",
+          "choice": "prosseguir",
+          "probabilities": {
+            "regressar_base": 0.01,
+            "abortar_emergencia": 0.01,
+            "desviar_alternativo": 0.1,
+            "orbitar": 0.16,
+            "prosseguir": 0.72
+          }
+        },
+        "manobraVertical": {
+          "type": "choice",
+          "choice": "manter",
+          "probabilities": {
+            "manter": 0.9,
+            "subir": 0.06,
+            "descer": 0.04
+          }
+        },
+        "manobraLateral": {
+          "type": "choice",
+          "choice": "manter",
+          "probabilities": {
+            "direita": 0.06,
+            "manter": 0.92,
+            "esquerda": 0.02
+          }
+        },
+        "destinoPreferido": {
+          "type": "choice",
+          "choice": "aeroporto_alternativo",
+          "probabilities": {
+            "aeroporto_alternativo": 0.82,
+            "hospital_alternativo": 0,
+            "origem": 0.08,
+            "stol_proximo": 0,
+            "planeado": 0.1
+          }
+        },
+        "urgencia": {
+          "type": "score",
+          "score": 1.13,
+          "probabilities": {
+            "0": 0.04,
+            "1": 0.83,
+            "2": 0.1,
+            "3": 0.03
+          }
+        },
+        "riscoMeteorologico": {
+          "type": "score",
+          "score": 1.9,
+          "probabilities": {
+            "0": 0,
+            "1": 0.17,
+            "2": 0.76,
+            "3": 0.07
+          }
+        },
+        "precisaRevisaoPIC": {
+          "type": "boolean",
+          "probability": 0.73
+        },
+        "continuarVoo": {
+          "type": "boolean",
+          "probability": 0.8
+        }
+      },
+      "usage": {
+        "inputTokens": 2955,
+        "outputTokens": 303,
+        "totalTokens": 3258
+      },
+      "confidence": {
+        "acaoMissao": 0.65,
+        "manobraVertical": 0.84,
+        "manobraLateral": 0.87,
+        "destinoPreferido": 0.77,
+        "urgencia": 0.8,
+        "riscoMeteorologico": 0.76
+      }
+    },
+    "vento_porto": {
+      "versao_contrato": 3,
+      "fonte": "jev",
+      "modelo": "typesafe-ai/jev",
+      "momento": "incidente",
+      "latencia_ms": 482,
+      "answers": {
+        "acaoMissao": {
+          "type": "choice",
+          "choice": "prosseguir",
+          "probabilities": {
+            "prosseguir": 0.98,
+            "abortar_emergencia": 0,
+            "orbitar": 0,
+            "desviar_alternativo": 0.01,
+            "regressar_base": 0.01
+          }
+        },
+        "manobraVertical": {
+          "type": "choice",
+          "choice": "manter",
+          "probabilities": {
+            "descer": 0.05,
+            "manter": 0.89,
+            "subir": 0.06
+          }
+        },
+        "manobraLateral": {
+          "type": "choice",
+          "choice": "manter",
+          "probabilities": {
+            "direita": 0.1,
+            "esquerda": 0.02,
+            "manter": 0.88
+          }
+        },
+        "destinoPreferido": {
+          "type": "choice",
+          "choice": "aeroporto_alternativo",
+          "probabilities": {
+            "origem": 0.22,
+            "planeado": 0.12,
+            "stol_proximo": 0,
+            "hospital_alternativo": 0,
+            "aeroporto_alternativo": 0.66
+          }
+        },
+        "urgencia": {
+          "type": "score",
+          "score": 0.95,
+          "probabilities": {
+            "0": 0.16,
+            "1": 0.76,
+            "2": 0.06,
+            "3": 0.02
+          }
+        },
+        "riscoMeteorologico": {
+          "type": "score",
+          "score": 1.63,
+          "probabilities": {
+            "0": 0,
+            "1": 0.38,
+            "2": 0.61,
+            "3": 0.01
+          }
+        },
+        "precisaRevisaoPIC": {
+          "type": "boolean",
+          "probability": 0.56
+        },
+        "continuarVoo": {
+          "type": "boolean",
+          "probability": 0.87
+        }
+      },
+      "usage": {
+        "inputTokens": 2954,
+        "outputTokens": 303,
+        "totalTokens": 3257
+      },
+      "confidence": {
+        "acaoMissao": 0.97,
+        "manobraVertical": 0.83,
+        "manobraLateral": 0.81,
+        "destinoPreferido": 0.56,
+        "urgencia": 0.73,
+        "riscoMeteorologico": 0.62
+      }
+    },
+    "final_porto": {
+      "versao_contrato": 3,
+      "fonte": "jev",
+      "modelo": "typesafe-ai/jev",
+      "momento": "incidente",
+      "latencia_ms": 417,
+      "answers": {
+        "acaoMissao": {
+          "type": "choice",
+          "choice": "prosseguir",
+          "probabilities": {
+            "orbitar": 0,
+            "desviar_alternativo": 0.02,
+            "regressar_base": 0.01,
+            "prosseguir": 0.97,
+            "abortar_emergencia": 0
+          }
+        },
+        "manobraVertical": {
+          "type": "choice",
+          "choice": "manter",
+          "probabilities": {
+            "subir": 0.07,
+            "manter": 0.85,
+            "descer": 0.08
+          }
+        },
+        "manobraLateral": {
+          "type": "choice",
+          "choice": "manter",
+          "probabilities": {
+            "direita": 0.04,
+            "manter": 0.95,
+            "esquerda": 0.01
+          }
+        },
+        "destinoPreferido": {
+          "type": "choice",
+          "choice": "aeroporto_alternativo",
+          "probabilities": {
+            "hospital_alternativo": 0,
+            "planeado": 0.14,
+            "stol_proximo": 0.01,
+            "origem": 0.16,
+            "aeroporto_alternativo": 0.69
+          }
+        },
+        "urgencia": {
+          "type": "score",
+          "score": 0.94,
+          "probabilities": {
+            "0": 0.2,
+            "1": 0.69,
+            "2": 0.09,
+            "3": 0.02
+          }
+        },
+        "riscoMeteorologico": {
+          "type": "score",
+          "score": 1.87,
+          "probabilities": {
+            "0": 0,
+            "1": 0.17,
+            "2": 0.78,
+            "3": 0.05
+          }
+        },
+        "precisaRevisaoPIC": {
+          "type": "boolean",
+          "probability": 0.59
+        },
+        "continuarVoo": {
+          "type": "boolean",
+          "probability": 0.87
+        }
+      },
+      "usage": {
+        "inputTokens": 2951,
+        "outputTokens": 303,
+        "totalTokens": 3254
+      },
+      "confidence": {
+        "acaoMissao": 0.96,
+        "manobraVertical": 0.77,
+        "manobraLateral": 0.92,
+        "destinoPreferido": 0.63,
+        "urgencia": 0.67,
+        "riscoMeteorologico": 0.78
+      }
+    }
+  },
+  "percurso": [
+    {
+      "id": "baloes",
+      "entrada": {
+        "aeronave": {
+          "tipo": "LUS-222",
+          "fuel_kg": 644,
+          "payload_kg": 620,
+          "config_cabine": "passageiros",
+          "tripulantes": 2,
+          "integridade": 100,
+          "alcance_restante_km": 630
+        },
+        "voo": {
+          "posicao_x_m": 492,
+          "posicao_z_m": 32064,
+          "altitude_m": 480,
+          "velocidade_ms": 89.3,
+          "subida_ms": 0,
+          "rumo_rad": -0.003,
+          "tempo_s": 84,
+          "fase": "em_rota"
+        },
+        "missao": {
+          "tipo": "porto",
+          "origem": "origem",
+          "destino": "planeado",
+          "almas": 8,
+          "carga": "Aproximação ilustrativa ao Aeroporto Francisco Sá Carneiro no anoitecer de São João. Balões hipotéticos entram no corredor com o vento.",
+          "relogio_s": 2116,
+          "prioridade_comandante": "integridade"
+        },
+        "ambiente": {
+          "tecto_ft": 1800,
+          "vis_km": 10,
+          "vento_kt": 15,
+          "superficie_pista": "pavimentada",
+          "comprimento_pista_m": 3180,
+          "luz_dia": true
+        },
+        "geometria": {
+          "obstaculos": [
+            {
+              "tipo": "balões iluminados",
+              "visual": "baloes",
+              "em_rota": true,
+              "distancia_m": 800,
+              "segundos_ate_ao_contacto": 12,
+              "folga_por_cima_m": 35,
+              "folga_por_baixo_m": -15,
+              "folga_pela_esquerda_m": 25,
+              "folga_pela_direita_m": 95,
+              "altura_m": 18
+            }
+          ]
+        },
+        "alternativas": [
+          {
+            "id": "origem",
+            "tipo": "origem",
+            "distancia_km": 32,
+            "pista_m": 1800,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 550,
+            "combustivel_necessario_kg": 114
+          },
+          {
+            "id": "planeado",
+            "tipo": "planeado",
+            "distancia_km": 133,
+            "pista_m": 3180,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 550,
+            "combustivel_necessario_kg": 251
+          },
+          {
+            "id": "aeroporto_alternativo",
+            "tipo": "aeroporto_alternativo",
+            "distancia_km": 101,
+            "pista_m": 1600,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 550,
+            "combustivel_necessario_kg": 208
+          }
+        ],
+        "restricoes": {
+          "nunca_desviar": false,
+          "preferir_stol": false,
+          "risco_maximo": "medio",
+          "pic_disponivel": true
+        },
+        "incidente": {
+          "id": "baloes",
+          "tipo": "baloes",
+          "resumo": "Balões de São João, nesta hipótese empurrados pelo vento, aproximam-se do corredor de chegada. Há margem lateral à direita."
+        }
+      },
+      "antes": {
+        "xM": 491.88176395970544,
+        "zM": 32064.343232682655,
+        "altitudeM": 480,
+        "velocidadeMs": 89.30381387748479,
+        "velocidadeVerticalMs": 0,
+        "rumoRad": -0.0034590151363504728,
+        "bankRad": -0.00040987460109665364,
+        "pitchRad": 0,
+        "combustivelKg": 644.0239518499783,
+        "payloadKg": 620,
+        "massaKg": 9764.023951849978,
+        "distanciaPercorridaM": 7081.453176537898,
+        "tempoS": 83.9999999999995,
+        "integridade": 100,
+        "destino": "planeado"
+      },
+      "resposta": {
+        "versao_contrato": 3,
+        "fonte": "jev",
+        "modelo": "typesafe-ai/jev",
+        "momento": "incidente",
+        "latencia_ms": 436,
+        "answers": {
+          "acaoMissao": {
+            "type": "choice",
+            "choice": "prosseguir",
+            "probabilities": {
+              "regressar_base": 0,
+              "prosseguir": 0.97,
+              "abortar_emergencia": 0.02,
+              "desviar_alternativo": 0.01,
+              "orbitar": 0
+            }
+          },
+          "manobraVertical": {
+            "type": "choice",
+            "choice": "subir",
+            "probabilities": {
+              "manter": 0.15,
+              "subir": 0.76,
+              "descer": 0.09
+            }
+          },
+          "manobraLateral": {
+            "type": "choice",
+            "choice": "direita",
+            "probabilities": {
+              "direita": 0.97,
+              "manter": 0.01,
+              "esquerda": 0.02
+            }
+          },
+          "destinoPreferido": {
+            "type": "choice",
+            "choice": "aeroporto_alternativo",
+            "probabilities": {
+              "stol_proximo": 0,
+              "origem": 0.42,
+              "planeado": 0.14,
+              "aeroporto_alternativo": 0.44,
+              "hospital_alternativo": 0
+            }
+          },
+          "urgencia": {
+            "type": "score",
+            "score": 2.43,
+            "probabilities": {
+              "0": 0.02,
+              "1": 0.12,
+              "2": 0.28,
+              "3": 0.58
+            }
+          },
+          "riscoMeteorologico": {
+            "type": "score",
+            "score": 0.64,
+            "probabilities": {
+              "0": 0.5,
+              "1": 0.37,
+              "2": 0.13,
+              "3": 0
+            }
+          },
+          "precisaRevisaoPIC": {
+            "type": "boolean",
+            "probability": 0.61
+          },
+          "continuarVoo": {
+            "type": "boolean",
+            "probability": 0.89
+          }
+        },
+        "usage": {
+          "inputTokens": 3091,
+          "outputTokens": 303,
+          "totalTokens": 3394
+        },
+        "confidence": {
+          "acaoMissao": 0.96,
+          "manobraVertical": 0.64,
+          "manobraLateral": 0.96,
+          "destinoPreferido": 0.28,
+          "urgencia": 0.43,
+          "riscoMeteorologico": 0.36
+        }
+      },
+      "supervisor": {
+        "interveio": false,
+        "motivo": null,
+        "proposta": {
+          "acao": "prosseguir",
+          "destino": "aeroporto_alternativo",
+          "vertical": "subir",
+          "lateral": "direita"
+        },
+        "aplicada": {
+          "acao": "prosseguir",
+          "destino": "planeado",
+          "vertical": "subir",
+          "lateral": "direita"
+        },
+        "fonte": "jev"
+      },
+      "depois": {
+        "xM": 491.88176395970544,
+        "zM": 32064.343232682655,
+        "altitudeM": 480,
+        "velocidadeMs": 89.30381387748479,
+        "velocidadeVerticalMs": 0,
+        "rumoRad": -0.0034590151363504728,
+        "bankRad": -0.00040987460109665364,
+        "pitchRad": 0,
+        "combustivelKg": 644.0239518499783,
+        "payloadKg": 620,
+        "massaKg": 9764.023951849978,
+        "distanciaPercorridaM": 7081.453176537898,
+        "tempoS": 83.9999999999995,
+        "integridade": 100,
+        "destino": "planeado"
+      }
+    },
+    {
+      "id": "trafego_porto",
+      "entrada": {
+        "aeronave": {
+          "tipo": "LUS-222",
+          "fuel_kg": 599,
+          "payload_kg": 620,
+          "config_cabine": "passageiros",
+          "tripulantes": 2,
+          "integridade": 100,
+          "alcance_restante_km": 586
+        },
+        "voo": {
+          "posicao_x_m": 4332,
+          "posicao_z_m": 85066,
+          "altitude_m": 480,
+          "velocidade_ms": 89.3,
+          "subida_ms": 0,
+          "rumo_rad": -0.054,
+          "tempo_s": 721,
+          "fase": "em_rota"
+        },
+        "missao": {
+          "tipo": "porto",
+          "origem": "origem",
+          "destino": "planeado",
+          "almas": 8,
+          "carga": "Aproximação ilustrativa ao Aeroporto Francisco Sá Carneiro no anoitecer de São João. Balões hipotéticos entram no corredor com o vento.",
+          "relogio_s": 1479,
+          "prioridade_comandante": "integridade"
+        },
+        "ambiente": {
+          "tecto_ft": 1800,
+          "vis_km": 10,
+          "vento_kt": 15,
+          "superficie_pista": "pavimentada",
+          "comprimento_pista_m": 3180,
+          "luz_dia": true
+        },
+        "geometria": {
+          "obstaculos": [
+            {
+              "tipo": "tráfego de chegada",
+              "visual": "trafego",
+              "em_rota": true,
+              "distancia_m": 950,
+              "segundos_ate_ao_contacto": 14,
+              "folga_por_cima_m": 70,
+              "folga_por_baixo_m": -20,
+              "folga_pela_esquerda_m": 85,
+              "folga_pela_direita_m": 30,
+              "altura_m": 14
+            }
+          ]
+        },
+        "alternativas": [
+          {
+            "id": "origem",
+            "tipo": "origem",
+            "distancia_km": 85,
+            "pista_m": 1800,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 546,
+            "combustivel_necessario_kg": 186
+          },
+          {
+            "id": "planeado",
+            "tipo": "planeado",
+            "distancia_km": 80,
+            "pista_m": 3180,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 546,
+            "combustivel_necessario_kg": 179
+          },
+          {
+            "id": "aeroporto_alternativo",
+            "tipo": "aeroporto_alternativo",
+            "distancia_km": 54,
+            "pista_m": 1600,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 546,
+            "combustivel_necessario_kg": 143
+          }
+        ],
+        "restricoes": {
+          "nunca_desviar": false,
+          "preferir_stol": false,
+          "risco_maximo": "medio",
+          "pic_disponivel": true
+        },
+        "incidente": {
+          "id": "trafego_porto",
+          "tipo": "trafego",
+          "resumo": "Uma chegada comercial entra na sequência de aproximação. O JEV tem de gerir tempo e separação."
+        }
+      },
+      "antes": {
+        "xM": 4331.520480350211,
+        "zM": 85065.8637875239,
+        "altitudeM": 480.0000000000323,
+        "velocidadeMs": 89.33647468979846,
+        "velocidadeVerticalMs": -8.085976332949941e-13,
+        "rumoRad": -0.05375245910383661,
+        "bankRad": -0.0006513989534970171,
+        "pitchRad": -9.051147765822123e-15,
+        "combustivelKg": 599.0497840365333,
+        "payloadKg": 620,
+        "massaKg": 9719.049784036533,
+        "distanciaPercorridaM": 60945.052023921875,
+        "tempoS": 721.0000000000954,
+        "integridade": 100,
+        "destino": "planeado"
+      },
+      "resposta": {
+        "versao_contrato": 3,
+        "fonte": "jev",
+        "modelo": "typesafe-ai/jev",
+        "momento": "incidente",
+        "latencia_ms": 439,
+        "answers": {
+          "acaoMissao": {
+            "type": "choice",
+            "choice": "prosseguir",
+            "probabilities": {
+              "desviar_alternativo": 0.02,
+              "orbitar": 0.01,
+              "prosseguir": 0.96,
+              "abortar_emergencia": 0.01,
+              "regressar_base": 0
+            }
+          },
+          "manobraVertical": {
+            "type": "choice",
+            "choice": "subir",
+            "probabilities": {
+              "manter": 0.11,
+              "descer": 0.05,
+              "subir": 0.84
+            }
+          },
+          "manobraLateral": {
+            "type": "choice",
+            "choice": "esquerda",
+            "probabilities": {
+              "direita": 0.14,
+              "manter": 0.01,
+              "esquerda": 0.85
+            }
+          },
+          "destinoPreferido": {
+            "type": "choice",
+            "choice": "aeroporto_alternativo",
+            "probabilities": {
+              "aeroporto_alternativo": 0.76,
+              "planeado": 0.16,
+              "stol_proximo": 0,
+              "origem": 0.08,
+              "hospital_alternativo": 0
+            }
+          },
+          "urgencia": {
+            "type": "score",
+            "score": 2.33,
+            "probabilities": {
+              "0": 0.04,
+              "1": 0.12,
+              "2": 0.32,
+              "3": 0.52
+            }
+          },
+          "riscoMeteorologico": {
+            "type": "score",
+            "score": 0.54,
+            "probabilities": {
+              "0": 0.59,
+              "1": 0.29,
+              "2": 0.12,
+              "3": 0
+            }
+          },
+          "precisaRevisaoPIC": {
+            "type": "boolean",
+            "probability": 0.67
+          },
+          "continuarVoo": {
+            "type": "boolean",
+            "probability": 0.91
+          }
+        },
+        "usage": {
+          "inputTokens": 3081,
+          "outputTokens": 304,
+          "totalTokens": 3385
+        },
+        "confidence": {
+          "acaoMissao": 0.94,
+          "manobraVertical": 0.77,
+          "manobraLateral": 0.78,
+          "destinoPreferido": 0.7,
+          "urgencia": 0.33,
+          "riscoMeteorologico": 0.46
+        }
+      },
+      "supervisor": {
+        "interveio": false,
+        "motivo": null,
+        "proposta": {
+          "acao": "prosseguir",
+          "destino": "aeroporto_alternativo",
+          "vertical": "subir",
+          "lateral": "esquerda"
+        },
+        "aplicada": {
+          "acao": "prosseguir",
+          "destino": "planeado",
+          "vertical": "subir",
+          "lateral": "esquerda"
+        },
+        "fonte": "jev"
+      },
+      "depois": {
+        "xM": 4331.520480350211,
+        "zM": 85065.8637875239,
+        "altitudeM": 480.0000000000323,
+        "velocidadeMs": 89.33647468979846,
+        "velocidadeVerticalMs": -8.085976332949941e-13,
+        "rumoRad": -0.05375245910383661,
+        "bankRad": -0.0006513989534970171,
+        "pitchRad": -9.051147765822123e-15,
+        "combustivelKg": 599.0497840365333,
+        "payloadKg": 620,
+        "massaKg": 9719.049784036533,
+        "distanciaPercorridaM": 60945.052023921875,
+        "tempoS": 721.0000000000954,
+        "integridade": 100,
+        "destino": "planeado"
+      }
+    },
+    {
+      "id": "anoitecer",
+      "entrada": {
+        "aeronave": {
+          "tipo": "LUS-222",
+          "fuel_kg": 576,
+          "payload_kg": 620,
+          "config_cabine": "passageiros",
+          "tripulantes": 2,
+          "integridade": 100,
+          "alcance_restante_km": 563
+        },
+        "voo": {
+          "posicao_x_m": 3096,
+          "posicao_z_m": 112009,
+          "altitude_m": 480,
+          "velocidade_ms": 89.4,
+          "subida_ms": 0,
+          "rumo_rad": -0.058,
+          "tempo_s": 1050,
+          "fase": "em_rota"
+        },
+        "missao": {
+          "tipo": "porto",
+          "origem": "origem",
+          "destino": "planeado",
+          "almas": 8,
+          "carga": "Aproximação ilustrativa ao Aeroporto Francisco Sá Carneiro no anoitecer de São João. Balões hipotéticos entram no corredor com o vento.",
+          "relogio_s": 1150,
+          "prioridade_comandante": "integridade"
+        },
+        "ambiente": {
+          "tecto_ft": 1250,
+          "vis_km": 5,
+          "vento_kt": 15,
+          "superficie_pista": "pavimentada",
+          "comprimento_pista_m": 3180,
+          "luz_dia": false
+        },
+        "geometria": {
+          "obstaculos": []
+        },
+        "alternativas": [
+          {
+            "id": "origem",
+            "tipo": "origem",
+            "distancia_km": 112,
+            "pista_m": 1800,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 544,
+            "combustivel_necessario_kg": 222
+          },
+          {
+            "id": "planeado",
+            "tipo": "planeado",
+            "distancia_km": 53,
+            "pista_m": 3180,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 544,
+            "combustivel_necessario_kg": 142
+          },
+          {
+            "id": "aeroporto_alternativo",
+            "tipo": "aeroporto_alternativo",
+            "distancia_km": 33,
+            "pista_m": 1600,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 544,
+            "combustivel_necessario_kg": 116
+          }
+        ],
+        "restricoes": {
+          "nunca_desviar": false,
+          "preferir_stol": false,
+          "risco_maximo": "medio",
+          "pic_disponivel": true
+        },
+        "incidente": {
+          "id": "anoitecer",
+          "tipo": "luz",
+          "resumo": "A luz cai sobre a aproximação. É preciso rever a visibilidade e a reserva antes de prosseguir."
+        }
+      },
+      "antes": {
+        "xM": 3096.241256804785,
+        "zM": 112009.02765365146,
+        "altitudeM": 480.00000000001137,
+        "velocidadeMs": 89.35208523199464,
+        "velocidadeVerticalMs": -2.8421709430404007e-13,
+        "rumoRad": -0.05778728900670116,
+        "bankRad": -0.0009789739910643226,
+        "pitchRad": -3.180866944135618e-15,
+        "combustivelKg": 575.8126527702752,
+        "payloadKg": 620,
+        "massaKg": 9695.812652770275,
+        "distanciaPercorridaM": 88558.72269644101,
+        "tempoS": 1050.0000000001405,
+        "integridade": 100,
+        "destino": "planeado"
+      },
+      "resposta": {
+        "versao_contrato": 3,
+        "fonte": "jev",
+        "modelo": "typesafe-ai/jev",
+        "momento": "incidente",
+        "latencia_ms": 414,
+        "answers": {
+          "acaoMissao": {
+            "type": "choice",
+            "choice": "prosseguir",
+            "probabilities": {
+              "regressar_base": 0.01,
+              "abortar_emergencia": 0.01,
+              "desviar_alternativo": 0.1,
+              "orbitar": 0.16,
+              "prosseguir": 0.72
+            }
+          },
+          "manobraVertical": {
+            "type": "choice",
+            "choice": "manter",
+            "probabilities": {
+              "manter": 0.9,
+              "subir": 0.06,
+              "descer": 0.04
+            }
+          },
+          "manobraLateral": {
+            "type": "choice",
+            "choice": "manter",
+            "probabilities": {
+              "direita": 0.06,
+              "manter": 0.92,
+              "esquerda": 0.02
+            }
+          },
+          "destinoPreferido": {
+            "type": "choice",
+            "choice": "aeroporto_alternativo",
+            "probabilities": {
+              "aeroporto_alternativo": 0.82,
+              "hospital_alternativo": 0,
+              "origem": 0.08,
+              "stol_proximo": 0,
+              "planeado": 0.1
+            }
+          },
+          "urgencia": {
+            "type": "score",
+            "score": 1.13,
+            "probabilities": {
+              "0": 0.04,
+              "1": 0.83,
+              "2": 0.1,
+              "3": 0.03
+            }
+          },
+          "riscoMeteorologico": {
+            "type": "score",
+            "score": 1.9,
+            "probabilities": {
+              "0": 0,
+              "1": 0.17,
+              "2": 0.76,
+              "3": 0.07
+            }
+          },
+          "precisaRevisaoPIC": {
+            "type": "boolean",
+            "probability": 0.73
+          },
+          "continuarVoo": {
+            "type": "boolean",
+            "probability": 0.8
+          }
+        },
+        "usage": {
+          "inputTokens": 2955,
+          "outputTokens": 303,
+          "totalTokens": 3258
+        },
+        "confidence": {
+          "acaoMissao": 0.65,
+          "manobraVertical": 0.84,
+          "manobraLateral": 0.87,
+          "destinoPreferido": 0.77,
+          "urgencia": 0.8,
+          "riscoMeteorologico": 0.76
+        }
+      },
+      "supervisor": {
+        "interveio": false,
+        "motivo": null,
+        "proposta": {
+          "acao": "prosseguir",
+          "destino": "aeroporto_alternativo",
+          "vertical": "manter",
+          "lateral": "manter"
+        },
+        "aplicada": {
+          "acao": "prosseguir",
+          "destino": "planeado",
+          "vertical": "manter",
+          "lateral": "manter"
+        },
+        "fonte": "jev"
+      },
+      "depois": {
+        "xM": 3096.241256804785,
+        "zM": 112009.02765365146,
+        "altitudeM": 480.00000000001137,
+        "velocidadeMs": 89.35208523199464,
+        "velocidadeVerticalMs": -2.8421709430404007e-13,
+        "rumoRad": -0.05778728900670116,
+        "bankRad": -0.0009789739910643226,
+        "pitchRad": -3.180866944135618e-15,
+        "combustivelKg": 575.8126527702752,
+        "payloadKg": 620,
+        "massaKg": 9695.812652770275,
+        "distanciaPercorridaM": 88558.72269644101,
+        "tempoS": 1050.0000000001405,
+        "integridade": 100,
+        "destino": "planeado"
+      }
+    },
+    {
+      "id": "vento_porto",
+      "entrada": {
+        "aeronave": {
+          "tipo": "LUS-222",
+          "fuel_kg": 548,
+          "payload_kg": 620,
+          "config_cabine": "passageiros",
+          "tripulantes": 2,
+          "integridade": 100,
+          "alcance_restante_km": 535
+        },
+        "voo": {
+          "posicao_x_m": 2433,
+          "posicao_z_m": 145700,
+          "altitude_m": 480,
+          "velocidade_ms": 89.4,
+          "subida_ms": 0,
+          "rumo_rad": -0.124,
+          "tempo_s": 1451,
+          "fase": "em_rota"
+        },
+        "missao": {
+          "tipo": "porto",
+          "origem": "origem",
+          "destino": "planeado",
+          "almas": 8,
+          "carga": "Aproximação ilustrativa ao Aeroporto Francisco Sá Carneiro no anoitecer de São João. Balões hipotéticos entram no corredor com o vento.",
+          "relogio_s": 749,
+          "prioridade_comandante": "integridade"
+        },
+        "ambiente": {
+          "tecto_ft": 1250,
+          "vis_km": 5,
+          "vento_kt": 26,
+          "superficie_pista": "pavimentada",
+          "comprimento_pista_m": 3180,
+          "luz_dia": false
+        },
+        "geometria": {
+          "obstaculos": []
+        },
+        "alternativas": [
+          {
+            "id": "origem",
+            "tipo": "origem",
+            "distancia_km": 146,
+            "pista_m": 1800,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 575,
+            "combustivel_necessario_kg": 290
+          },
+          {
+            "id": "planeado",
+            "tipo": "planeado",
+            "distancia_km": 19,
+            "pista_m": 3180,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 575,
+            "combustivel_necessario_kg": 100
+          },
+          {
+            "id": "aeroporto_alternativo",
+            "tipo": "aeroporto_alternativo",
+            "distancia_km": 32,
+            "pista_m": 1600,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 575,
+            "combustivel_necessario_kg": 118
+          }
+        ],
+        "restricoes": {
+          "nunca_desviar": false,
+          "preferir_stol": false,
+          "risco_maximo": "medio",
+          "pic_disponivel": true
+        },
+        "incidente": {
+          "id": "vento_porto",
+          "tipo": "meteorologia",
+          "resumo": "O vento de frente aumenta na aproximação final ao Porto. Pista e reserva são recalculadas."
+        }
+      },
+      "antes": {
+        "xM": 2432.868214115445,
+        "zM": 145700.04188156698,
+        "altitudeM": 480.00000000001137,
+        "velocidadeMs": 89.3709664645142,
+        "velocidadeVerticalMs": -2.8421709430404007e-13,
+        "rumoRad": -0.12392154035085245,
+        "bankRad": -0.002502585206109681,
+        "pitchRad": -3.180194928482639e-15,
+        "combustivelKg": 547.5880314143851,
+        "payloadKg": 620,
+        "massaKg": 9667.588031414385,
+        "distanciaPercorridaM": 122262.87948277387,
+        "tempoS": 1450.9999999997758,
+        "integridade": 100,
+        "destino": "planeado"
+      },
+      "resposta": {
+        "versao_contrato": 3,
+        "fonte": "jev",
+        "modelo": "typesafe-ai/jev",
+        "momento": "incidente",
+        "latencia_ms": 482,
+        "answers": {
+          "acaoMissao": {
+            "type": "choice",
+            "choice": "prosseguir",
+            "probabilities": {
+              "prosseguir": 0.98,
+              "abortar_emergencia": 0,
+              "orbitar": 0,
+              "desviar_alternativo": 0.01,
+              "regressar_base": 0.01
+            }
+          },
+          "manobraVertical": {
+            "type": "choice",
+            "choice": "manter",
+            "probabilities": {
+              "descer": 0.05,
+              "manter": 0.89,
+              "subir": 0.06
+            }
+          },
+          "manobraLateral": {
+            "type": "choice",
+            "choice": "manter",
+            "probabilities": {
+              "direita": 0.1,
+              "esquerda": 0.02,
+              "manter": 0.88
+            }
+          },
+          "destinoPreferido": {
+            "type": "choice",
+            "choice": "aeroporto_alternativo",
+            "probabilities": {
+              "origem": 0.22,
+              "planeado": 0.12,
+              "stol_proximo": 0,
+              "hospital_alternativo": 0,
+              "aeroporto_alternativo": 0.66
+            }
+          },
+          "urgencia": {
+            "type": "score",
+            "score": 0.95,
+            "probabilities": {
+              "0": 0.16,
+              "1": 0.76,
+              "2": 0.06,
+              "3": 0.02
+            }
+          },
+          "riscoMeteorologico": {
+            "type": "score",
+            "score": 1.63,
+            "probabilities": {
+              "0": 0,
+              "1": 0.38,
+              "2": 0.61,
+              "3": 0.01
+            }
+          },
+          "precisaRevisaoPIC": {
+            "type": "boolean",
+            "probability": 0.56
+          },
+          "continuarVoo": {
+            "type": "boolean",
+            "probability": 0.87
+          }
+        },
+        "usage": {
+          "inputTokens": 2954,
+          "outputTokens": 303,
+          "totalTokens": 3257
+        },
+        "confidence": {
+          "acaoMissao": 0.97,
+          "manobraVertical": 0.83,
+          "manobraLateral": 0.81,
+          "destinoPreferido": 0.56,
+          "urgencia": 0.73,
+          "riscoMeteorologico": 0.62
+        }
+      },
+      "supervisor": {
+        "interveio": false,
+        "motivo": null,
+        "proposta": {
+          "acao": "prosseguir",
+          "destino": "aeroporto_alternativo",
+          "vertical": "manter",
+          "lateral": "manter"
+        },
+        "aplicada": {
+          "acao": "prosseguir",
+          "destino": "planeado",
+          "vertical": "manter",
+          "lateral": "manter"
+        },
+        "fonte": "jev"
+      },
+      "depois": {
+        "xM": 2432.868214115445,
+        "zM": 145700.04188156698,
+        "altitudeM": 480.00000000001137,
+        "velocidadeMs": 89.3709664645142,
+        "velocidadeVerticalMs": -2.8421709430404007e-13,
+        "rumoRad": -0.12392154035085245,
+        "bankRad": -0.002502585206109681,
+        "pitchRad": -3.180194928482639e-15,
+        "combustivelKg": 547.5880314143851,
+        "payloadKg": 620,
+        "massaKg": 9667.588031414385,
+        "distanciaPercorridaM": 122262.87948277387,
+        "tempoS": 1450.9999999997758,
+        "integridade": 100,
+        "destino": "planeado"
+      }
+    },
+    {
+      "id": "final_porto",
+      "entrada": {
+        "aeronave": {
+          "tipo": "LUS-222",
+          "fuel_kg": 543,
+          "payload_kg": 620,
+          "config_cabine": "passageiros",
+          "tripulantes": 2,
+          "integridade": 100,
+          "alcance_restante_km": 531
+        },
+        "voo": {
+          "posicao_x_m": 2019,
+          "posicao_z_m": 151040,
+          "altitude_m": 475,
+          "velocidade_ms": 89.4,
+          "subida_ms": -0.8,
+          "rumo_rad": -0.142,
+          "tempo_s": 1522,
+          "fase": "em_rota"
+        },
+        "missao": {
+          "tipo": "porto",
+          "origem": "origem",
+          "destino": "planeado",
+          "almas": 8,
+          "carga": "Aproximação ilustrativa ao Aeroporto Francisco Sá Carneiro no anoitecer de São João. Balões hipotéticos entram no corredor com o vento.",
+          "relogio_s": 678,
+          "prioridade_comandante": "integridade"
+        },
+        "ambiente": {
+          "tecto_ft": 1250,
+          "vis_km": 5,
+          "vento_kt": 28,
+          "superficie_pista": "pavimentada",
+          "comprimento_pista_m": 3180,
+          "luz_dia": false
+        },
+        "geometria": {
+          "obstaculos": []
+        },
+        "alternativas": [
+          {
+            "id": "origem",
+            "tipo": "origem",
+            "distancia_km": 151,
+            "pista_m": 1800,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 575,
+            "combustivel_necessario_kg": 298
+          },
+          {
+            "id": "planeado",
+            "tipo": "planeado",
+            "distancia_km": 14,
+            "pista_m": 3180,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 575,
+            "combustivel_necessario_kg": 92
+          },
+          {
+            "id": "aeroporto_alternativo",
+            "tipo": "aeroporto_alternativo",
+            "distancia_km": 34,
+            "pista_m": 1600,
+            "superficie": "pavimentada",
+            "pista_necessaria_m": 575,
+            "combustivel_necessario_kg": 122
+          }
+        ],
+        "restricoes": {
+          "nunca_desviar": false,
+          "preferir_stol": false,
+          "risco_maximo": "medio",
+          "pic_disponivel": true
+        },
+        "incidente": {
+          "id": "final_porto",
+          "tipo": "aproximacao",
+          "resumo": "A pista 17 aproxima-se. A visibilidade e o combustível ainda permitem a chegada?"
+        }
+      },
+      "antes": {
+        "xM": 2018.997025375137,
+        "zM": 151039.92024921635,
+        "altitudeM": 475.21077738517687,
+        "velocidadeMs": 89.3746109702811,
+        "velocidadeVerticalMs": -0.7693406256699235,
+        "rumoRad": -0.14208508422471827,
+        "bankRad": -0.002626166904784713,
+        "pitchRad": -0.008608150780068121,
+        "combustivelKg": 542.592922992634,
+        "payloadKg": 620,
+        "massaKg": 9662.592922992633,
+        "distanciaPercorridaM": 127618.87316982138,
+        "tempoS": 1521.9999999997112,
+        "integridade": 100,
+        "destino": "planeado"
+      },
+      "resposta": {
+        "versao_contrato": 3,
+        "fonte": "jev",
+        "modelo": "typesafe-ai/jev",
+        "momento": "incidente",
+        "latencia_ms": 417,
+        "answers": {
+          "acaoMissao": {
+            "type": "choice",
+            "choice": "prosseguir",
+            "probabilities": {
+              "orbitar": 0,
+              "desviar_alternativo": 0.02,
+              "regressar_base": 0.01,
+              "prosseguir": 0.97,
+              "abortar_emergencia": 0
+            }
+          },
+          "manobraVertical": {
+            "type": "choice",
+            "choice": "manter",
+            "probabilities": {
+              "subir": 0.07,
+              "manter": 0.85,
+              "descer": 0.08
+            }
+          },
+          "manobraLateral": {
+            "type": "choice",
+            "choice": "manter",
+            "probabilities": {
+              "direita": 0.04,
+              "manter": 0.95,
+              "esquerda": 0.01
+            }
+          },
+          "destinoPreferido": {
+            "type": "choice",
+            "choice": "aeroporto_alternativo",
+            "probabilities": {
+              "hospital_alternativo": 0,
+              "planeado": 0.14,
+              "stol_proximo": 0.01,
+              "origem": 0.16,
+              "aeroporto_alternativo": 0.69
+            }
+          },
+          "urgencia": {
+            "type": "score",
+            "score": 0.94,
+            "probabilities": {
+              "0": 0.2,
+              "1": 0.69,
+              "2": 0.09,
+              "3": 0.02
+            }
+          },
+          "riscoMeteorologico": {
+            "type": "score",
+            "score": 1.87,
+            "probabilities": {
+              "0": 0,
+              "1": 0.17,
+              "2": 0.78,
+              "3": 0.05
+            }
+          },
+          "precisaRevisaoPIC": {
+            "type": "boolean",
+            "probability": 0.59
+          },
+          "continuarVoo": {
+            "type": "boolean",
+            "probability": 0.87
+          }
+        },
+        "usage": {
+          "inputTokens": 2951,
+          "outputTokens": 303,
+          "totalTokens": 3254
+        },
+        "confidence": {
+          "acaoMissao": 0.96,
+          "manobraVertical": 0.77,
+          "manobraLateral": 0.92,
+          "destinoPreferido": 0.63,
+          "urgencia": 0.67,
+          "riscoMeteorologico": 0.78
+        }
+      },
+      "supervisor": {
+        "interveio": false,
+        "motivo": null,
+        "proposta": {
+          "acao": "prosseguir",
+          "destino": "aeroporto_alternativo",
+          "vertical": "manter",
+          "lateral": "manter"
+        },
+        "aplicada": {
+          "acao": "prosseguir",
+          "destino": "planeado",
+          "vertical": "manter",
+          "lateral": "manter"
+        },
+        "fonte": "jev"
+      },
+      "depois": {
+        "xM": 2018.997025375137,
+        "zM": 151039.92024921635,
+        "altitudeM": 475.21077738517687,
+        "velocidadeMs": 89.3746109702811,
+        "velocidadeVerticalMs": -0.7693406256699235,
+        "rumoRad": -0.14208508422471827,
+        "bankRad": -0.002626166904784713,
+        "pitchRad": -0.008608150780068121,
+        "combustivelKg": 542.592922992634,
+        "payloadKg": 620,
+        "massaKg": 9662.592922992633,
+        "distanciaPercorridaM": 127618.87316982138,
+        "tempoS": 1521.9999999997112,
+        "integridade": 100,
+        "destino": "planeado"
+      }
+    }
+  ],
+  "resultado": {
+    "tipo": "chegou",
+    "tempoS": 1752,
+    "destino": "planeado",
+    "fuelKg": 529
+  }
+}

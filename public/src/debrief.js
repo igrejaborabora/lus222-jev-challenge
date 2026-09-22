@@ -1,6 +1,6 @@
 import { deveEscalarPIC, etiquetarAcao, maxProbabilidade } from './decisao.js';
 
-export function teseCumprida(tese, answers, escalou) {
+export function teseCumprida(tese, answers) {
   if (!tese) return false;
   const acao = answers?.acaoMissao?.choice;
   const destino = answers?.destinoPreferido?.choice;
