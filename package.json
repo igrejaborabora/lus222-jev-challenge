@@ -12,9 +12,17 @@
     "dev": "npx --yes serve public -l 43123",
     "preview": "vercel dev --listen 43123",
     "test": "node --test lib/*.test.mjs",
+    "lint": "eslint api lib public/src scripts",
+    "replays:record": "node scripts/record-replays.mjs http://localhost:43123",
+    "counterfactuals:check": "node scripts/check-counterfactuals.mjs http://localhost:43123",
     "deploy": "vercel deploy --prod"
   },
   "dependencies": {
     "ai": "^7.0.107"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0"
   }
 }
