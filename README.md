@@ -29,7 +29,9 @@ As condições e alternativas dos cenários são hipóteses da demonstração. O
 
 ## Física e proveniência
 
-`public/src/simulacao.js` contém o perfil `ilustrativo-2`: massa, área de asa, sustentação/arrasto, empuxo, consumo, vento e limites assumidos. O integrador usa passos fixos de 0,1 s e um relógio de até 8×. As coordenadas da missão e as grandezas de voo usam unidades SI; o Three.js lê o resultado para o desenhar. A semente e as decisões permitem reproduzir o mesmo percurso. Uma aproximação completa demora cerca de 3–5 minutos a 8×; uma decisão de regresso pode encurtá-la.
+`public/src/simulacao.js` contém o perfil `ilustrativo-3`: massa, área de asa, sustentação/arrasto, empuxo, consumo, vento e limites assumidos. O integrador usa passos fixos de 0,1 s e um relógio de até 8×. As coordenadas da missão e as grandezas de voo usam unidades SI; o Three.js lê o resultado para o desenhar. A semente e as decisões permitem reproduzir o mesmo percurso. Uma aproximação completa demora cerca de 3–5 minutos a 8×; uma decisão de regresso pode encurtá-la.
+
+No incidente dos balões, o JEV recebe geometria estruturada (distância, tempo e folgas) e responde com ação, manobras e destino **condicional**. O simulador calcula a separação prevista com a mesma integração do voo; o supervisor altera uma manobra se a previsão entrar no perímetro ilustrativo de 36 m. A passagem regista a distância mínima efetiva ou termina como `separacao_perdida` se atravessar esse perímetro. O relógio simulado pára durante a avaliação de uma ameaça iminente. Os ícones 3D são ampliados para leitura, mas deslocam-se de acordo com as posições relativas em metros; não representam balões à escala real. Este cálculo não equivale a garantia operacional de separação.
 
 A referência da pista principal é a **LDA publicada de 3180 m para a pista 17** no [AIP Portugal, LPPR AD 2.13](https://ais.nav.pt/wp-content/uploads/AIS_Files/eAIP_Current/eAIP_Online/eAIP/html/eAIP/LP-AD-2.LPPR-en-PT.html). Esse valor contextual não calibra o avião. A [informação turística oficial do Porto](https://backoffice.visitporto.travel/pt-PT/sao-joao-the-porto-celebration) descreve os balões de São João; a presença no corredor de chegada nesta missão é **ficcional**.
 
@@ -49,7 +51,7 @@ scripts/record-replays.mjs  regenera gravações através do Gateway
 lib/*.test.mjs             testes de contrato, física, ramificação e replay
 ```
 
-O log JSON tem versão 3, perfil, semente, restrições, briefing, respostas originais, estados antes/depois, intervenções, tempos e eventuais contrafactuais. Os replays usam respostas gravadas: **não fazem pedidos ao JEV nem são um teste ao vivo**. Se uma avaliação ao vivo falhar, o relógio para e pode-se tentar de novo ou terminar como incompleta. O cliente espera 13 s e a função impõe 12 s.
+O log JSON tem versão 4, perfil, semente, restrições, briefing, respostas originais, estados antes/depois, intervenções, tempos, separação dos balões e eventuais contrafactuais. Os replays usam respostas gravadas: **não fazem pedidos ao JEV nem são um teste ao vivo**. Se uma avaliação ao vivo falhar, o relógio para e pode-se tentar de novo ou terminar como incompleta. O cliente espera 13 s e a função impõe 12 s.
 
 ## Executar
 

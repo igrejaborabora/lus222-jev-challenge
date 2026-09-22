@@ -1,8 +1,8 @@
-import { mulberry32 } from './decisao.js';
+import { mulberry32, offsetLateral } from './decisao.js';
 
 /** Parâmetros ilustrativos, não são dados certificados do LUS-222. */
 export const PERFIL = Object.freeze({
-  versao: 'ilustrativo-2',
+  versao: 'ilustrativo-3',
   massaVaziaKg: 8500,
   areaAsaM2: 45,
   clMax: 2.8,
@@ -122,7 +122,38 @@ export function criarMissao(cenarioId = 'medevac', semente = 222, restricoes = {
     eventosTratados: [],
     comando: { acao: 'prosseguir', vertical: 'manter', lateral: 'manter', urgencia: 1, evasaoAteS: 0 },
     orbitaRestanteS: 0,
+    ameacaAtiva: null,
+    separacoes: [],
   };
+}
+
+/** Centro e perímetro de proteção ilustrativos do grupo de balões, em metros SI. */
+export function localizarBaloes(voo, obstaculo) {
+  const d = obstaculo.distancia_m;
+  const lateral = offsetLateral(obstaculo);
+  const ameaca = {
+    id: 'baloes',
+    xM: voo.xM + Math.sin(voo.rumoRad) * d + Math.cos(voo.rumoRad) * lateral,
+    zM: voo.zM + Math.cos(voo.rumoRad) * d - Math.sin(voo.rumoRad) * lateral,
+    altitudeM: voo.altitudeM,
+    raioProtecaoM: 36,
+  };
+  return { ...ameaca, separacaoMinM: distanciaAmeacaM(voo, ameaca) };
+}
+
+export function distanciaAmeacaM(voo, ameaca) {
+  return Math.hypot(voo.xM - ameaca.xM, voo.zM - ameaca.zM, voo.altitudeM - ameaca.altitudeM);
+}
+
+function separacaoPrevistaM(m, comando, ameaca) {
+  let sim = { ...m, comando };
+  let minimo = distanciaAmeacaM(sim.voo, ameaca);
+  // Mesma integração e mesmo passo do voo; a prévia não muta a missão.
+  for (let i = 0; i < 180; i++) {
+    sim = { ...sim, voo: passoFisico(sim, PERFIL.passoS) };
+    minimo = Math.min(minimo, distanciaAmeacaM(sim.voo, ameaca));
+  }
+  return minimo;
 }
 
 export function proximoEvento(m) {
@@ -187,16 +218,33 @@ export function aplicarDecisao(m, answers, fonte = 'jev', consumirEvento = true)
     if (m.voo.combustivelKg < combustivelNecessarioKg(contexto, origem)) motivo = 'Combustível insuficiente para regressar com reserva';
   }
   const bloqueioRota = Boolean(motivo);
-  const ameaca = evento?.obstaculos?.find((o) => o.em_rota && o.segundos_ate_ao_contacto <= 15);
   let lateral = answers?.manobraLateral?.choice ?? 'manter';
   let vertical = answers?.manobraVertical?.choice ?? 'manter';
-  if (!motivo && ameaca && lateral === 'manter' && vertical === 'manter') {
-    motivo = 'Ameaça iminente sem manobra de separação';
-    lateral = ameaca.folga_pela_direita_m >= ameaca.folga_pela_esquerda_m ? 'direita' : 'esquerda';
-  }
   if (!motivo && vertical === 'descer' && m.voo.altitudeM < 180) {
     motivo = 'Descida bloqueada pelo limite de altitude';
     vertical = 'manter';
+  }
+  const baloes = evento?.tipo === 'baloes' ? localizarBaloes(m.voo, evento.obstaculos[0]) : null;
+  let separacaoPrevista = null;
+  if (baloes) {
+    const base = { ...m, destinoId, fase, ambiente };
+    const prever = (lado, eixo) => separacaoPrevistaM(base, {
+      acao, lateral: lado, vertical: eixo, urgencia: answers?.urgencia?.score ?? 1,
+      evasaoAteS: m.voo.tempoS + 22,
+    }, baloes);
+    separacaoPrevista = prever(lateral, vertical);
+    if (separacaoPrevista < baloes.raioProtecaoM) {
+      const opcoes = [
+        [baloes.xM < m.voo.xM ? 'direita' : 'esquerda', vertical],
+        ['direita', 'subir'], ['esquerda', 'subir'], ['direita', 'manter'], ['esquerda', 'manter'],
+      ];
+      const segura = opcoes.map(([lado, eixo]) => ({ lado, eixo, separacao: prever(lado, eixo) }))
+        .find((opcao) => opcao.separacao >= baloes.raioProtecaoM);
+      motivo = `Ameaça iminente: separação prevista ${Math.round(separacaoPrevista)} m, mínimo ilustrativo ${baloes.raioProtecaoM} m`;
+      if (segura) {
+        lateral = segura.lado; vertical = segura.eixo; separacaoPrevista = segura.separacao;
+      }
+    }
   }
   if (bloqueioRota) {
     const validos = m.destinos.filter((d) => d.id !== 'stol_proximo' && d.pistaM >= pistaNecessariaM(contexto, d) && m.voo.combustivelKg >= combustivelNecessarioKg(contexto, d));
@@ -206,8 +254,8 @@ export function aplicarDecisao(m, answers, fonte = 'jev', consumirEvento = true)
   const pendentes = m.eventosPendentes.filter((e) => e.id !== evento?.id && (!e.rota || e.rota === destinoId));
   const comando = { acao: bloqueioRota ? 'orbitar' : acao, vertical, lateral, urgencia: answers?.urgencia?.score ?? 1, evasaoAteS: m.voo.tempoS + 22 };
   return {
-    missao: { ...m, destinoId, fase, ambiente, eventosPendentes: pendentes, eventosTratados: evento ? [...m.eventosTratados, evento.id] : m.eventosTratados, comando, orbitaRestanteS: fase === 'orbita' ? 90 : m.orbitaRestanteS },
-    supervisor: { interveio: Boolean(motivo), motivo, proposta: { acao, destino: preferido, vertical: answers?.manobraVertical?.choice, lateral: answers?.manobraLateral?.choice }, aplicada: { acao: comando.acao, destino: destinoId, vertical, lateral }, fonte: motivo ? 'supervisor' : fonte },
+    missao: { ...m, destinoId, fase, ambiente, eventosPendentes: pendentes, eventosTratados: evento ? [...m.eventosTratados, evento.id] : m.eventosTratados, comando, orbitaRestanteS: fase === 'orbita' ? 90 : m.orbitaRestanteS, ameacaAtiva: baloes ?? m.ameacaAtiva },
+    supervisor: { interveio: Boolean(motivo), motivo, separacaoPrevistaM: separacaoPrevista == null ? null : Math.round(separacaoPrevista), proposta: { acao, destino: preferido, vertical: answers?.manobraVertical?.choice, lateral: answers?.manobraLateral?.choice }, aplicada: { acao: comando.acao, destino: destinoId, vertical, lateral }, fonte: motivo ? 'supervisor' : fonte },
   };
 }
 
@@ -225,7 +273,7 @@ function passoFisico(m, dt) {
   const drag = q * PERFIL.areaAsaM2 * (PERFIL.cd0 + PERFIL.kInduzido * Math.min(cl, PERFIL.clMax) ** 2);
   const distanciaDestino = dist(v, d);
   const alvoV = m.fase === 'orbita' ? 72 : distanciaDestino < 12000 ? 65 : m.fase === 'emergencia' ? 78 : 88;
-  const potencia = clamp(0.42 + (alvoV - v.velocidadeMs) * 0.025, 0.24, 1);
+  const potencia = clamp(Math.max(0.42 + (alvoV - v.velocidadeMs) * 0.025, evasao && m.comando.vertical === 'subir' ? 0.82 : 0), 0.24, 1);
   const empuxo = PERFIL.empuxoMaxN * potencia * Math.max(0.55, 1 - v.altitudeM / 13000);
   const speed = clamp(v.velocidadeMs + ((empuxo - drag) / massa) * dt, 31, PERFIL.velocidadeMaxMs);
   const altitudeRota = m.fase === 'orbita' ? 480 : distanciaDestino < 16000 ? Math.max(20, (distanciaDestino - 3000) * 0.04) : 480;
@@ -256,7 +304,18 @@ export function avancarMissao(m, segundos) {
     else if (voo.altitudeM <= 0 && dist(voo, destino) >= 250) resultado = 'limite_altitude';
     else if (fase !== 'orbita' && dist(voo, destino) < 250 && voo.altitudeM <= 50) resultado = atual.destinoId === 'origem' ? 'regressou' : fase === 'emergencia' ? 'emergencia_resolvida' : 'chegou';
     else if (voo.tempoS >= 2800) resultado = 'tempo_esgotado';
-    atual = { ...atual, voo, fase, orbitaRestanteS, resultado };
+    let ameacaAtiva = atual.ameacaAtiva;
+    let separacoes = atual.separacoes;
+    if (ameacaAtiva) {
+      const minima = Math.min(ameacaAtiva.separacaoMinM, distanciaAmeacaM(voo, ameacaAtiva));
+      ameacaAtiva = { ...ameacaAtiva, separacaoMinM: minima };
+      if (minima < ameacaAtiva.raioProtecaoM) resultado = 'separacao_perdida';
+      if (voo.zM > ameacaAtiva.zM + 120 || resultado) {
+        separacoes = [...separacoes, { id: ameacaAtiva.id, minimaM: Math.round(minima), limiteM: ameacaAtiva.raioProtecaoM }];
+        ameacaAtiva = null;
+      }
+    }
+    atual = { ...atual, voo, fase, orbitaRestanteS, resultado, ameacaAtiva, separacoes };
     restante -= dt;
   }
   return atual;

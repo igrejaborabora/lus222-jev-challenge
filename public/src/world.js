@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
 import { offsetLateral, pontoAmeaca } from './decisao.js';
+import { posicaoVisualBaloes } from './ameaca-visual.js';
 
 export function perfilGraficoLeve() {
   if (typeof window === 'undefined') return true;
@@ -594,16 +595,20 @@ function meshAmeaca(o, pose, leve) {
       break;
     }
     case 'baloes': {
+      // Ícones ampliados para leitura à distância; o centro e a passagem
+      // seguem a posição SI da ameaça calculada no motor de voo.
       const cores = [0xffa65d, 0xf7d394, 0xdf775e, 0xe8b875];
+      g.position.y = p.y;
+      g.userData.baloes = true;
       for (let i = 0; i < 4; i++) {
-        const x = (i - 1.5) * 11;
-        const y = (p.y || 42) + (i % 2 ? 6 : -3);
-        const z = (i % 2) * 9;
-        const envelope = new THREE.Mesh(new THREE.SphereGeometry(3.4, 10, 8), new THREE.MeshLambertMaterial({ color: cores[i], emissive: cores[i], emissiveIntensity: 0.3 }));
+        const x = (i - 1.5) * 1.0;
+        const y = i % 2 ? 0.65 : -0.45;
+        const z = (i % 2) * 0.7;
+        const envelope = new THREE.Mesh(new THREE.SphereGeometry(0.95, 10, 8), new THREE.MeshLambertMaterial({ color: cores[i], emissive: cores[i], emissiveIntensity: 0.65 }));
         envelope.scale.set(0.85, 1.35, 0.85);
         envelope.position.set(x, y, z);
-        const chama = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffdb8e }));
-        chama.position.set(x, y - 5, z);
+        const chama = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffdb8e }));
+        chama.position.set(x, y - 1.45, z);
         g.add(envelope, chama);
       }
       break;
@@ -657,6 +662,20 @@ export function mostrarAmeacas(mundo, obstaculos, pose) {
   // Uma vez, no instante do incidente: a malha fica no mundo e o avião
   // aproxima-se. Repetir isto em cada frame cola a ameaça ao nariz.
   ancorarVisuais(mundo, local);
+}
+
+export function posicionarBaloes(mundo, ameaca, voo, pose) {
+  const marcador = mundo?.ameaças?.children.find((child) => child.userData.baloes);
+  if (!marcador) return;
+  if (!ameaca) {
+    limparGrupo(mundo.ameaças);
+    mundo.alvoLook = null;
+    return;
+  }
+  const p = posicaoVisualBaloes(voo, ameaca, pose);
+  marcador.position.set(p.x, p.y, p.z);
+  // A câmara só aponta para uma ameaça ainda à frente da aeronave.
+  mundo.alvoLook = (ameaca.zM - voo.zM) > 0 ? p : null;
 }
 
 function numHeading(pose) {

@@ -18,7 +18,7 @@ async function avaliar(momento, estado) {
 
 for (const cenario of Object.keys(CENARIOS_SIM)) {
   const restricoes = { payload_kg: CENARIOS_SIM[cenario].payloadKg, risco_maximo: 'medio', preferir_stol: false, nunca_desviar: false };
-  const gravacao = { versao: 3, cenario, perfil: PERFIL.versao, semente: 222, restricoes, gravadoEm: new Date().toISOString(), briefing: null, eventos: {}, percurso: [], resultado: null };
+  const gravacao = { versao: 4, cenario, perfil: PERFIL.versao, semente: 222, restricoes, gravadoEm: new Date().toISOString(), briefing: null, eventos: {}, percurso: [], resultado: null };
   let missao = criarMissao(cenario, gravacao.semente, restricoes);
   gravacao.briefing = await avaliar('briefing', estadoParaAvaliacao(missao));
   for (let i = 0; i < 3000 && !missao.resultado; i++) {
