@@ -159,6 +159,8 @@ export function lerEstado(body) {
   const g = src.geometria ?? {};
   const r = src.restricoes ?? {};
   const i = src.incidente ?? {};
+  const v = src.voo ?? null;
+  const alternativasRaw = Array.isArray(src.alternativas) ? src.alternativas : null;
   const obstaculosRaw = Array.isArray(g.obstaculos)
     ? g.obstaculos
     : Array.isArray(src.obstaculos)
@@ -195,6 +197,25 @@ export function lerEstado(body) {
     geometria: {
       obstaculos: obstaculosRaw.slice(0, MAX_OBSTACULOS).map(lerObstaculo),
     },
+    ...(v ? { voo: {
+      posicao_x_m: round(v.posicao_x_m, -500000, 500000),
+      posicao_z_m: round(v.posicao_z_m, -500000, 500000),
+      altitude_m: round(v.altitude_m, 0, 12000),
+      velocidade_ms: Number(clamp(num(v.velocidade_ms, 0), 0, 150).toFixed(1)),
+      subida_ms: Number(clamp(num(v.subida_ms, 0), -30, 30).toFixed(1)),
+      rumo_rad: Number(clamp(num(v.rumo_rad, 0), -10000, 10000).toFixed(3)),
+      tempo_s: round(v.tempo_s, 0, 100000),
+      fase: texto(v.fase, 'em_rota', 30),
+    } } : {}),
+    ...(alternativasRaw ? { alternativas: alternativasRaw.slice(0, 5).map((d) => ({
+      id: umDe(d?.id, DESTINOS, 'planeado'),
+      tipo: umDe(d?.tipo, DESTINOS, 'planeado'),
+      distancia_km: round(d?.distancia_km, 0, 2500),
+      pista_m: round(d?.pista_m, 0, 4000),
+      superficie: umDe(d?.superficie, SUPERFICIES, 'pavimentada'),
+      pista_necessaria_m: round(d?.pista_necessaria_m, 0, 4000),
+      combustivel_necessario_kg: round(d?.combustivel_necessario_kg, 0, 4000),
+    })) } : {}),
     restricoes: {
       nunca_desviar: Boolean(r.nunca_desviar),
       preferir_stol: Boolean(r.preferir_stol),

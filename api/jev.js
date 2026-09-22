@@ -1,6 +1,7 @@
 import { experimental_evaluate as evaluate } from 'ai';
 import { decisaoGeometrica, estadoParaJev, MODELO_JEV } from '../lib/decisao.mjs';
 import { PERGUNTAS_BRIEFING, PERGUNTAS_INCIDENTE, perguntasPara } from '../lib/perguntas.mjs';
+import { validarRespostas } from '../public/src/contrato-jev.js';
 
 /**
  * /api/jev — JEV comanda o LUS-222.
@@ -84,7 +85,15 @@ export async function POST(request) {
       evaluate({ model: MODEL, state: estado, questions }),
       TIMEOUT_MS,
     );
+    const contrato = validarRespostas(momento, resultado.answers);
+    if (!contrato.ok) {
+      return Response.json(
+        { fonte: 'bloqueio', erro: 'contrato_invalido', mensagem: `Resposta JEV inválida: ${contrato.erro}` },
+        { status: 502 },
+      );
+    }
     return Response.json({
+      versao_contrato: 3,
       fonte: 'jev',
       modelo: MODEL,
       momento,
