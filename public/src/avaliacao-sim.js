@@ -28,7 +28,11 @@ export function avaliarLinha(linha) {
   const a = linha?.jev?.answers ?? {};
   const rubrica = RUBRICA[linha?.cenario]?.[linha?.id] ?? null;
   const acao = a.acaoMissao?.choice;
-  const destino = a.destinoPreferido?.choice;
+  // A pergunta destinoPreferido é condicional: em «prosseguir» vale o destino
+  // atual, e em «regressar» vale a origem. Só o desvio aplica a preferência.
+  const destino = acao === 'prosseguir' ? linha?.entrada?.missao?.destino
+    : acao === 'regressar_base' ? 'origem'
+      : acao === 'desviar_alternativo' ? a.destinoPreferido?.choice : null;
   const alt = linha?.entrada?.alternativas?.find((d) => d.id === destino);
   const pistaCurta = Boolean(alt && alt.pista_m < alt.pista_necessaria_m);
   const fuelCurto = Boolean(alt && alt.combustivel_necessario_kg > (linha?.entrada?.aeronave?.fuel_kg ?? Infinity));
@@ -40,7 +44,7 @@ export function avaliarLinha(linha) {
   if (linha?.supervisor?.interveio) alertas.push(`Supervisor: ${linha.supervisor.motivo}.`);
   return {
     acao: !rubrica?.acoes ? 'não avaliado' : rubrica.acoes.includes(acao) ? 'conforme' : 'divergente',
-    destino: pistaCurta || fuelCurto ? 'incompatível' : 'viável',
+    destino: !alt ? 'não avaliado' : pistaCurta || fuelCurto ? 'incompatível' : 'viável',
     manobra: !rubrica?.lateral ? 'não avaliada' : rubrica.lateral.includes(a.manobraLateral?.choice) ? 'conforme' : 'divergente',
     limites: linha?.supervisor?.interveio ? 'bloqueado' : 'conforme',
     picSugerido,

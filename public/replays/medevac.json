@@ -1,7 +1,7 @@
 {
-  "versao": 3,
+  "versao": 4,
   "cenario": "medevac",
-  "perfil": "ilustrativo-2",
+  "perfil": "ilustrativo-3",
   "semente": 222,
   "restricoes": {
     "payload_kg": 380,
@@ -9,38 +9,38 @@
     "preferir_stol": false,
     "nunca_desviar": false
   },
-  "gravadoEm": "2026-09-22T11:14:03.987Z",
+  "gravadoEm": "2026-09-22T11:44:25.985Z",
   "briefing": {
     "versao_contrato": 3,
     "fonte": "jev",
     "modelo": "typesafe-ai/jev",
     "momento": "briefing",
-    "latencia_ms": 706,
+    "latencia_ms": 434,
     "answers": {
       "configuracaoCabine": {
         "type": "choice",
         "choice": "medevac",
         "probabilities": {
-          "mista": 0,
           "medevac": 1,
+          "carga": 0,
           "passageiros": 0,
-          "carga": 0
+          "mista": 0
         }
       },
       "prioridadeOperacional": {
         "type": "choice",
         "choice": "tempo",
         "probabilities": {
-          "carga_critica": 0,
-          "meteorologia": 0,
           "integridade": 0,
-          "tempo": 1,
-          "combustivel": 0
+          "combustivel": 0,
+          "meteorologia": 0,
+          "carga_critica": 0,
+          "tempo": 1
         }
       },
       "pistaAdequada": {
         "type": "boolean",
-        "probability": 0.82
+        "probability": 0.8
       },
       "combustivelSuficiente": {
         "type": "boolean",
@@ -63,51 +63,51 @@
       "fonte": "jev",
       "modelo": "typesafe-ai/jev",
       "momento": "incidente",
-      "latencia_ms": 768,
+      "latencia_ms": 382,
       "answers": {
         "acaoMissao": {
           "type": "choice",
           "choice": "prosseguir",
           "probabilities": {
-            "prosseguir": 0.82,
-            "regressar_base": 0,
             "abortar_emergencia": 0,
+            "regressar_base": 0.01,
             "orbitar": 0.01,
-            "desviar_alternativo": 0.17
+            "desviar_alternativo": 0.18,
+            "prosseguir": 0.8
           }
         },
         "manobraVertical": {
           "type": "choice",
           "choice": "manter",
           "probabilities": {
-            "subir": 0.32,
+            "subir": 0.35,
             "manter": 0.58,
-            "descer": 0.1
+            "descer": 0.07
           }
         },
         "manobraLateral": {
           "type": "choice",
           "choice": "manter",
           "probabilities": {
-            "esquerda": 0.03,
-            "direita": 0.12,
-            "manter": 0.85
+            "direita": 0.16,
+            "manter": 0.8,
+            "esquerda": 0.04
           }
         },
         "destinoPreferido": {
           "type": "choice",
-          "choice": "hospital_alternativo",
+          "choice": "origem",
           "probabilities": {
-            "hospital_alternativo": 0.46,
-            "planeado": 0.06,
+            "aeroporto_alternativo": 0.02,
+            "hospital_alternativo": 0.43,
+            "origem": 0.43,
             "stol_proximo": 0.03,
-            "aeroporto_alternativo": 0.03,
-            "origem": 0.42
+            "planeado": 0.09
           }
         },
         "urgencia": {
           "type": "score",
-          "score": 1.51,
+          "score": 1.52,
           "probabilities": {
             "0": 0.01,
             "1": 0.52,
@@ -127,7 +127,7 @@
         },
         "precisaRevisaoPIC": {
           "type": "boolean",
-          "probability": 0.72
+          "probability": 0.74
         },
         "continuarVoo": {
           "type": "boolean",
@@ -136,16 +136,16 @@
       },
       "usage": {
         "inputTokens": 3020,
-        "outputTokens": 301,
-        "totalTokens": 3321
+        "outputTokens": 299,
+        "totalTokens": 3319
       },
       "confidence": {
-        "acaoMissao": 0.77,
-        "manobraVertical": 0.37,
-        "manobraLateral": 0.78,
-        "destinoPreferido": 0.33,
-        "urgencia": 0.47,
-        "riscoMeteorologico": 0.89
+        "acaoMissao": 0.75,
+        "manobraVertical": 0.36,
+        "manobraLateral": 0.71,
+        "destinoPreferido": 0.29,
+        "urgencia": 0.46,
+        "riscoMeteorologico": 0.88
       }
     },
     "relevo": {
@@ -153,7 +153,7 @@
       "fonte": "jev",
       "modelo": "typesafe-ai/jev",
       "momento": "incidente",
-      "latencia_ms": 2680,
+      "latencia_ms": 381,
       "answers": {
         "acaoMissao": {
           "type": "choice",
@@ -162,37 +162,37 @@
             "abortar_emergencia": 0.01,
             "prosseguir": 0.96,
             "regressar_base": 0,
-            "desviar_alternativo": 0.03,
-            "orbitar": 0
+            "orbitar": 0,
+            "desviar_alternativo": 0.03
           }
         },
         "manobraVertical": {
           "type": "choice",
           "choice": "subir",
           "probabilities": {
-            "subir": 0.65,
-            "manter": 0.27,
-            "descer": 0.08
+            "subir": 0.61,
+            "manter": 0.29,
+            "descer": 0.1
           }
         },
         "manobraLateral": {
           "type": "choice",
           "choice": "direita",
           "probabilities": {
-            "direita": 0.98,
-            "manter": 0,
+            "direita": 0.97,
+            "manter": 0.01,
             "esquerda": 0.02
           }
         },
         "destinoPreferido": {
           "type": "choice",
-          "choice": "origem",
+          "choice": "hospital_alternativo",
           "probabilities": {
-            "hospital_alternativo": 0.33,
-            "planeado": 0.15,
-            "stol_proximo": 0.12,
+            "hospital_alternativo": 0.4,
+            "planeado": 0.17,
+            "stol_proximo": 0.08,
             "aeroporto_alternativo": 0.03,
-            "origem": 0.37
+            "origem": 0.32
           }
         },
         "urgencia": {
@@ -201,8 +201,8 @@
           "probabilities": {
             "0": 0.01,
             "1": 0.05,
-            "2": 0.22,
-            "3": 0.72
+            "2": 0.21,
+            "3": 0.73
           }
         },
         "riscoMeteorologico": {
@@ -217,7 +217,7 @@
         },
         "precisaRevisaoPIC": {
           "type": "boolean",
-          "probability": 0.75
+          "probability": 0.76
         },
         "continuarVoo": {
           "type": "boolean",
@@ -226,16 +226,16 @@
       },
       "usage": {
         "inputTokens": 3154,
-        "outputTokens": 299,
-        "totalTokens": 3453
+        "outputTokens": 301,
+        "totalTokens": 3455
       },
       "confidence": {
         "acaoMissao": 0.95,
-        "manobraVertical": 0.48,
-        "manobraLateral": 0.96,
-        "destinoPreferido": 0.22,
+        "manobraVertical": 0.41,
+        "manobraLateral": 0.97,
+        "destinoPreferido": 0.25,
         "urgencia": 0.66,
-        "riscoMeteorologico": 0.89
+        "riscoMeteorologico": 0.88
       }
     },
     "relogio": {
@@ -243,26 +243,26 @@
       "fonte": "jev",
       "modelo": "typesafe-ai/jev",
       "momento": "incidente",
-      "latencia_ms": 384,
+      "latencia_ms": 518,
       "answers": {
         "acaoMissao": {
           "type": "choice",
           "choice": "prosseguir",
           "probabilities": {
-            "orbitar": 0,
-            "desviar_alternativo": 0.35,
+            "abortar_emergencia": 0,
+            "prosseguir": 0.62,
             "regressar_base": 0,
-            "prosseguir": 0.65,
-            "abortar_emergencia": 0
+            "orbitar": 0,
+            "desviar_alternativo": 0.38
           }
         },
         "manobraVertical": {
           "type": "choice",
           "choice": "manter",
           "probabilities": {
-            "subir": 0.04,
-            "manter": 0.91,
-            "descer": 0.05
+            "subir": 0.06,
+            "manter": 0.88,
+            "descer": 0.06
           }
         },
         "manobraLateral": {
@@ -270,38 +270,38 @@
           "choice": "manter",
           "probabilities": {
             "direita": 0.05,
-            "esquerda": 0.01,
-            "manter": 0.94
+            "manter": 0.93,
+            "esquerda": 0.02
           }
         },
         "destinoPreferido": {
           "type": "choice",
           "choice": "hospital_alternativo",
           "probabilities": {
-            "planeado": 0.02,
-            "stol_proximo": 0.01,
+            "hospital_alternativo": 0.9,
+            "planeado": 0.03,
+            "stol_proximo": 0.02,
             "aeroporto_alternativo": 0.01,
-            "origem": 0.02,
-            "hospital_alternativo": 0.94
+            "origem": 0.04
           }
         },
         "urgencia": {
           "type": "score",
-          "score": 1.78,
+          "score": 1.82,
           "probabilities": {
             "0": 0.02,
-            "1": 0.23,
-            "2": 0.7,
-            "3": 0.05
+            "1": 0.21,
+            "2": 0.71,
+            "3": 0.06
           }
         },
         "riscoMeteorologico": {
           "type": "score",
-          "score": 1.94,
+          "score": 1.95,
           "probabilities": {
             "0": 0,
-            "1": 0.1,
-            "2": 0.86,
+            "1": 0.09,
+            "2": 0.87,
             "3": 0.04
           }
         },
@@ -315,17 +315,17 @@
         }
       },
       "usage": {
-        "inputTokens": 3027,
+        "inputTokens": 3029,
         "outputTokens": 301,
-        "totalTokens": 3328
+        "totalTokens": 3330
       },
       "confidence": {
-        "acaoMissao": 0.55,
-        "manobraVertical": 0.86,
+        "acaoMissao": 0.51,
+        "manobraVertical": 0.81,
         "manobraLateral": 0.9,
-        "destinoPreferido": 0.92,
+        "destinoPreferido": 0.88,
         "urgencia": 0.69,
-        "riscoMeteorologico": 0.85
+        "riscoMeteorologico": 0.86
       }
     }
   },
@@ -444,51 +444,51 @@
         "fonte": "jev",
         "modelo": "typesafe-ai/jev",
         "momento": "incidente",
-        "latencia_ms": 768,
+        "latencia_ms": 382,
         "answers": {
           "acaoMissao": {
             "type": "choice",
             "choice": "prosseguir",
             "probabilities": {
-              "prosseguir": 0.82,
-              "regressar_base": 0,
               "abortar_emergencia": 0,
+              "regressar_base": 0.01,
               "orbitar": 0.01,
-              "desviar_alternativo": 0.17
+              "desviar_alternativo": 0.18,
+              "prosseguir": 0.8
             }
           },
           "manobraVertical": {
             "type": "choice",
             "choice": "manter",
             "probabilities": {
-              "subir": 0.32,
+              "subir": 0.35,
               "manter": 0.58,
-              "descer": 0.1
+              "descer": 0.07
             }
           },
           "manobraLateral": {
             "type": "choice",
             "choice": "manter",
             "probabilities": {
-              "esquerda": 0.03,
-              "direita": 0.12,
-              "manter": 0.85
+              "direita": 0.16,
+              "manter": 0.8,
+              "esquerda": 0.04
             }
           },
           "destinoPreferido": {
             "type": "choice",
-            "choice": "hospital_alternativo",
+            "choice": "origem",
             "probabilities": {
-              "hospital_alternativo": 0.46,
-              "planeado": 0.06,
+              "aeroporto_alternativo": 0.02,
+              "hospital_alternativo": 0.43,
+              "origem": 0.43,
               "stol_proximo": 0.03,
-              "aeroporto_alternativo": 0.03,
-              "origem": 0.42
+              "planeado": 0.09
             }
           },
           "urgencia": {
             "type": "score",
-            "score": 1.51,
+            "score": 1.52,
             "probabilities": {
               "0": 0.01,
               "1": 0.52,
@@ -508,7 +508,7 @@
           },
           "precisaRevisaoPIC": {
             "type": "boolean",
-            "probability": 0.72
+            "probability": 0.74
           },
           "continuarVoo": {
             "type": "boolean",
@@ -517,24 +517,25 @@
         },
         "usage": {
           "inputTokens": 3020,
-          "outputTokens": 301,
-          "totalTokens": 3321
+          "outputTokens": 299,
+          "totalTokens": 3319
         },
         "confidence": {
-          "acaoMissao": 0.77,
-          "manobraVertical": 0.37,
-          "manobraLateral": 0.78,
-          "destinoPreferido": 0.33,
-          "urgencia": 0.47,
-          "riscoMeteorologico": 0.89
+          "acaoMissao": 0.75,
+          "manobraVertical": 0.36,
+          "manobraLateral": 0.71,
+          "destinoPreferido": 0.29,
+          "urgencia": 0.46,
+          "riscoMeteorologico": 0.88
         }
       },
       "supervisor": {
         "interveio": false,
         "motivo": null,
+        "separacaoPrevistaM": null,
         "proposta": {
           "acao": "prosseguir",
-          "destino": "hospital_alternativo",
+          "destino": "origem",
           "vertical": "manter",
           "lateral": "manter"
         },
@@ -691,7 +692,7 @@
         "fonte": "jev",
         "modelo": "typesafe-ai/jev",
         "momento": "incidente",
-        "latencia_ms": 2680,
+        "latencia_ms": 381,
         "answers": {
           "acaoMissao": {
             "type": "choice",
@@ -700,37 +701,37 @@
               "abortar_emergencia": 0.01,
               "prosseguir": 0.96,
               "regressar_base": 0,
-              "desviar_alternativo": 0.03,
-              "orbitar": 0
+              "orbitar": 0,
+              "desviar_alternativo": 0.03
             }
           },
           "manobraVertical": {
             "type": "choice",
             "choice": "subir",
             "probabilities": {
-              "subir": 0.65,
-              "manter": 0.27,
-              "descer": 0.08
+              "subir": 0.61,
+              "manter": 0.29,
+              "descer": 0.1
             }
           },
           "manobraLateral": {
             "type": "choice",
             "choice": "direita",
             "probabilities": {
-              "direita": 0.98,
-              "manter": 0,
+              "direita": 0.97,
+              "manter": 0.01,
               "esquerda": 0.02
             }
           },
           "destinoPreferido": {
             "type": "choice",
-            "choice": "origem",
+            "choice": "hospital_alternativo",
             "probabilities": {
-              "hospital_alternativo": 0.33,
-              "planeado": 0.15,
-              "stol_proximo": 0.12,
+              "hospital_alternativo": 0.4,
+              "planeado": 0.17,
+              "stol_proximo": 0.08,
               "aeroporto_alternativo": 0.03,
-              "origem": 0.37
+              "origem": 0.32
             }
           },
           "urgencia": {
@@ -739,8 +740,8 @@
             "probabilities": {
               "0": 0.01,
               "1": 0.05,
-              "2": 0.22,
-              "3": 0.72
+              "2": 0.21,
+              "3": 0.73
             }
           },
           "riscoMeteorologico": {
@@ -755,7 +756,7 @@
           },
           "precisaRevisaoPIC": {
             "type": "boolean",
-            "probability": 0.75
+            "probability": 0.76
           },
           "continuarVoo": {
             "type": "boolean",
@@ -764,24 +765,25 @@
         },
         "usage": {
           "inputTokens": 3154,
-          "outputTokens": 299,
-          "totalTokens": 3453
+          "outputTokens": 301,
+          "totalTokens": 3455
         },
         "confidence": {
           "acaoMissao": 0.95,
-          "manobraVertical": 0.48,
-          "manobraLateral": 0.96,
-          "destinoPreferido": 0.22,
+          "manobraVertical": 0.41,
+          "manobraLateral": 0.97,
+          "destinoPreferido": 0.25,
           "urgencia": 0.66,
-          "riscoMeteorologico": 0.89
+          "riscoMeteorologico": 0.88
         }
       },
       "supervisor": {
         "interveio": false,
         "motivo": null,
+        "separacaoPrevistaM": null,
         "proposta": {
           "acao": "prosseguir",
-          "destino": "origem",
+          "destino": "hospital_alternativo",
           "vertical": "subir",
           "lateral": "direita"
         },
@@ -816,7 +818,7 @@
       "entrada": {
         "aeronave": {
           "tipo": "LUS-222",
-          "fuel_kg": 650,
+          "fuel_kg": 649,
           "payload_kg": 380,
           "config_cabine": "medevac",
           "tripulantes": 2,
@@ -824,12 +826,12 @@
           "alcance_restante_km": 635
         },
         "voo": {
-          "posicao_x_m": 4152,
-          "posicao_z_m": 99314,
+          "posicao_x_m": 4217,
+          "posicao_z_m": 100012,
           "altitude_m": 480,
           "velocidade_ms": 89.5,
           "subida_ms": 0,
-          "rumo_rad": -0.066,
+          "rumo_rad": -0.068,
           "tempo_s": 1000,
           "fase": "em_rota"
         },
@@ -857,29 +859,29 @@
           {
             "id": "origem",
             "tipo": "origem",
-            "distancia_km": 99,
+            "distancia_km": 100,
             "pista_m": 1800,
             "superficie": "pavimentada",
             "pista_necessaria_m": 568,
-            "combustivel_necessario_kg": 222
+            "combustivel_necessario_kg": 224
           },
           {
             "id": "planeado",
             "tipo": "planeado",
-            "distancia_km": 63,
+            "distancia_km": 62,
             "pista_m": 1400,
             "superficie": "pavimentada",
             "pista_necessaria_m": 568,
-            "combustivel_necessario_kg": 167
+            "combustivel_necessario_kg": 165
           },
           {
             "id": "hospital_alternativo",
             "tipo": "hospital_alternativo",
-            "distancia_km": 40,
+            "distancia_km": 39,
             "pista_m": 1250,
             "superficie": "pavimentada",
             "pista_necessaria_m": 568,
-            "combustivel_necessario_kg": 131
+            "combustivel_necessario_kg": 130
           },
           {
             "id": "stol_proximo",
@@ -888,7 +890,7 @@
             "pista_m": 520,
             "superficie": "nao_pavimentada",
             "pista_necessaria_m": 704,
-            "combustivel_necessario_kg": 127
+            "combustivel_necessario_kg": 128
           }
         ],
         "restricoes": {
@@ -904,18 +906,18 @@
         }
       },
       "antes": {
-        "xM": 4152.338914731682,
-        "zM": 99314.49409044815,
-        "altitudeM": 480,
-        "velocidadeMs": 89.46224404935293,
-        "velocidadeVerticalMs": 0,
-        "rumoRad": -0.06579849225150505,
-        "bankRad": -0.0005876181575856579,
-        "pitchRad": 0,
-        "combustivelKg": 649.7227495965909,
+        "xM": 4217.159457499845,
+        "zM": 100011.70873968309,
+        "altitudeM": 480.0000799906447,
+        "velocidadeMs": 89.46250157948113,
+        "velocidadeVerticalMs": -0.0000020047780623144717,
+        "rumoRad": -0.06757960449652863,
+        "bankRad": -0.0005903156525487813,
+        "pitchRad": -2.2409143796782474e-8,
+        "combustivelKg": 649.3299328418102,
         "payloadKg": 380,
-        "massaKg": 9529.72274959659,
-        "distanciaPercorridaM": 75224.75737211788,
+        "massaKg": 9529.32993284181,
+        "distanciaPercorridaM": 75862.60940122856,
         "tempoS": 1000.0000000001588,
         "integridade": 100,
         "destino": "planeado"
@@ -925,26 +927,26 @@
         "fonte": "jev",
         "modelo": "typesafe-ai/jev",
         "momento": "incidente",
-        "latencia_ms": 384,
+        "latencia_ms": 518,
         "answers": {
           "acaoMissao": {
             "type": "choice",
             "choice": "prosseguir",
             "probabilities": {
-              "orbitar": 0,
-              "desviar_alternativo": 0.35,
+              "abortar_emergencia": 0,
+              "prosseguir": 0.62,
               "regressar_base": 0,
-              "prosseguir": 0.65,
-              "abortar_emergencia": 0
+              "orbitar": 0,
+              "desviar_alternativo": 0.38
             }
           },
           "manobraVertical": {
             "type": "choice",
             "choice": "manter",
             "probabilities": {
-              "subir": 0.04,
-              "manter": 0.91,
-              "descer": 0.05
+              "subir": 0.06,
+              "manter": 0.88,
+              "descer": 0.06
             }
           },
           "manobraLateral": {
@@ -952,38 +954,38 @@
             "choice": "manter",
             "probabilities": {
               "direita": 0.05,
-              "esquerda": 0.01,
-              "manter": 0.94
+              "manter": 0.93,
+              "esquerda": 0.02
             }
           },
           "destinoPreferido": {
             "type": "choice",
             "choice": "hospital_alternativo",
             "probabilities": {
-              "planeado": 0.02,
-              "stol_proximo": 0.01,
+              "hospital_alternativo": 0.9,
+              "planeado": 0.03,
+              "stol_proximo": 0.02,
               "aeroporto_alternativo": 0.01,
-              "origem": 0.02,
-              "hospital_alternativo": 0.94
+              "origem": 0.04
             }
           },
           "urgencia": {
             "type": "score",
-            "score": 1.78,
+            "score": 1.82,
             "probabilities": {
               "0": 0.02,
-              "1": 0.23,
-              "2": 0.7,
-              "3": 0.05
+              "1": 0.21,
+              "2": 0.71,
+              "3": 0.06
             }
           },
           "riscoMeteorologico": {
             "type": "score",
-            "score": 1.94,
+            "score": 1.95,
             "probabilities": {
               "0": 0,
-              "1": 0.1,
-              "2": 0.86,
+              "1": 0.09,
+              "2": 0.87,
               "3": 0.04
             }
           },
@@ -997,22 +999,23 @@
           }
         },
         "usage": {
-          "inputTokens": 3027,
+          "inputTokens": 3029,
           "outputTokens": 301,
-          "totalTokens": 3328
+          "totalTokens": 3330
         },
         "confidence": {
-          "acaoMissao": 0.55,
-          "manobraVertical": 0.86,
+          "acaoMissao": 0.51,
+          "manobraVertical": 0.81,
           "manobraLateral": 0.9,
-          "destinoPreferido": 0.92,
+          "destinoPreferido": 0.88,
           "urgencia": 0.69,
-          "riscoMeteorologico": 0.85
+          "riscoMeteorologico": 0.86
         }
       },
       "supervisor": {
         "interveio": false,
         "motivo": null,
+        "separacaoPrevistaM": null,
         "proposta": {
           "acao": "prosseguir",
           "destino": "hospital_alternativo",
@@ -1028,18 +1031,18 @@
         "fonte": "jev"
       },
       "depois": {
-        "xM": 4152.338914731682,
-        "zM": 99314.49409044815,
-        "altitudeM": 480,
-        "velocidadeMs": 89.46224404935293,
-        "velocidadeVerticalMs": 0,
-        "rumoRad": -0.06579849225150505,
-        "bankRad": -0.0005876181575856579,
-        "pitchRad": 0,
-        "combustivelKg": 649.7227495965909,
+        "xM": 4217.159457499845,
+        "zM": 100011.70873968309,
+        "altitudeM": 480.0000799906447,
+        "velocidadeMs": 89.46250157948113,
+        "velocidadeVerticalMs": -0.0000020047780623144717,
+        "rumoRad": -0.06757960449652863,
+        "bankRad": -0.0005903156525487813,
+        "pitchRad": -2.2409143796782474e-8,
+        "combustivelKg": 649.3299328418102,
         "payloadKg": 380,
-        "massaKg": 9529.72274959659,
-        "distanciaPercorridaM": 75224.75737211788,
+        "massaKg": 9529.32993284181,
+        "distanciaPercorridaM": 75862.60940122856,
         "tempoS": 1000.0000000001588,
         "integridade": 100,
         "destino": "planeado"
@@ -1048,7 +1051,7 @@
   ],
   "resultado": {
     "tipo": "chegou",
-    "tempoS": 1885,
+    "tempoS": 1876,
     "destino": "planeado",
     "fuelKg": 590
   }
