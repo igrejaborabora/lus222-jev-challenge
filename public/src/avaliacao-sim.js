@@ -1,4 +1,11 @@
 const RUBRICA = {
+  porto: {
+    baloes: { acoes: ['prosseguir', 'orbitar', 'desviar_alternativo'], lateral: ['direita'], pic: false },
+    trafego_porto: { acoes: ['prosseguir', 'orbitar', 'desviar_alternativo'], lateral: ['esquerda'], pic: false },
+    anoitecer: { acoes: ['prosseguir', 'orbitar', 'desviar_alternativo'], pic: false },
+    vento_porto: { acoes: ['prosseguir', 'orbitar', 'desviar_alternativo'], pic: false },
+    final_porto: { acoes: ['prosseguir', 'desviar_alternativo'], pic: true },
+  },
   medevac: {
     frente: { acoes: ['desviar_alternativo', 'orbitar'], pic: false },
     relevo: { acoes: ['desviar_alternativo', 'orbitar'], lateral: ['direita'], pic: false },
@@ -49,6 +56,7 @@ export function resumirLinhas(linhas = []) {
     total: avaliadas.length,
     acoesConformes: avaliadas.filter((a) => a.acao === 'conforme').length,
     destinosIncompativeis: avaliadas.filter((a) => a.destino === 'incompatível').length,
+    manobrasConformes: avaliadas.filter((a) => a.manobra === 'conforme').length,
     limitesBloqueados: avaliadas.filter((a) => a.limites === 'bloqueado').length,
     picExcessivo: avaliadas.filter((a) => a.picSugerido && a.picConforme === false).length,
     picConforme: avaliadas.filter((a) => a.picConforme === true).length,

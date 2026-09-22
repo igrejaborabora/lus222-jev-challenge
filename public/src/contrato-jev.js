@@ -17,6 +17,15 @@ const BRIEFING = {
   combustivelSuficiente: ['boolean'],
 };
 
+function validarDistribuicao(probabilities, dominio) {
+  if (probabilities == null) return true;
+  if (typeof probabilities !== 'object' || Array.isArray(probabilities)) return false;
+  const entries = Object.entries(probabilities);
+  if (!entries.length) return false;
+  if (entries.some(([opcao, p]) => !dominio.includes(opcao) || typeof p !== 'number' || !Number.isFinite(p) || p < 0 || p > 1)) return false;
+  return Math.abs(entries.reduce((soma, [, p]) => soma + p, 0) - 1) <= 0.05;
+}
+
 export function validarRespostas(momento, answers) {
   const contrato = momento === 'briefing' ? BRIEFING : INCIDENTE;
   if (!answers || typeof answers !== 'object') return { ok: false, erro: 'Respostas ausentes' };
@@ -25,16 +34,10 @@ export function validarRespostas(momento, answers) {
     if (!a || typeof a !== 'object') return { ok: false, erro: `${nome}: resposta ausente` };
     if (tipo === 'choice') {
       if (!dominio.includes(a.choice)) return { ok: false, erro: `${nome}: escolha inválida` };
-      if (a.probabilities != null) {
-        if (typeof a.probabilities !== 'object' || Array.isArray(a.probabilities)) return { ok: false, erro: `${nome}: probabilidades inválidas` };
-        for (const [opcao, p] of Object.entries(a.probabilities)) {
-          if (!dominio.includes(opcao) || typeof p !== 'number' || !Number.isFinite(p) || p < 0 || p > 1) {
-            return { ok: false, erro: `${nome}: probabilidades inválidas` };
-          }
-        }
-      }
+      if (!validarDistribuicao(a.probabilities, dominio) || (a.probabilities && !(a.choice in a.probabilities))) return { ok: false, erro: `${nome}: probabilidades inválidas` };
     } else if (tipo === 'score') {
-      if (!Number.isInteger(a.score) || a.score < 0 || a.score > dominio) return { ok: false, erro: `${nome}: score inválido` };
+      if (typeof a.score !== 'number' || !Number.isFinite(a.score) || a.score < 0 || a.score > dominio) return { ok: false, erro: `${nome}: score inválido` };
+      if (!validarDistribuicao(a.probabilities, Array.from({ length: dominio + 1 }, (_, i) => String(i)))) return { ok: false, erro: `${nome}: probabilidades inválidas` };
     } else if (typeof a.probability !== 'number' || !Number.isFinite(a.probability) || a.probability < 0 || a.probability > 1) {
       return { ok: false, erro: `${nome}: probabilidade inválida` };
     }

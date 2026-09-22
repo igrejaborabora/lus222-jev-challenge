@@ -1,68 +1,79 @@
-# JEV comanda o LUS-222
+# JEV / Mesa de missão LUS-222
 
-Isto **não** é um simulador de voo. É o modelo [`typesafe-ai/jev`](https://vercel.com/ai-gateway/models/jev) (TypeSafe AI, via **Vercel AI Gateway**) a decidir e **desviar** uma missão do **LUS-222** — o STOL português do CEiiA / EEA Aircraft. O humano é **comandante de missão**: escolhe o cenário e observa o dodge. O JEV aplica a acção e os eixos de evasão de imediato. Não há joystick.
+Demonstração independente de decisões estruturadas do [`typesafe-ai/jev`](https://vercel.com/ai-gateway/models/jev), via Vercel AI Gateway, numa missão **ilustrativa** do LUS-222. O JEV recebe estado numérico e textual; **não vê** a cena 3D, imagens ou o Google Maps. A aeronave e a física não representam desempenho certificado, instrução aeronáutica ou procedimentos operacionais.
 
-O software é o JEV. O LUS-222 é o cenário. A regra geométrica corre em paralelo, cega a meteo, hospital, payload e relógio, só para o debriefing — **nunca manda o avião**.
+O cenário principal é **São João / Porto**: uma aproximação hipotética ao Aeroporto Francisco Sá Carneiro entre o fim da tarde e a noite de 23 de junho. Balões transportados pelo vento, tráfego, luz e vento criam decisões sucessivas. MEDEVAC Açores, Carga Ponte de Sor e SAR costa continuam disponíveis.
 
----
+## O que se observa
 
-## Âmbito, dito à cabeça
+1. O comandante escolhe cenário, carga, tolerância ao risco e restrições.
+2. O JEV responde a quatro perguntas tipadas no briefing. Em cada incidente responde a ação de missão, destino, eixos vertical/lateral, urgência, risco, revisão PIC e continuidade.
+3. O supervisor determinístico verifica pista, reserva, envelope e separação. Uma proposta incompatível fica no registo e a intervenção do supervisor aparece com autoria própria.
+4. O motor recalcula posição, velocidade, altitude, rumo, massa, consumo, destino e ETA. Regressar, orbitar, desviar e abortar mudam o percurso e os incidentes possíveis.
+5. O debriefing preserva entrada, resposta original, intervenção, estado antes/depois e comparação por dimensão. O laboratório altera uma variável numa **cópia** e pede nova resposta ao JEV.
 
-Demo **independente**. O espectáculo é **evasão autónoma** (subir / virar / desviar à volta de obstáculos visíveis). **Não** é Detect-and-Avoid certificável, **não** é autopiloto, **não** é produto oficial da EEA Aircraft ou do CEiiA salvo autorização escrita. A separação mínima e a terminação de voo continuam a pertencer a lógica determinística verificável.
+A regra geométrica de comparação é deliberadamente limitada e nunca controla o voo. Uma percentagem global de “sucesso” esconderia desacordos importantes; por isso ação, destino, manobra, limites e revisão PIC são apresentados separadamente. Uma sugestão de revisão do JEV não é confundida com uma intervenção humana.
 
-A comparação **JEV vs regra só é válida com AI Gateway**. Sem chave, a missão JEV **não arranca**. A reserva geométrica **nunca** se apresenta como JEV.
+A interface usa uma paleta preta e branca e uma animação de pontos “J·EV” na abertura, inspirada na linguagem visual da Pixelgrammar. A animação fica estática quando o sistema pede movimento reduzido; a missão também funciona sem WebGL (`?sem-webgl=1` permite verificar essa apresentação).
 
-## O que o JEV faz aqui
+## Cenários e rubricagem
 
-O Jev não gera prosa. Recebe um **estado** e devolve, no mesmo pedido:
+| Cenário | Incidentes possíveis na rota | Critério observado |
+|---|---|---|
+| São João / Porto | Balões, tráfego de chegada, anoitecer, vento, aproximação final | Separação por manobra, manutenção ou mudança justificada de destino, pista e reserva |
+| MEDEVAC Açores | Frente meteorológica, relevo, relógio clínico | Margem de tempo, destino clínico e separação do relevo |
+| Carga Ponte de Sor | Massa, aves, vento | Reserva com carga, margem de pista e evasão do bando |
+| SAR costa | Luz, contacto incerto, tráfego civil, reserva | Continuidade da busca, separação e combustível de regresso |
 
-| Momento | Perguntas |
-|---|---|
-| Briefing (1×) | `configuracaoCabine` · `prioridadeOperacional` · `pistaAdequada` · `combustivelSuficiente` |
-| Cada incidente | `acaoMissao` · `manobraVertical` · `manobraLateral` · `destinoPreferido` · `urgencia` · `riscoMeteorologico` · `precisaRevisaoPIC` · `continuarVoo` |
+As condições e alternativas dos cenários são hipóteses da demonstração. O evento só é avaliado se a rota e o estado ainda o permitirem. O texto “pista insuficiente” resulta do cálculo de massa, vento e superfície, não de uma etiqueta fixa.
 
-O LUS-222 voa os eixos do JEV (`subir`/`descer`, `esquerda`/`direita`) no instante da evaluate. `precisaRevisaoPIC` fica só no log — a UI **não** espera Accept/Reject. A regra geométrica calcula os mesmos eixos para o debriefing e não controla a aeronave.
+## Física e proveniência
 
-Na missão: **II** pausa (ou Escape), **Anterior** repete o incidente anterior com a decisão já registada — sem novo pedido ao Gateway — e **Briefing** volta ao comandante sem esperar pelo debriefing. No comandante, **Voltar** (sempre visível no topo) regressa ao splash do JEV.
+`public/src/simulacao.js` contém o perfil `ilustrativo-2`: massa, área de asa, sustentação/arrasto, empuxo, consumo, vento e limites assumidos. O integrador usa passos fixos de 0,1 s e um relógio de até 8×. As coordenadas da missão e as grandezas de voo usam unidades SI; o Three.js lê o resultado para o desenhar. A semente e as decisões permitem reproduzir o mesmo percurso. Uma aproximação completa demora cerca de 3–5 minutos a 8×; uma decisão de regresso pode encurtá-la.
 
-A fita (5–8 incidentes) nasce de uma semente. Cada cenário tem uma cena própria, já no cartão e à frente do nariz desde o primeiro frame: MEDEVAC num canyon de torres, carga num bando à saída da FAL em Ponte de Sor, SAR com bimotores e asa alta de época. O LUS-222 continua a voar enquanto o Gateway responde. O dodge é uma manobra visível. A regra geométrica não vê a cena de enchimento.
+A referência da pista principal é a **LDA publicada de 3180 m para a pista 17** no [AIP Portugal, LPPR AD 2.13](https://ais.nav.pt/wp-content/uploads/AIS_Files/eAIP_Current/eAIP_Online/eAIP/html/eAIP/LP-AD-2.LPPR-en-PT.html). Esse valor contextual não calibra o avião. A [informação turística oficial do Porto](https://backoffice.visitporto.travel/pt-PT/sao-joao-the-porto-celebration) descreve os balões de São João; a presença no corredor de chegada nesta missão é **ficcional**.
 
-## Arquitectura
+A referência visual da pista é uma [incorporação oficial do Google Maps](https://support.google.com/maps/answer/11471036?hl=pt-PT) em modo satélite, com atribuição no próprio mapa. É uma imagem cartográfica estática; o anoitecer, os balões, a trajetória e a aeronave são simulados separadamente. A aplicação não guarda nem redistribui imagens do Google Maps. O iframe carrega conteúdo do Google quando a vista é aberta.
 
+## Estrutura
+
+```text
+api/jev.js                  POST /api/jev e validação da resposta JEV
+public/src/simulacao.js     cenários, física, eventos, destinos e supervisor
+public/src/contrato-jev.js  validação de choice, score e boolean
+public/src/avaliacao-sim.js rubricagem por dimensão
+public/src/main.js          controlador de missão, UI, replay e laboratório
+public/src/world.js         representação 3D do estado do motor
+public/replays/*.json       quatro gravações reais do JEV, identificadas como replay
+scripts/record-replays.mjs  regenera gravações através do Gateway
+lib/*.test.mjs             testes de contrato, física, ramificação e replay
 ```
-lib/                   contrato + testes sem rede (reexportam public/src)
-api/jev.js             Vercel Function — só responde fonte: 'jev' ou bloqueio
-public/index.html      splash → comandante → missão → debriefing
-public/src/decisao.js  estado + baseline cego
-public/src/fita.js     semente → incidentes (tese escondida)
-public/src/world.js    malha LUS-222, câmara chase atrás da cauda, cenas
-public/src/cenas.js    canyon, bando e tráfego de época (procedural)
-public/img/            render do LUS-222 (crédito EEA Aircraft)
-```
 
-Sem bundler. Three.js no CDN. A chave do Gateway **nunca** entra no browser.
+O log JSON tem versão 3, perfil, semente, restrições, briefing, respostas originais, estados antes/depois, intervenções, tempos e eventuais contrafactuais. Os replays usam respostas gravadas: **não fazem pedidos ao JEV nem são um teste ao vivo**. Se uma avaliação ao vivo falhar, o relógio para e pode-se tentar de novo ou terminar como incompleta. O cliente espera 13 s e a função impõe 12 s.
 
-## Correr
+## Executar
 
 ```bash
-npm install
-cp .env.example .env    # AI_GATEWAY_API_KEY
-npm test                # contrato e baseline, sem rede
-npx vercel dev          # se o Development Command do projecto for `npm run dev`, use `npm run preview`
+npm ci
+cp .env.example .env
+npm run preview
 ```
 
-A chave obtém-se no dashboard da Vercel, **AI Gateway → API Keys**. Em produção, com o Gateway activo no projecto, o OIDC pode dispensar a variável.
-
-## Publicar
+Configurar `AI_GATEWAY_API_KEY` apenas no `.env` ignorado pelo Git ou nas variáveis de ambiente da Vercel. Sem Gateway, iniciar **Ver replay gravado**. `npm run dev` serve apenas os ficheiros estáticos e não fornece `/api/jev`.
 
 ```bash
-npx vercel deploy --prod
+npm test
+npm run lint
+npm run replays:record
 ```
 
-## Marca
+`replays:record` exige o Gateway local em `http://localhost:43123`. As respostas do JEV podem variar entre gravações; as invariantes verificadas são contrato, reprodução e proveniência, não uma escolha idêntica em todas as execuções.
 
-Não há logótipos oficiais CEiiA/EEA neste repo. O lockup é tipográfico; o herói é a render do LUS-222. **Não extraia marcas de sites de terceiros.** Se houver SVG/PNG autorizados, coloque-os em `public/brand/` e só então os use.
+## Limites
 
-## Licença
+- Não é uma simulação aeronáutica certificada, nem um sistema Detect and Avoid ou um plano de voo.
+- Coordenadas, tráfego, meteorologia e performance alternativos são assumidos para demonstrar decisões causais.
+- O Google Maps e a renderização 3D não são enviados ao JEV; só segue o estado estruturado visível no registo.
+- Os registos devem ser revistos antes de serem partilhados; esta demonstração usa apenas dados sintéticos, sem clientes ou passageiros reais.
 
 MIT — ver [LICENSE](./LICENSE).

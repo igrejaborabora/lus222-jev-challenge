@@ -290,6 +290,8 @@ export function criarLus222() {
 
 function ceuDe(cenario) {
   switch (cenario) {
+    case 'porto':
+      return { top: 0x29364b, fog: 0x566071, hemi: 0xe1b6a4, dir: 0xffbb80 };
     case 'sar':
       return { top: 0x2a3c58, fog: 0x3a4e68, hemi: 0xb7c6d4, dir: 0xffd2a8 };
     case 'medevac':
@@ -318,6 +320,47 @@ function campoFal(leve) {
     const seara = new THREE.Mesh(new THREE.BoxGeometry(80, 0.2, 36), mat(i % 2 ? 0x8a7a40 : 0x5e6a38));
     seara.position.set(-180 + (i % 4) * 90, -0.35, -200 + Math.floor(i / 4) * 80);
     g.add(seara);
+  }
+  return g;
+}
+
+function portoNoite(leve) {
+  const g = new THREE.Group();
+  const solo = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), mat(0x29363a));
+  solo.rotation.x = -Math.PI / 2;
+  solo.position.y = -0.8;
+  g.add(solo);
+  const asfalto = mat(0x1d2832);
+  const luz = new THREE.MeshBasicMaterial({ color: 0xffd397 });
+  const brilho = new THREE.MeshBasicMaterial({ color: 0xffecb6 });
+  // A escala visual da pista é ampliada para ser legível na câmara de missão.
+  const pista = new THREE.Mesh(new THREE.BoxGeometry(17, 0.25, 160), asfalto);
+  pista.position.set(0, -0.4, 665);
+  g.add(pista);
+  for (let i = 0; i < 19; i++) {
+    const z = 590 + i * 8;
+    if (i % 2 === 0) {
+      const marca = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.3, 3.2), brilho);
+      marca.position.set(0, -0.16, z);
+      g.add(marca);
+    }
+    for (const side of [-1, 1]) {
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.6, 6, 5), luz);
+      lamp.position.set(side * 9.2, 0.3, z);
+      g.add(lamp);
+    }
+  }
+  const n = leve ? 28 : 70;
+  for (let i = 0; i < n; i++) {
+    const side = i % 2 ? -1 : 1;
+    const x = side * (36 + (i * 37) % 280);
+    const z = -80 + (i * 97) % 920;
+    const h = 3 + (i * 13) % 18;
+    const bloco = new THREE.Mesh(new THREE.BoxGeometry(5 + i % 6, h, 5 + (i * 3) % 9), mat(i % 3 ? 0x303c43 : 0x3f4647));
+    bloco.position.set(x, h / 2 - 0.4, z);
+    const janela = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 0.2), luz);
+    janela.position.set(x, h * 0.55, z + 4.6);
+    g.add(bloco, janela);
   }
   return g;
 }
@@ -445,6 +488,21 @@ function meshAmeaca(o, pose, leve) {
       g.userData.trafego = { heading: p.heading, speed: 28 };
       break;
     }
+    case 'baloes': {
+      const cores = [0xffa65d, 0xf7d394, 0xdf775e, 0xe8b875];
+      for (let i = 0; i < 4; i++) {
+        const x = (i - 1.5) * 11;
+        const y = (p.y || 42) + (i % 2 ? 6 : -3);
+        const z = (i % 2) * 9;
+        const envelope = new THREE.Mesh(new THREE.SphereGeometry(3.4, 10, 8), new THREE.MeshLambertMaterial({ color: cores[i], emissive: cores[i], emissiveIntensity: 0.3 }));
+        envelope.scale.set(0.85, 1.35, 0.85);
+        envelope.position.set(x, y, z);
+        const chama = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffdb8e }));
+        chama.position.set(x, y - 5, z);
+        g.add(envelope, chama);
+      }
+      break;
+    }
     case 'meteo': {
       const wall = new THREE.Mesh(
         new THREE.BoxGeometry(110, 78, 22),
@@ -481,17 +539,19 @@ function meshAmeaca(o, pose, leve) {
 
 export function mostrarAmeacas(mundo, obstaculos, pose) {
   if (!mundo?.ameaças) return;
+  const local = { ...pose, x: pose.x - mundo.origemVisual.x, z: pose.z - mundo.origemVisual.z };
   limparGrupo(mundo.ameaças);
   mundo.alvoLook = null;
-  const lista = (Array.isArray(obstaculos) ? obstaculos : []).filter((o) => o && o.em_rota);
+  const lista = (Array.isArray(obstaculos) ? obstaculos : []).filter((o) => o && o.em_rota)
+    .map((o) => ({ ...o, distancia_m: Math.max(25, o.distancia_m / 15) }));
   for (const o of lista) {
-    mundo.ameaças.add(meshAmeaca(o, pose, mundo.leve));
+    mundo.ameaças.add(meshAmeaca(o, local, mundo.leve));
   }
   const foco = lista[0];
-  if (foco) mundo.alvoLook = pontoAmeaca(pose, foco);
+  if (foco) mundo.alvoLook = pontoAmeaca(local, foco);
   // Uma vez, no instante do incidente: a malha fica no mundo e o avião
   // aproxima-se. Repetir isto em cada frame cola a ameaça ao nariz.
-  ancorarVisuais(mundo, pose);
+  ancorarVisuais(mundo, local);
 }
 
 function numHeading(pose) {
@@ -558,137 +618,7 @@ export function actualizarAmeacas(mundo, dt) {
   }
 }
 
-const POSE_PARTIDA = { x: -80, y: 42, z: 40, heading: 0.7 };
-
-function specsFluxo(cenario, leve) {
-  const n = leve ? 2 : 3;
-  if (cenario === 'carga') {
-    return Array.from({ length: n }, (_, i) => ({ along: 52 + i * 130, passo: 130, solo: i === 0, kind: 'aves' }));
-  }
-  if (cenario === 'sar') {
-    return Array.from({ length: n }, (_, i) => ({ along: 70 + i * 150, passo: 150, kind: 'guerra' }));
-  }
-  return Array.from({ length: n }, (_, i) => ({ along: 16 + i * 280, passo: 280, kind: 'canyon' }));
-}
-
-function marcarBases(lista, grupo) {
-  if (!lista) return;
-  for (const item of lista) {
-    const g = item.g || item.group;
-    if (!g) continue;
-    item.baseX = g.position.x;
-    item.baseZ = g.position.z;
-    item.baseY = item.baseY ?? g.position.y;
-  }
-  void grupo;
-}
-
-function criarTileFluxo(cenario, leve, spec) {
-  const o = { em_rota: spec.kind !== 'canyon', folga_pela_esquerda_m: 40, folga_pela_direita_m: 40 };
-  const p = { rumo: 0, altura: 120 };
-  let inner;
-  let offsetY = 0;
-  if (spec.kind === 'aves') {
-    inner = criarAves(p, o, leve, { solo: spec.solo !== false });
-    offsetY = 0;
-  } else if (spec.kind === 'guerra') {
-    inner = criarGuerra(p, o, leve);
-    offsetY = 0;
-  } else {
-    inner = criarCanyon(p, o, leve, { aperto: true });
-    offsetY = -18;
-  }
-  const wrap = new THREE.Group();
-  wrap.add(inner);
-  wrap.userData.offsetY = offsetY;
-  wrap.userData.birds = inner.userData.birds || null;
-  wrap.userData.avioes = inner.userData.avioes || null;
-  marcarBases(wrap.userData.birds);
-  marcarBases(wrap.userData.avioes);
-  return wrap;
-}
-
-function pousarTile(tile, pose, along) {
-  const h = Number(pose?.heading) || 0;
-  const y = Number.isFinite(Number(pose?.y)) ? Number(pose.y) : 42;
-  const x = Number.isFinite(Number(pose?.x)) ? Number(pose.x) : 0;
-  const z = Number.isFinite(Number(pose?.z)) ? Number(pose.z) : 0;
-  tile.position.set(x + Math.sin(h) * along, y + (tile.userData.offsetY || 0), z + Math.cos(h) * along);
-  tile.rotation.y = h;
-}
-
-function reporDeriva(tile) {
-  const aves = tile.userData.birds;
-  if (aves) {
-    for (const b of aves) {
-      b.g.position.x = b.baseX;
-      b.g.position.z = b.baseZ;
-    }
-  }
-  const formacao = tile.userData.avioes;
-  if (formacao) {
-    for (const pl of formacao) {
-      pl.group.position.x = pl.baseX;
-      pl.group.position.z = pl.baseZ;
-    }
-  }
-}
-
-function semearFluxo(scene, { cenario, leve, pose }) {
-  const fluxo = new THREE.Group();
-  const specs = specsFluxo(cenario, leve);
-  const tiles = specs.map((spec) => {
-    const tile = criarTileFluxo(cenario, leve, spec);
-    pousarTile(tile, pose, spec.along);
-    fluxo.add(tile);
-    return tile;
-  });
-  scene.add(fluxo);
-  return { fluxo, tiles, passo: specs[0]?.passo ?? 200 };
-}
-
-/** A cena fica no mundo. O que fica para trás reaparece lá à frente, sem colar ao nariz. */
-export function actualizarFluxo(mundo, pose, dt) {
-  const tiles = mundo?.fluxoTiles;
-  if (!tiles?.length || !pose) return;
-  const h = Number(pose.heading) || 0;
-  const fx = Math.sin(h);
-  const fz = Math.cos(h);
-  const passo = mundo.fluxoPasso || 200;
-  const t = mundo.tAmeaca ?? 0;
-  let maxAlong = 0;
-  const alongs = tiles.map((tile) => {
-    const along = (tile.position.x - pose.x) * fx + (tile.position.z - pose.z) * fz;
-    if (along > maxAlong) maxAlong = along;
-    return along;
-  });
-  tiles.forEach((tile, i) => {
-    if (alongs[i] < -passo * 0.45) {
-      maxAlong += passo;
-      pousarTile(tile, pose, maxAlong);
-      reporDeriva(tile);
-    }
-    const aves = tile.userData.birds;
-    if (aves) {
-      for (const b of aves) {
-        const fase = t * b.rate + b.phase;
-        b.pivL.rotation.z = Math.sin(fase) * 0.5;
-        b.pivR.rotation.z = -Math.sin(fase) * 0.5;
-        b.g.position.y = b.baseY + Math.sin(fase * 0.45) * 0.45;
-      }
-    }
-    const formacao = tile.userData.avioes;
-    if (formacao) {
-      for (const pl of formacao) {
-        pl.group.position.x += Math.sin(pl.yaw) * pl.speed * dt;
-        pl.group.position.z += Math.cos(pl.yaw) * pl.speed * dt;
-        for (const prop of pl.props) prop.rotation.z += dt * 9;
-      }
-    }
-  });
-}
-
-export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null } = {}) {
+export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
   const pal = ceuDe(cenario);
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -715,16 +645,19 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   fill.position.set(40, 30, -20);
   scene.add(fill);
 
+  const geografia = new THREE.Group();
   const ocean = new THREE.Mesh(
     new THREE.PlaneGeometry(2400, 2400),
     mat(cenario === 'sar' ? 0x1c3348 : 0x2a6f9a),
   );
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.y = -12;
-  scene.add(ocean);
+  geografia.add(ocean);
 
-  if (cenario === 'carga') scene.add(campoFal(leve));
-  else scene.add(ilha(leve));
+  if (cenario === 'porto') geografia.add(portoNoite(leve));
+  else if (cenario === 'carga') geografia.add(campoFal(leve));
+  else geografia.add(ilha(leve));
+  scene.add(geografia);
 
   const aviao = criarLus222();
   scene.add(aviao);
@@ -732,22 +665,43 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   const ameaças = new THREE.Group();
   scene.add(ameaças);
 
-  const fluxo = semearFluxo(scene, { cenario, leve, pose: pose ?? POSE_PARTIDA });
-
   return {
     renderer,
     scene,
     camera,
     aviao,
     ameaças,
+    geografia,
+    origemVisual: { x: 0, z: 0 },
     alvoLook: null,
     tAmeaca: 0,
     leve,
     cenario,
-    fluxo: fluxo.fluxo,
-    fluxoTiles: fluxo.tiles,
-    fluxoPasso: fluxo.passo,
   };
+}
+
+/** Mantém a câmara perto da origem numérica sem alterar coordenadas da missão. */
+export function recentrarOrigem(mundo, pose) {
+  const origem = mundo.origemVisual;
+  const x = pose.x - origem.x;
+  const z = pose.z - origem.z;
+  if (Math.hypot(x, z) > 240) {
+    mundo.geografia.position.x -= x;
+    mundo.geografia.position.z -= z;
+    mundo.camera.position.x -= x;
+    mundo.camera.position.z -= z;
+    for (const ameaca of mundo.ameaças.children) {
+      ameaca.position.x -= x;
+      ameaca.position.z -= z;
+    }
+    if (mundo.alvoLook) {
+      mundo.alvoLook.x -= x;
+      mundo.alvoLook.z -= z;
+    }
+    origem.x = pose.x;
+    origem.z = pose.z;
+  }
+  return { ...pose, x: pose.x - origem.x, z: pose.z - origem.z };
 }
 
 export function aplicarPose(mundo, pose) {
@@ -775,8 +729,8 @@ export function actualizarCamara(mundo, pose, dt) {
   const dodge = Boolean(pose.dodge || look);
   // Ecrã estreito (telemóvel em pé): afasta a cauda para a asa caber no quadro.
   const fit = Math.min(1, Math.max(0.55, (cam.aspect || 1) / 1.2));
-  const back = (dodge ? 36 : 24) / fit;
-  const up = (dodge ? 11 : 8) / fit;
+  const back = (dodge ? 46 : 38) / fit;
+  const up = (dodge ? 14 : 12) / fit;
   const ahead = dodge ? 56 : 48;
   const fx = Math.sin(pose.heading);
   const fz = Math.cos(pose.heading);

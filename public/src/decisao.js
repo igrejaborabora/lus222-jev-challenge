@@ -23,14 +23,14 @@ export const ACOES = [
 
 export const MANOBRAS_V = ['subir', 'descer', 'manter'];
 export const MANOBRAS_L = ['esquerda', 'direita', 'manter'];
-export const VISUAIS = ['torre', 'relevo', 'trafego', 'meteo', 'cabo', 'canyon', 'aves', 'guerra'];
+export const VISUAIS = ['torre', 'relevo', 'trafego', 'meteo', 'cabo', 'canyon', 'aves', 'guerra', 'baloes'];
 
-export const DESTINOS = ['planeado', 'stol_proximo', 'hospital_alternativo', 'origem'];
+export const DESTINOS = ['planeado', 'stol_proximo', 'hospital_alternativo', 'aeroporto_alternativo', 'origem'];
 export const CABINES = ['medevac', 'carga', 'passageiros', 'mista'];
 export const PRIORIDADES = ['tempo', 'combustivel', 'meteorologia', 'integridade', 'carga_critica'];
 export const RISCOS = ['baixo', 'medio', 'alto'];
 export const SUPERFICIES = ['pavimentada', 'nao_pavimentada'];
-export const TIPOS_MISSAO = ['medevac', 'carga', 'sar'];
+export const TIPOS_MISSAO = ['medevac', 'carga', 'sar', 'porto'];
 
 export const num = (v, f = 0) => (Number.isFinite(Number(v)) ? Number(v) : f);
 export const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -84,7 +84,7 @@ export function offsetLateral(o) {
   return 0;
 }
 
-const VISUAIS_NO_AR = new Set(['trafego', 'aves', 'guerra']);
+const VISUAIS_NO_AR = new Set(['trafego', 'aves', 'guerra', 'baloes']);
 
 export function pontoAmeaca(pose, obstaculo) {
   const d = num(obstaculo?.distancia_m, 200);
@@ -337,6 +337,8 @@ export function etiquetarDestino(destino) {
       return 'STOL próximo';
     case 'hospital_alternativo':
       return 'Hospital alternativo';
+    case 'aeroporto_alternativo':
+      return 'Aeroporto alternativo';
     case 'origem':
       return 'Origem';
     default: {

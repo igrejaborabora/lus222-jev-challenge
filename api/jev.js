@@ -133,7 +133,7 @@ export async function GET() {
     acoes: ['prosseguir', 'desviar_alternativo', 'orbitar', 'regressar_base', 'abortar_emergencia'],
     manobras_verticais: ['subir', 'descer', 'manter'],
     manobras_laterais: ['esquerda', 'direita', 'manter'],
-    destinos: ['planeado', 'stol_proximo', 'hospital_alternativo', 'origem'],
+    destinos: ['planeado', 'stol_proximo', 'hospital_alternativo', 'aeroporto_alternativo', 'origem'],
     ambito:
       'Demo independente: o JEV aplica evasão (vertical/lateral) de imediato. Não é DAA certificável, não é autopiloto, não é produto oficial EEA/CEiiA salvo autorização escrita.',
     como_usar: "POST { momento: 'briefing' | 'incidente', estado }",
