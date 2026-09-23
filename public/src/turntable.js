@@ -13,6 +13,10 @@ const estado = { rodar: false, silhueta: false, leve: false, angulo: 0 };
 const focoParam = Number.parseInt(new URLSearchParams(location.search).get('foco') ?? '', 10);
 const foco = focoParam >= 0 && focoParam <= 3 ? focoParam : null;
 if (foco !== null) document.querySelector('.grelha').style.display = 'none';
+// ?cam=az,el,dist,fov (graus, graus, unidades, graus) fixa a câmara da vista
+// 3/4, para a alinhar com o enquadramento de uma render de referência.
+const camParam = (new URLSearchParams(location.search).get('cam') ?? '').split(',').map(Number);
+const camFixa = camParam.length === 4 && camParam.every(Number.isFinite) ? camParam : null;
 
 let renderer;
 try {
@@ -113,7 +117,16 @@ function frame(agora) {
     const x = foco === null ? (i % 2) * vw : 0;
     const y = foco === null && i < 2 ? h - vh : 0;
     const aspect = vw / vh;
-    if (v.persp) {
+    if (v.persp && camFixa) {
+      const [az, el, r, fov] = camFixa;
+      const a = THREE.MathUtils.degToRad(az) + estado.angulo;
+      const e = THREE.MathUtils.degToRad(el);
+      v.cam.fov = fov;
+      v.cam.aspect = aspect;
+      v.cam.position.set(Math.sin(a) * Math.cos(e) * r, 0.7 + Math.sin(e) * r, Math.cos(a) * Math.cos(e) * r);
+      v.cam.lookAt(0, 0.7, 0);
+      v.cam.updateProjectionMatrix();
+    } else if (v.persp) {
       const r = 26;
       const a = 0.72 + estado.angulo;
       v.cam.aspect = aspect;
