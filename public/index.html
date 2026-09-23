@@ -59,6 +59,7 @@
       <div class="setup-dock">
         <div class="mode-info" id="mode-info" role="status">A verificar a ligação ao JEV…</div>
         <div class="dock-buttons">
+          <button type="button" class="button button-accent pilot-button" id="btn-pilot">Prova contínua JEV <span aria-hidden="true">↗</span></button>
           <button type="button" class="button button-accent" id="btn-launch">Iniciar JEV ao vivo <span aria-hidden="true">↗</span></button>
           <button type="button" class="button button-outline" id="btn-replay">Ver replay gravado</button>
         </div>
@@ -78,6 +79,10 @@
     <aside class="telemetry" aria-label="Telemetria"><p class="kicker light">VOO / TEMPO SIMULADO</p><div><span>VELOCIDADE</span><strong><b id="tel-speed">—</b><small>kt</small></strong></div><div><span>ALTITUDE</span><strong><b id="tel-alt">—</b><small>ft</small></strong></div><div><span>COMBUSTÍVEL</span><strong><b id="tel-fuel">—</b><small>kg</small></strong></div><div><span>ETA</span><strong><b id="tel-eta">—</b><small>min</small></strong></div><div><span>RELÓGIO</span><strong><b id="tel-time">—</b><small>min</small></strong></div></aside>
     <div class="map-card"><span class="map-label">ROTA ACTIVA</span><svg id="route-map" viewBox="0 0 270 112" role="img" aria-label="Esquema da rota da missão"><path id="map-planned" d="" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-dasharray="4 6"/><path id="map-path" d="" fill="none" stroke="#f4f6f8" stroke-width="3"/><circle id="map-plane" cx="20" cy="82" r="6" fill="#f4f6f8"/><circle id="map-target" cx="248" cy="82" r="5" fill="#f4f6f8"/></svg><strong id="map-destination">—</strong><small id="map-caption">Traçado esquemático</small></div>
     <div class="flight-label">SIMULAÇÃO ILUSTRATIVA / PERFIL ASSUMIDO</div>
+    <aside class="pilot-proof" id="pilot-proof" aria-label="Prova contínua do piloto JEV" hidden>
+      <div class="pilot-proof-head"><span>PILOTO JEV / DECISÕES CONTÍNUAS</span><strong id="pilot-stats">—</strong></div>
+      <div class="pilot-tape" id="pilot-tape" aria-live="polite"></div>
+    </aside>
     <div class="flight-seal" id="flight-seal" aria-live="polite"><small id="seal-source">JEV</small><strong id="seal-choice">À espera do JEV</strong><span id="seal-ms">— ms</span></div>
     <div class="flight-footer">
       <div class="flight-controls">

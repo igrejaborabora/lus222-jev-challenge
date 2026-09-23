@@ -111,6 +111,17 @@ export function assinaturaObstaculos(obstaculos) {
     .join('|');
 }
 
+export function selecionarRespostaReplay(replays, visual) {
+  const origem = {
+    canyon: ['medevac', 'relevo'],
+    aves: ['carga', 'aves'],
+    guerra: ['sar', 'trafego'],
+  }[visual] ?? ['medevac', 'relevo'];
+  const resposta = replays?.[origem[0]]?.eventos?.[origem[1]];
+  if (resposta?.fonte !== 'jev' || !resposta?.answers) throw new Error('replay_jev_invalido');
+  return resposta;
+}
+
 export function estadoPassoPiloto(percurso, aviao, base = {}) {
   const obstaculos = obstaculosVisiveis(percurso, aviao);
   const posicao = coordenadasCurso(aviao);

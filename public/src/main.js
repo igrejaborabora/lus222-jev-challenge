@@ -1,12 +1,28 @@
 import { CENARIOS_SIM, PERFIL, criarMissao, avancarMissao, aplicarDecisao, proximoEvento, estadoParaAvaliacao, combustivelNecessarioKg, pistaNecessariaM } from './simulacao.js';
 import { validarRespostas } from './contrato-jev.js';
 import { avaliarLinha, resumirLinhas } from './avaliacao-sim.js';
-import { decisaoGeometrica, etiquetarAcao, etiquetarDestino, etiquetarManobraV, etiquetarManobraL } from './decisao.js';
+import { decisaoGeometrica, etiquetarAcao, etiquetarDestino, etiquetarManobraV, etiquetarManobraL, evasaoDeAnswers } from './decisao.js';
+import { aplicarEvasao, novoAutomato, passoAutomato, poseAviao } from './automato.js';
+import {
+  actualizarSeparacoes,
+  assinaturaObstaculos,
+  concluirPasso,
+  criarPercursoPiloto,
+  deveDespacharPasso,
+  estadoPassoPiloto,
+  falharPasso,
+  metricasPiloto,
+  novoPipelinePiloto,
+  obstaculosVisiveis,
+  percursoConcluido,
+  reservarPasso,
+  selecionarRespostaReplay,
+} from './piloto-corredor.js';
 
 const $ = (id) => document.getElementById(id);
 const LABEL_DESTINO = { planeado: 'Destino planeado', origem: 'Origem', hospital_alternativo: 'Hospital alternativo', aeroporto_alternativo: 'Aeroporto alternativo', stol_proximo: 'Pista STOL próxima' };
 const QUESTOES = { configuracaoCabine: 'Cabine', prioridadeOperacional: 'Prioridade', pistaAdequada: 'Pista adequada', combustivelSuficiente: 'Combustível suficiente', acaoMissao: 'Ação de missão', manobraVertical: 'Vertical', manobraLateral: 'Lateral', destinoPreferido: 'Destino se mudar rota', urgencia: 'Urgência', riscoMeteorologico: 'Risco meteorológico', precisaRevisaoPIC: 'Revisão PIC', continuarVoo: 'Continuar voo' };
-const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, geracao: 0 };
+const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0 };
 
 function mostrar(nome) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === `screen-${nome}`));
@@ -19,6 +35,8 @@ function tempo(n) { return `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).p
 function safeClone(v) { return structuredClone(v); }
 function nomeCenario() { return CENARIOS_SIM[estado.cenario]?.nome ?? 'Missão'; }
 function nomeDestino(id) { return id === 'planeado' && estado.cenario === 'porto' ? 'Francisco Sá Carneiro' : LABEL_DESTINO[id] ?? id; }
+function emModoPiloto() { return estado.modo === 'pilot-live' || estado.modo === 'pilot-replay'; }
+function emReplay() { return estado.modo === 'replay' || estado.modo === 'pilot-replay'; }
 
 async function sondarGateway() {
   try {
@@ -29,6 +47,7 @@ async function sondarGateway() {
   $('gateway-status').textContent = estado.gateway ? '● AI Gateway ligado · JEV ao vivo' : '○ Gateway indisponível · replay disponível';
   $('mode-info').textContent = estado.gateway ? 'JEV ao vivo disponível. O replay também pode ser explorado.' : 'Sem Gateway: explora um replay gravado, identificado em todo o percurso.';
   $('btn-launch').disabled = !estado.gateway;
+  $('btn-pilot').textContent = estado.gateway ? 'Prova contínua JEV ↗' : 'Ver prova contínua gravada ↗';
   $('btn-lab').disabled = !estado.gateway;
 }
 
@@ -66,10 +85,10 @@ function manobraCurta(vertical, lateral) {
 function selo(origem, escolha, ms, aEsperar = false) {
   $('seal-source').textContent = origem;
   $('seal-choice').textContent = escolha;
-  $('seal-ms').textContent = Number.isFinite(ms) ? `${Math.round(ms)} ms${estado.modo === 'replay' ? ' · gravados' : ''}` : '— ms';
+  $('seal-ms').textContent = Number.isFinite(ms) ? `${Math.round(ms)} ms${emReplay() ? ' · gravados' : ''}` : '— ms';
   $('flight-seal').classList.toggle('is-waiting', aEsperar);
 }
-function origemSelo() { return estado.modo === 'replay' ? 'JEV / REPLAY GRAVADO' : 'JEV / AO VIVO'; }
+function origemSelo() { return emReplay() ? 'JEV / REPLAY GRAVADO' : 'JEV / AO VIVO'; }
 
 function configuracao() { return { payload_kg: Number($('input-payload').value), risco_maximo: $('select-risk').value, preferir_stol: $('check-stol').checked, nunca_desviar: $('check-no-divert').checked }; }
 function semente() { return Math.min(999999999, Math.max(1, Number($('input-seed').value) || 222)); }
@@ -98,7 +117,14 @@ async function carregarReplay(id) {
   return data;
 }
 
+async function carregarReplaysPiloto() {
+  const ids = ['medevac', 'carga', 'sar'];
+  const pares = await Promise.all(ids.map(async (id) => [id, await carregarReplay(id)]));
+  return Object.fromEntries(pares);
+}
+
 function parametrosVoo() {
+  if (emModoPiloto()) return poseAviao(estado.piloto.automato);
   const v = estado.missao.voo;
   return { x: v.xM / 210, y: v.altitudeM / 11.5, z: (v.zM - 25000) / 210, heading: v.rumoRad, bank: -v.bankRad, pitch: -v.pitchRad, hélice: v.tempoS * 16, dodge: v.tempoS < estado.missao.comando.evasaoAteS };
 }
@@ -132,7 +158,7 @@ function desenharMundo(dt) {
   try {
     const pose = api.recentrarOrigem(estado.mundo, parametrosVoo());
     api.aplicarPose(estado.mundo, pose);
-    api.posicionarBaloes(estado.mundo, estado.missao.ameacaAtiva, estado.missao.voo, pose);
+    if (!emModoPiloto()) api.posicionarBaloes(estado.mundo, estado.missao.ameacaAtiva, estado.missao.voo, pose);
     api.actualizarAmeacas(estado.mundo, dt);
     api.actualizarCamara(estado.mundo, pose, dt);
     estado.mundo.renderer.render(estado.mundo.scene, estado.mundo.camera);
@@ -175,6 +201,19 @@ function atualizarDecisao(evento, entrada, jev, supervisor) {
 }
 function atualizarTelemetria() {
   if (!estado.missao) return;
+  if (emModoPiloto()) {
+    const piloto = estado.piloto;
+    const entrada = estadoPassoPiloto(piloto.percurso, piloto.automato);
+    const restante = Math.max(0, piloto.percurso.distancia_total_m - entrada.voo.posicao_z_m);
+    $('flight-phase').textContent = `piloto contínuo${estado.pausa ? ' · pausa' : ''}`;
+    $('tel-speed').textContent = Math.round(piloto.automato.speed * 1.94384);
+    $('tel-alt').textContent = Math.round(piloto.automato.y * 3.28084).toLocaleString('pt-PT');
+    $('tel-fuel').textContent = '—';
+    $('tel-eta').textContent = numero(restante / Math.max(1, piloto.automato.speed) / 60, 1);
+    $('tel-time').textContent = tempo(entrada.voo.tempo_s);
+    atualizarProvaPiloto();
+    return;
+  }
   const m = estado.missao, v = m.voo, d = m.destinos.find((x) => x.id === m.destinoId);
   const restante = Math.hypot(v.xM - d.xM, v.zM - d.zM);
   $('flight-phase').textContent = m.fase.replaceAll('_', ' ') + (estado.pausa ? ' · pausa' : m.ameacaAtiva && estado.velocidade > 2 ? ' · 2× balões' : '');
@@ -210,6 +249,166 @@ function mostrarFalha(mensagem) {
   $('failure-overlay').hidden = false;
   $('flight-status').textContent = 'Simulação pausada. A comparação ao vivo fica incompleta se terminares.';
 }
+
+function separacaoMinimaPiloto() {
+  const valores = [...(estado.piloto?.percurso.separacoes.values() ?? [])].filter(Number.isFinite);
+  return valores.length ? Math.min(...valores) : null;
+}
+
+function atualizarProvaPiloto() {
+  if (!estado.piloto) return;
+  const metricas = metricasPiloto(estado.piloto.pipeline, performance.now());
+  $('pilot-stats').textContent = `${metricas.decisoes_por_minuto}/min · p50 ${metricas.latencia_mediana_ms ?? '—'} · p95 ${metricas.latencia_p95_ms ?? '—'} ms · sep ${metricas.separacao_min_m ?? '—'} m`;
+  const fita = $('pilot-tape');
+  fita.replaceChildren();
+  estado.piloto.pipeline.historico.filter((row) => row.aplicar && !row.erro).slice(-4).reverse().forEach((row) => {
+    const a = row.resposta.answers;
+    const item = elemento('div', 'pilot-tape-row');
+    item.append(
+      elemento('time', '', `#${String(row.sequencia + 1).padStart(2, '0')}`),
+      elemento('b', '', `${etiquetarManobraL(a.manobraLateral.choice)} + ${etiquetarManobraV(a.manobraVertical.choice)}`),
+      elemento('span', '', `${row.latencia_ms} ms`),
+    );
+    fita.append(item);
+  });
+}
+
+async function avaliarPassoPiloto(ticket, entrada) {
+  const ctrl = new AbortController();
+  estado.pedidosPiloto.set(ticket.id, ctrl);
+  const timeout = setTimeout(() => ctrl.abort(), 13_000);
+  try {
+    const r = await fetch('/api/jev', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ momento: 'incidente', estado: entrada }),
+      signal: ctrl.signal,
+    });
+    const d = await r.json();
+    if (!r.ok || d.fonte !== 'jev') throw new Error(d.mensagem || 'O JEV não respondeu.');
+    const contrato = validarRespostas('incidente', d.answers);
+    if (!contrato.ok) throw new Error(`Contrato JEV inválido: ${contrato.erro}`);
+    return d;
+  } catch (e) {
+    throw new Error(e.name === 'AbortError' ? 'O passo do piloto excedeu 13 s.' : e.message, { cause: e });
+  } finally {
+    clearTimeout(timeout);
+    estado.pedidosPiloto.delete(ticket.id);
+  }
+}
+
+function mostrarPassoPiloto(registo) {
+  const entrada = registo.entrada;
+  const jev = registo.resposta;
+  const answers = jev.answers;
+  const obstaculo = entrada.geometria.obstaculos[0];
+  const melhorFolga = entrada.geometria.folgas_candidatas[0];
+  $('event-number').textContent = String(registo.sequencia + 1).padStart(2, '0');
+  $('event-title').textContent = obstaculo ? `${obstaculo.tipo}.` : 'Corredor livre.';
+  $('event-desc').textContent = entrada.incidente.resumo;
+  $('flow-input').textContent = obstaculo ? `${entrada.geometria.obstaculos.length} ameaças · primeira a ${obstaculo.distancia_m} m` : 'Saída do corredor';
+  $('flow-choice').textContent = `${etiquetarManobraL(answers.manobraLateral.choice)} + ${etiquetarManobraV(answers.manobraVertical.choice)}`;
+  $('flow-detail').textContent = `Folga calculada: ${melhorFolga?.id ?? '—'} · ${melhorFolga?.folga_min_m ?? '—'} m`;
+  $('flow-effect').textContent = `O controlador local executa os eixos; o JEV volta a ler o corredor em 400 ms. Separação mínima ${registo.separacao_min_m ?? '—'} m.`;
+  $('decision-origin').textContent = emReplay() ? 'JEV / REPLAY GRAVADO EQUIVALENTE' : 'JEV / AO VIVO · PIPELINE 2';
+  $('decision-pic').textContent = Number(answers.precisaRevisaoPIC?.probability) >= .55 ? 'JEV SUGERE REVISÃO PIC' : 'SEM REVISÃO SUGERIDA';
+  mostrarRespostas(answers);
+  selo(origemSelo(), `${manobraCurta(answers.manobraVertical.choice, answers.manobraLateral.choice)} · folga ${melhorFolga?.id ?? 'livre'}`, jev.latencia_ms);
+  $('flight-status').textContent = 'O JEV escolhe; o controlador local executa. Não é Detect-and-Avoid certificável.';
+}
+
+async function processarPassoPiloto(ticket, gen) {
+  let resposta;
+  try {
+    if (estado.modo === 'pilot-replay') {
+      const visual = ticket.entrada.geometria.obstaculos[0]?.visual ?? 'canyon';
+      resposta = safeClone(selecionarRespostaReplay(estado.piloto.replays, visual));
+    } else {
+      resposta = await avaliarPassoPiloto(ticket, ticket.entrada);
+    }
+  } catch (erro) {
+    if (gen !== estado.geracao || !estado.piloto) return;
+    falharPasso(estado.piloto.pipeline, ticket.id, erro, performance.now());
+    $('flight-status').textContent = `Passo sem resposta: ${erro.message} O avião mantém a última ordem e o pipeline continua.`;
+    atualizarProvaPiloto();
+    return;
+  }
+  if (gen !== estado.geracao || estado.ecra !== 'live' || !estado.piloto) return;
+  const resultado = concluirPasso(
+    estado.piloto.pipeline,
+    ticket.id,
+    resposta,
+    performance.now(),
+    { separacao_min_m: separacaoMinimaPiloto() },
+  );
+  if (!resultado.aplicar) return;
+  aplicarEvasao(estado.piloto.automato, evasaoDeAnswers(resposta.answers));
+  estado.log.linhas.push(resultado.registo);
+  mostrarPassoPiloto(resultado.registo);
+  if (estado.mundo) estado.mundoApi.mostrarAmeacas(estado.mundo, ticket.entrada.geometria.obstaculos, parametrosVoo());
+  atualizarProvaPiloto();
+}
+
+function quadroPiloto(t, dt) {
+  const piloto = estado.piloto;
+  if (!piloto || estado.pausa || estado.falha) return;
+  const factor = estado.velocidade === 8 ? 1.6 : estado.velocidade === 4 ? 1.25 : 1;
+  passoAutomato(piloto.automato, dt * factor);
+  actualizarSeparacoes(piloto.percurso, piloto.automato);
+  const entrada = estadoPassoPiloto(piloto.percurso, piloto.automato, piloto.base);
+  const obstaculos = obstaculosVisiveis(piloto.percurso, piloto.automato);
+  const assinatura = assinaturaObstaculos(obstaculos);
+  if (obstaculos.length && deveDespacharPasso(piloto.pipeline, t, assinatura)) {
+    const ticket = reservarPasso(piloto.pipeline, entrada, t, assinatura);
+    void processarPassoPiloto(ticket, estado.geracao);
+  }
+  if (percursoConcluido(piloto.percurso, piloto.automato) && piloto.pipeline.emVoo.size === 0) {
+    estado.log.resultado = 'corredor_concluido';
+    estado.missao.resultado = 'corredor_concluido';
+  }
+}
+
+async function iniciarPiloto() {
+  const gen = ++estado.geracao;
+  if (estado.pedido) estado.pedido.abort();
+  for (const ctrl of estado.pedidosPiloto.values()) ctrl.abort();
+  estado.pedidosPiloto.clear();
+  const modo = estado.gateway ? 'pilot-live' : 'pilot-replay';
+  estado.modo = modo;
+  let replays = null;
+  if (modo === 'pilot-replay') {
+    try {
+      replays = await carregarReplaysPiloto();
+    } catch (e) {
+      $('mode-info').textContent = e.message;
+      return;
+    }
+  }
+  if (gen !== estado.geracao) return;
+  const seed = semente();
+  const percurso = criarPercursoPiloto(seed);
+  const pipeline = novoPipelinePiloto();
+  const automato = novoAutomato();
+  estado.piloto = { percurso, pipeline, automato, replays, base: { restricoes: configuracao() } };
+  estado.missao = { resultado: null };
+  estado.log = { versao: 5, fonte: modo === 'pilot-replay' ? 'jev-replay-gravado-equivalente' : 'jev-ao-vivo', modelo: 'typesafe-ai/jev', perfil: PERFIL.versao, cenario: 'corredor-piloto', semente: seed, restricoes: configuracao(), linhas: [], incompleta: false, motivo: null, resultado: null };
+  estado.pausa = false; estado.espera = false; estado.falha = false; estado.velocidade = 8;
+  $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true;
+  $('btn-real-map').hidden = true; $('btn-pic').hidden = true; $('pilot-proof').hidden = false;
+  $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade';
+  $('flight-name').textContent = 'Corredor autónomo LUS-222';
+  $('flight-source').textContent = modo === 'pilot-replay' ? 'REPLAY JEV GRAVADO · SEM NOVA AVALIAÇÃO' : 'JEV AO VIVO · PASSOS DE 400 MS';
+  $('decision-origin').textContent = modo === 'pilot-replay' ? 'JEV / REPLAY GRAVADO EQUIVALENTE' : 'JEV / AO VIVO · PIPELINE 2';
+  $('event-title').textContent = 'O piloto JEV entrou no corredor.';
+  $('event-desc').textContent = 'Três a cinco obstáculos, folgas candidatas e um novo passo tipado a cada 400 ms.';
+  selo(origemSelo(), 'A ler o corredor…', null, true);
+  document.documentElement.classList.add('pilot-active');
+  abrirGaveta(ecraLargo());
+  mostrar('live');
+  largarMundo(); await criarMundo(); if (gen !== estado.geracao) return;
+  cancelAnimationFrame(estado.raf); estado.ultimoFrame = performance.now(); estado.raf = requestAnimationFrame(quadro);
+}
+
 async function processarEvento(evento, gen) {
   estado.espera = true; estado.incidentePendente = evento;
   atualizarResultadoLinha();
@@ -268,6 +467,13 @@ function quadro(t) {
   if (estado.ecra !== 'live' || !estado.missao) return;
   estado.raf = requestAnimationFrame(quadro);
   const dt = Math.min(.1, Math.max(0, (t - estado.ultimoFrame) / 1000)); estado.ultimoFrame = t;
+  if (emModoPiloto()) {
+    quadroPiloto(t, dt);
+    if (t - estado.ultimoUI > 100) { atualizarTelemetria(); estado.ultimoUI = t; }
+    desenharMundo(dt);
+    if (estado.missao.resultado && estado.piloto.pipeline.emVoo.size === 0) abrirDebrief();
+    return;
+  }
   if (!estado.pausa && !estado.falha && !estado.missao.resultado) {
     const fator = estado.espera && estado.incidentePendente?.obstaculos?.some((o) => o.segundos_ate_ao_contacto <= 15) ? 0 : estado.espera ? 1 : estado.missao.ameacaAtiva && estado.velocidade > 2 ? 2 : estado.velocidade;
     if (!estado.briefingPendente) estado.missao = avancarMissao(estado.missao, dt * fator);
@@ -284,6 +490,10 @@ function quadro(t) {
 async function iniciar(modo) {
   const gen = ++estado.geracao;
   if (estado.pedido) estado.pedido.abort();
+  for (const ctrl of estado.pedidosPiloto.values()) ctrl.abort();
+  estado.pedidosPiloto.clear();
+  estado.piloto = null;
+  document.documentElement.classList.remove('pilot-active');
   estado.modo = modo; estado.replay = null;
   if (modo === 'replay') {
     try { estado.replay = await carregarReplay(estado.cenario); }
@@ -295,7 +505,7 @@ async function iniciar(modo) {
   estado.missao = criarMissao(estado.cenario, seed, restricoes);
   estado.log = { versao: 4, fonte: modo === 'replay' ? 'jev-replay-gravado' : 'jev-ao-vivo', modelo: 'typesafe-ai/jev', perfil: PERFIL.versao, cenario: estado.cenario, semente: seed, restricoes, briefing: null, linhas: [], intervencoes: [], incompleta: false, motivo: null, resultado: null };
   estado.pausa = false; estado.espera = false; estado.falha = false; estado.incidentePendente = null; estado.briefingPendente = false; estado.revelarAte = 0; estado.velocidade = 8;
-  $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true; $('btn-real-map').hidden = estado.cenario !== 'porto'; $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade';
+  $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true; $('pilot-proof').hidden = true; $('btn-pic').hidden = false; $('btn-real-map').hidden = estado.cenario !== 'porto'; $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade';
   $('flight-name').textContent = nomeCenario(); $('flight-source').textContent = modo === 'replay' ? 'REPLAY GRAVADO · SEM NOVA AVALIAÇÃO' : 'JEV AO VIVO · AI GATEWAY';
   $('decision-origin').textContent = modo === 'replay' ? 'JEV / REPLAY GRAVADO' : 'JEV / AO VIVO';
   selo(origemSelo(), 'A ler o briefing…', null, true);
@@ -314,7 +524,56 @@ function resumoDecisao(linha) {
   return `${etiquetarAcao(a.acaoMissao.choice)} · rota ${nomeDestino(linha.supervisor.aplicada.destino)}`;
 }
 function elemento(tag, classe, texto) { const e = document.createElement(tag); if (classe) e.className = classe; if (texto != null) e.textContent = String(texto); return e; }
+function renderDebriefPiloto() {
+  const log = estado.log;
+  const metricasPilotoFinal = metricasPiloto(estado.piloto.pipeline, performance.now());
+  const separacao = separacaoMinimaPiloto();
+  $('result-title').textContent = log.incompleta ? 'Prova interrompida.' : 'Corredor concluído.';
+  $('result-summary').textContent = `${log.linhas.length} decisões tipadas. O JEV escolheu os eixos e o controlador local executou-os; o avião manteve a última ordem enquanto o pedido seguinte estava em voo.`;
+  $('result-mode').textContent = log.fonte === 'jev-ao-vivo' ? '● JEV AO VIVO / PIPELINE DE 2' : '○ REPLAY JEV GRAVADO / SEM NOVAS RESPOSTAS';
+  const metrics = $('result-metrics'); metrics.replaceChildren();
+  const itens = [
+    ['Decisões', metricasPilotoFinal.decisoes],
+    ['Decisões/min', metricasPilotoFinal.decisoes_por_minuto],
+    ['Latência mediana', `${metricasPilotoFinal.latencia_mediana_ms ?? '—'} ms`],
+    ['Latência p95', `${metricasPilotoFinal.latencia_p95_ms ?? '—'} ms`],
+    ['Separação mínima', `${separacao == null ? '—' : numero(separacao, 1)} m`],
+    ['Passo', '400 ms'],
+    ['Pipeline', '2 pedidos'],
+  ];
+  for (const [nome, valor] of itens) { const box = elemento('div', 'metric'); box.append(elemento('span', '', nome), elemento('strong', '', valor)); metrics.append(box); }
+  const list = $('decision-list'); list.replaceChildren();
+  log.linhas.forEach((row, i) => {
+    const a = row.resposta.answers;
+    const obstaculo = row.entrada.geometria.obstaculos[0];
+    const card = elemento('details', 'decision-record'); if (i === 0) card.open = true;
+    const summary = elemento('summary');
+    const name = elemento('span', 'record-name', obstaculo?.tipo ?? 'Corredor livre');
+    name.append(elemento('small', '', `${row.entrada.geometria.obstaculos.length} ameaças na janela · separação ${row.separacao_min_m ?? '—'} m`));
+    summary.append(
+      elemento('span', 'record-index', String(i + 1).padStart(2, '0')),
+      name,
+      elemento('span', 'record-choice', `${etiquetarManobraL(a.manobraLateral.choice)} + ${etiquetarManobraV(a.manobraVertical.choice)}`),
+    );
+    const body = elemento('div', 'record-body');
+    const left = elemento('div'); left.append(
+      elemento('h3', '', 'ESTADO TIPADO'),
+      elemento('p', '', entradaBreve(row.entrada)),
+      elemento('p', '', `Folgas: ${row.entrada.geometria.folgas_candidatas.slice(0, 3).map((f) => `${f.id} ${f.folga_min_m} m`).join(' · ')}`),
+    );
+    const right = elemento('div'); right.append(
+      elemento('h3', '', 'DECISÃO E EXECUÇÃO'),
+      elemento('p', '', `${etiquetarAcao(a.acaoMissao.choice)} · ${etiquetarManobraL(a.manobraLateral.choice)} / ${etiquetarManobraV(a.manobraVertical.choice)} · ${row.latencia_ms} ms.`),
+      elemento('p', '', 'Eixos aplicados pelo controlador local; resposta ligada ao estado que a originou.'),
+    );
+    body.append(left, right); card.append(summary, body); list.append(card);
+  });
+  $('btn-lab').disabled = true;
+  $('btn-lab-open').disabled = true;
+  $('lab-overlay').hidden = true;
+}
 function renderDebrief() {
+  if (emModoPiloto()) { renderDebriefPiloto(); return; }
   const m = estado.missao, log = estado.log, stats = resumirLinhas(log.linhas);
   $('result-title').textContent = log.incompleta ? 'Missão incompleta.' : resultadoTexto(log.resultado) + '.';
   $('result-summary').textContent = log.incompleta ? log.motivo : `${log.linhas.length} ${log.linhas.length === 1 ? 'decisão avaliada' : 'decisões avaliadas'}. O percurso terminou em ${nomeDestino(m.destinoId)}, com ${Math.round(m.voo.combustivelKg)} kg de combustível. Cada escolha abaixo conserva a entrada e a resposta originais.`;
@@ -351,7 +610,8 @@ function renderDebrief() {
 }
 function abrirDebrief() {
   if (estado.ecra !== 'live') return;
-  atualizarResultadoLinha(); estado.log.resultado = estado.missao.resultado;
+  if (!emModoPiloto()) atualizarResultadoLinha();
+  estado.log.resultado = estado.missao.resultado;
   cancelAnimationFrame(estado.raf); largarMundo(); $('map-overlay').hidden = true;
   renderDebrief(); mostrar('debrief');
 }
@@ -404,7 +664,10 @@ function descarregar() {
 }
 function sair() {
   if (estado.pedido) estado.pedido.abort();
+  for (const ctrl of estado.pedidosPiloto.values()) ctrl.abort();
+  estado.pedidosPiloto.clear();
   ++estado.geracao; cancelAnimationFrame(estado.raf); largarMundo(); estado.missao = null; estado.log = null; mostrar('commander');
+  estado.piloto = null; document.documentElement.classList.remove('pilot-active'); $('pilot-proof').hidden = true; $('btn-pic').hidden = false;
 }
 function ligarUI() {
   criarCartoes(); void sondarGateway();
@@ -412,6 +675,7 @@ function ligarUI() {
   $('btn-home').addEventListener('click', () => mostrar('splash'));
   $('btn-launch').addEventListener('click', () => { if (estado.gateway) void iniciar('live'); });
   $('btn-replay').addEventListener('click', () => void iniciar('replay'));
+  $('btn-pilot').addEventListener('click', () => void iniciarPiloto());
   $('btn-exit').addEventListener('click', () => terminarIncompleta('O comandante terminou a missão antes do desfecho.'));
   $('btn-pause').addEventListener('click', () => { estado.pausa = !estado.pausa; $('btn-pause').textContent = estado.pausa ? 'Continuar' : 'Pausar'; atualizarTelemetria(); });
   $('btn-speed').addEventListener('click', () => { estado.velocidade = estado.velocidade === 8 ? 1 : estado.velocidade === 1 ? 4 : 8; $('btn-speed').textContent = `${estado.velocidade}× velocidade`; });
