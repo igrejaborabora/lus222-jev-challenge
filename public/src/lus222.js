@@ -225,7 +225,7 @@ function materiais(leve) {
   const std = (color, roughness, extras = {}) => new THREE.MeshStandardMaterial({ color, roughness, metalness: 0.04, ...extras });
   return {
     branco: std(0xebeef1, 0.48),
-    marinho: std(0x152033, 0.62, { envMapIntensity: 0.45 }),
+    marinho: std(0x152033, 0.82, { envMapIntensity: 0.22 }),
     escuro: std(0x1c1f24, 0.55),
     metal: std(0xb9bec4, 0.35, { metalness: 0.5 }),
     pneu: std(0x141414, 0.9),
