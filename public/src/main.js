@@ -3,6 +3,7 @@ import { validarRespostas } from './contrato-jev.js';
 import { avaliarLinha, resumirLinhas } from './avaliacao-sim.js';
 import { decisaoGeometrica, etiquetarAcao, etiquetarDestino, etiquetarManobraV, etiquetarManobraL, evasaoDeAnswers } from './decisao.js';
 import { novoAutomato, passoAutomato, poseAviao } from './automato.js';
+import { poseMissao } from './escala.js';
 import {
   actualizarSeparacoes,
   actualizarOrdemPiloto,
@@ -147,8 +148,7 @@ async function carregarReplaysPiloto() {
 
 function parametrosVoo() {
   if (emModoPiloto()) return poseAviao(estado.piloto.automato);
-  const v = estado.missao.voo;
-  return { x: v.xM / 210, y: v.altitudeM / 11.5, z: (v.zM - 25000) / 210, heading: v.rumoRad, bank: -v.bankRad, pitch: -v.pitchRad, hélice: v.tempoS * 16, dodge: v.tempoS < estado.missao.comando.evasaoAteS };
+  return poseMissao(estado.missao.voo, estado.missao.comando);
 }
 async function criarMundo() {
   try {
@@ -531,7 +531,7 @@ async function processarEvento(evento, gen) {
   const linha = { id: evento.id, cenario: estado.cenario, resumo: evento.resumo, entrada, jev, baseline: decisaoGeometrica(entrada), supervisor, antes, depois: null, estadoAntes, estadoDepois: safeClone(missao), pic: { interveio: false } };
   estado.log.linhas.push(linha);
   atualizarDecisao(evento, entrada, jev, supervisor);
-  if (estado.mundo) estado.mundoApi.mostrarAmeacas(estado.mundo, entrada.geometria.obstaculos, parametrosVoo());
+  if (estado.mundo) estado.mundoApi.mostrarAmeacas(estado.mundo, entrada.geometria.obstaculos, parametrosVoo(), { escalaDistancia: 1 });
   estado.incidentePendente = null; estado.espera = false;
 }
 async function processarBriefing(gen) {

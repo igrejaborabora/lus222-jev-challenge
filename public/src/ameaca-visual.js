@@ -1,8 +1,8 @@
-/** Projeção local ampliada: todo o deslocamento relativo usa a mesma escala. */
+/** Posição dos balões no mundo 1:1, relativa à pose (x espelhado, ver escala.js). */
 export function posicaoVisualBaloes(voo, ameaca, pose) {
   return {
-    x: pose.x + (ameaca.xM - voo.xM) / 15,
-    y: pose.y + (ameaca.altitudeM - voo.altitudeM) / 11.5,
-    z: pose.z + (ameaca.zM - voo.zM) / 15,
+    x: pose.x - (ameaca.xM - voo.xM),
+    y: pose.y + (ameaca.altitudeM - voo.altitudeM),
+    z: pose.z + (ameaca.zM - voo.zM),
   };
 }

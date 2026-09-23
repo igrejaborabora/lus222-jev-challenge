@@ -437,6 +437,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', apresenta
     antialias: !leve,
     alpha: false,
     powerPreference: leve ? 'low-power' : 'default',
+    logarithmicDepthBuffer: true,
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, leve ? 1.25 : 1.75));
   renderer.setClearColor(pal.top, 1);
@@ -445,7 +446,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', apresenta
   scene.fog = new THREE.Fog(pal.fog, 160, 980);
   scene.background = new THREE.Color(pal.top);
 
-  const camera = new THREE.PerspectiveCamera(48, 1, 0.4, 2000);
+  const camera = new THREE.PerspectiveCamera(48, 1, 0.5, 30000);
   camera.position.set(-95, 50, 22);
 
   const hemi = new THREE.HemisphereLight(pal.hemi, 0x2a3328, 1.05);
