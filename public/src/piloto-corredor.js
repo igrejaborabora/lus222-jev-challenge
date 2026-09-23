@@ -256,11 +256,16 @@ export function novoControloPiloto({ duracaoManobraMs = 900 } = {}) {
 }
 
 export function aplicarOrdemPiloto(controlo, aviao, evasao, agoraMs, assinatura = '') {
-  const chave = `${assinatura}|${evasao?.acao}|${evasao?.vertical}|${evasao?.lateral}`;
+  // A janela de obstáculos não reinicia a curva. Os mesmos eixos, mesmo
+  // depois de neutralizados, não voltam a aplicar — senão o nariz chicoteia
+  // entre a manobra e o regresso ao eixo. Só uma acção ou um eixo novo aplica.
+  void assinatura;
+  const chave = `${evasao?.acao}|${evasao?.vertical}|${evasao?.lateral}`;
   if (chave === controlo.chave) return false;
   controlo.chave = chave;
   controlo.iniciadaEm = agoraMs;
   controlo.neutralizada = false;
+  aviao.rumoAlvo = null;
   aplicarEvasao(aviao, evasao);
   return true;
 }
@@ -285,13 +290,13 @@ export function actualizarOrdemPiloto(controlo, aviao, agoraMs) {
     controlo.neutralizada = true;
     mudou = true;
   }
-  if (controlo.neutralizada && dt > 0) {
+  if (!controlo.neutralizada) {
+    aviao.rumoAlvo = null;
+  } else if (dt > 0) {
+    // Regresso ao eixo com curva coordenada (bank no passo), não um yaw seco.
     const posicao = coordenadasCurso(aviao);
-    const correccaoLateral = Math.max(-0.48, Math.min(0.48, posicao.lateral / 120));
-    const alvo = ORIGEM.heading - correccaoLateral;
-    const delta = Math.atan2(Math.sin(alvo - aviao.heading), Math.cos(alvo - aviao.heading));
-    const maximo = 1.45 * dt;
-    aviao.heading += Math.max(-maximo, Math.min(maximo, delta));
+    const correccaoLateral = Math.max(-0.35, Math.min(0.35, posicao.lateral / 180));
+    aviao.rumoAlvo = ORIGEM.heading - correccaoLateral;
   }
   return mudou;
 }
