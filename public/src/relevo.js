@@ -52,6 +52,8 @@ export function fbm(x, z, seed = 1, oitavas = 4) {
 // o relevo não subir ao corredor de cruzeiro.
 const PERFIS = {
   porto: { agua: 'costa', costaX: 7000, recorteM: 1800, amplitude: 90, escala: 1 / 2600, seed: 11 },
+  // Amplitude 100 e não 120: com 120, as colinas naturais junto ao stol_proximo
+  // passavam os 8 % de declive (o limite «sem paredes» dos testes).
   sar: { agua: 'costa', costaX: -6000, recorteM: 1500, amplitude: 100, escala: 1 / 2200, seed: 23 },
   carga: { agua: 'terra', amplitude: 45, escala: 1 / 4200, seed: 31 },
   medevac: {
@@ -97,12 +99,16 @@ export function pistasDaMissao(destinos) {
   return destinos.map((d) => ({ id: d.id, ...pontoMundo(d.xM, d.zM), raioPlanoM: 1200 }));
 }
 
-// Ilhéu da pista: uma pista junto ao mar assenta numa pequena ilha natural,
-// em vez de um disco plano a flutuar; a orla desce para o fundo sem parede.
-const RAIO_ILHEU_M = 4000;
-function ilheuDaPista(d) {
-  if (d < RAIO_ILHEU_M) return PLANO_PISTA_M + 35 * (1 - d / RAIO_ILHEU_M) ** 1.5;
-  return PLANO_PISTA_M - (d - RAIO_ILHEU_M) * PLATAFORMA;
+// Ilhéu da pista: uma pista junto ao mar assenta numa ilha rasa, em vez de
+// um disco plano a flutuar. Nunca sobe mais de ONDULACAO_ILHEU_M acima do
+// plano (sem rebordo à volta da pista) e a partir de RAIO_ILHEU_M a orla
+// desce a 5 % até ao fundo.
+const RAIO_ILHEU_M = 3000;
+const ONDULACAO_ILHEU_M = 1.5;
+const ALCANCE_ILHEU_M = RAIO_ILHEU_M + (PLANO_PISTA_M + ONDULACAO_ILHEU_M - FUNDO_M) / PLATAFORMA;
+function ilheuDaPista(perfil, x, z, d) {
+  const chao = PLANO_PISTA_M + ONDULACAO_ILHEU_M * fbm(x * perfil.escala, z * perfil.escala, perfil.seed);
+  return chao - Math.max(0, d - RAIO_ILHEU_M) * PLATAFORMA;
 }
 
 // Há mar a menos de ~2 raios do centro? (a pista pode estar em terra, à beira-mar)
@@ -152,6 +158,15 @@ function folgaRampa(d, raio) {
 }
 
 /**
+ * Até onde (m do centro) chega a rampa de uma pista preparada: plano, rampa a
+ * RAMPA_MAX até à altura natural do centro (baseM) e a entrada arredondada.
+ */
+export function alcanceRampaM(pista) {
+  if (typeof pista.baseM !== 'number') throw new TypeError('alcanceRampaM: pista sem baseM; usar prepararPistas');
+  return (pista.raioPlanoM ?? 1200) + Math.abs(pista.baseM - PLANO_PISTA_M) / RAMPA_MAX + ARREDONDAR_M;
+}
+
+/**
  * Altura do terreno; à volta de cada pista o chão fica plano (PLANO_PISTA_M)
  * e liga-se ao relevo por uma rampa que nunca passa RAMPA_MAX, mesmo quando o
  * relevo sobe para lá do centro. Sem paredes, nem em terra nem debaixo de água.
@@ -160,7 +175,8 @@ export function alturaTerreno(perfil, x, z, pistas = []) {
   let h = alturaBase(perfil, x, z);
   const prontas = pistas.map((p) => pistaPronta(perfil, p));
   for (const p of prontas) {
-    if (p.ilheu) h = Math.max(h, ilheuDaPista(Math.hypot(x - p.x, z - p.z)));
+    const d = Math.hypot(x - p.x, z - p.z);
+    if (p.ilheu && d < ALCANCE_ILHEU_M) h = Math.max(h, ilheuDaPista(perfil, x, z, d));
   }
   for (const p of prontas) {
     const folga = folgaRampa(Math.hypot(x - p.x, z - p.z), p.raioPlanoM ?? 1200);
