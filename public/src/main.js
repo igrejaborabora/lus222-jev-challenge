@@ -4,6 +4,7 @@ import { avaliarLinha, resumirLinhas } from './avaliacao-sim.js';
 import { decisaoGeometrica, etiquetarAcao, etiquetarDestino, etiquetarManobraV, etiquetarManobraL, evasaoDeAnswers } from './decisao.js';
 import { novoAutomato, passoAutomato, poseAviao } from './automato.js';
 import { poseMissao } from './escala.js';
+import { pistasDaMissao } from './relevo.js';
 import {
   actualizarSeparacoes,
   actualizarOrdemPiloto,
@@ -158,8 +159,9 @@ async function criarMundo() {
     estado.mundoApi = api;
     estado.mundo = api.criarCena($('flight-canvas'), {
       leve: api.perfilGraficoLeve(),
-      cenario: estado.cenario,
+      cenario: emModoPiloto() ? 'corredor' : estado.cenario,
       pose: parametrosVoo(),
+      pistas: emModoPiloto() ? [] : pistasDaMissao(estado.missao.destinos),
       apresentacao: !emModoPiloto(),
     });
     ajustarMundo();
@@ -176,20 +178,23 @@ function ajustarMundo() {
   if (r.width > 1 && r.height > 1) estado.mundoApi.redimensionar(estado.mundo, Math.round(r.width), Math.round(r.height));
 }
 function largarMundo() {
-  if (estado.mundo?.renderer) estado.mundo.renderer.dispose();
+  try { if (estado.mundo) estado.mundoApi?.largarCena(estado.mundo); } catch { /* libertar a GPU nunca impede sair da missão */ }
   estado.mundo = null; estado.mundoApi = null;
 }
 function desenharMundo(dt) {
   if (!estado.mundo) return;
   const api = estado.mundoApi;
   try {
-    const pose = api.recentrarOrigem(estado.mundo, parametrosVoo());
+    // Terreno com a pose absoluta, antes de recentrar a origem visual.
+    const absoluta = parametrosVoo();
+    api.actualizarCena(estado.mundo, { pose: absoluta });
+    const pose = api.recentrarOrigem(estado.mundo, absoluta);
     api.aplicarPose(estado.mundo, pose);
     if (emModoPiloto() && estado.piloto) {
       api.mostrarAmeacas(
         estado.mundo,
         obstaculosCenario(estado.piloto.percurso, estado.piloto.automato),
-        parametrosVoo(),
+        absoluta,
         { escalaDistancia: 1 },
       );
     } else if (!emModoPiloto()) api.posicionarBaloes(estado.mundo, estado.missao.ameacaAtiva, estado.missao.voo, pose);

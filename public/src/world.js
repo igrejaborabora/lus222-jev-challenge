@@ -4,6 +4,9 @@ import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
 import { actualizarHelices, criarLus222 } from './lus222.js';
 import { offsetLateral, pontoAmeaca } from './decisao.js';
 import { posicaoVisualBaloes } from './ameaca-visual.js';
+import { actualizarTerreno, criarTerreno, largarTerreno } from './terreno.js';
+import { perfilTerreno } from './relevo.js';
+import { TAMANHO_MOSAICO_M } from './mosaicos.js';
 
 const APRESENTACAO_S = 2;
 
@@ -36,104 +39,6 @@ function ceuDe(cenario) {
       return { top: 0x3d7ec9, fog: 0x6ea0d4, hemi: 0xd7e8ff, dir: 0xfff4dc };
     }
   }
-}
-
-function campoFal(leve) {
-  const g = new THREE.Group();
-  const relva = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), mat(0x6d7a46));
-  relva.rotation.x = -Math.PI / 2;
-  relva.position.y = -0.6;
-  g.add(relva);
-  const pista = new THREE.Mesh(new THREE.BoxGeometry(22, 0.3, 420), mat(0x3e4348));
-  pista.position.set(40, -0.2, -80);
-  g.add(pista);
-  const n = leve ? 4 : 8;
-  for (let i = 0; i < n; i++) {
-    const seara = new THREE.Mesh(new THREE.BoxGeometry(80, 0.2, 36), mat(i % 2 ? 0x8a7a40 : 0x5e6a38));
-    seara.position.set(-180 + (i % 4) * 90, -0.35, -200 + Math.floor(i / 4) * 80);
-    g.add(seara);
-  }
-  return g;
-}
-
-function portoNoite(leve) {
-  const g = new THREE.Group();
-  const solo = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), mat(0x29363a));
-  solo.rotation.x = -Math.PI / 2;
-  solo.position.y = -0.8;
-  g.add(solo);
-  const asfalto = mat(0x1d2832);
-  const luz = new THREE.MeshBasicMaterial({ color: 0xffd397 });
-  const brilho = new THREE.MeshBasicMaterial({ color: 0xffecb6 });
-  // A escala visual da pista é ampliada para ser legível na câmara de missão.
-  const pista = new THREE.Mesh(new THREE.BoxGeometry(17, 0.25, 160), asfalto);
-  pista.position.set(0, -0.4, 665);
-  g.add(pista);
-  for (let i = 0; i < 19; i++) {
-    const z = 590 + i * 8;
-    if (i % 2 === 0) {
-      const marca = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.3, 3.2), brilho);
-      marca.position.set(0, -0.16, z);
-      g.add(marca);
-    }
-    for (const side of [-1, 1]) {
-      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.6, 6, 5), luz);
-      lamp.position.set(side * 9.2, 0.3, z);
-      g.add(lamp);
-    }
-  }
-  const n = leve ? 28 : 70;
-  for (let i = 0; i < n; i++) {
-    const side = i % 2 ? -1 : 1;
-    const x = side * (36 + (i * 37) % 280);
-    const z = -80 + (i * 97) % 920;
-    const h = 3 + (i * 13) % 18;
-    const bloco = new THREE.Mesh(new THREE.BoxGeometry(5 + i % 6, h, 5 + (i * 3) % 9), mat(i % 3 ? 0x303c43 : 0x3f4647));
-    bloco.position.set(x, h / 2 - 0.4, z);
-    const janela = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 0.2), luz);
-    janela.position.set(x, h * 0.55, z + 4.6);
-    g.add(bloco, janela);
-  }
-  return g;
-}
-
-function ilha(leve) {
-  const g = new THREE.Group();
-  const land = mat(0x6b7a4e);
-  const sand = mat(0xb59a6a);
-  const dirt = mat(0x7a5a38);
-  const rock = mat(0x5a5e58);
-
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(220, 260, 10, leve ? 10 : 20), land);
-  body.position.set(30, -6, -40);
-  g.add(body);
-
-  const beach = new THREE.Mesh(new THREE.CylinderGeometry(250, 280, 3, leve ? 10 : 18), sand);
-  beach.position.set(30, -10.2, -40);
-  g.add(beach);
-
-  const strip = new THREE.Mesh(new THREE.BoxGeometry(18, 0.4, 140), dirt);
-  strip.position.set(-10, -0.4, 10);
-  strip.rotation.y = 0.18;
-  g.add(strip);
-
-  const marks = 6;
-  for (let i = 0; i < marks; i++) {
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.42, 8), mat(0xe8d8b0));
-    dash.position.set(-10 + i * 0.4, -0.18, 50 - i * 18);
-    dash.rotation.y = 0.18;
-    g.add(dash);
-  }
-
-  const n = leve ? 4 : 9;
-  for (let i = 0; i < n; i++) {
-    const h = 8 + (i % 4) * 5;
-    const hill = new THREE.Mesh(new THREE.ConeGeometry(16 + i * 2, h, 6), rock);
-    hill.position.set(-40 + i * 28, h / 2 - 4, -90 - (i % 3) * 20);
-    g.add(hill);
-  }
-
-  return g;
 }
 
 function limparGrupo(grupo) {
@@ -430,7 +335,7 @@ export function actualizarAmeacas(mundo, dt) {
   }
 }
 
-export function criarCena(canvas, { leve = false, cenario = 'medevac', apresentacao = true } = {}) {
+export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null, pistas = [], apresentacao = true } = {}) {
   const pal = ceuDe(cenario);
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -443,7 +348,9 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', apresenta
   renderer.setClearColor(pal.top, 1);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(pal.fog, 160, 980);
+  // Provisório (a Task 7 substitui o nevoeiro): a 1:1 o fim do nevoeiro fica
+  // pouco antes da orla dos mosaicos carregados.
+  scene.fog = new THREE.Fog(pal.fog, 2500, TAMANHO_MOSAICO_M * (leve ? 2 : 3) * 0.95);
   scene.background = new THREE.Color(pal.top);
 
   const camera = new THREE.PerspectiveCamera(48, 1, 0.5, 30000);
@@ -455,12 +362,17 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', apresenta
   sun.position.set(-90, 70, 30);
   scene.add(sun, sun.target);
 
+  let ambienteRT = null;
   // Só o LUS-222 usa MeshStandardMaterial: o ambiente dá-lhe reflexos suaves
   // sem mexer no resto da cena (Lambert).
   if (!leve) {
     const pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    const sala = new RoomEnvironment();
+    // Guarda o render target: libertar só a textura não liberta o framebuffer.
+    ambienteRT = pmrem.fromScene(sala, 0.04);
+    scene.environment = ambienteRT.texture;
     scene.environmentIntensity = cenario === 'porto' ? 0.3 : 0.7;
+    sala.dispose?.();
     pmrem.dispose();
     // Sombra própria do avião (asa sobre a fuselagem), com a câmara de sombra a seguir a pose.
     renderer.shadowMap.enabled = true;
@@ -476,18 +388,12 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', apresenta
   fill.position.set(40, 30, -20);
   scene.add(fill);
 
+  // Relevo em mosaicos com coordenadas absolutas; recentrarOrigem desloca o
+  // grupo inteiro, por isso o terreno recebe sempre a pose absoluta.
   const geografia = new THREE.Group();
-  const ocean = new THREE.Mesh(
-    new THREE.PlaneGeometry(2400, 2400),
-    mat(cenario === 'sar' ? 0x1c3348 : 0x2a6f9a),
-  );
-  ocean.rotation.x = -Math.PI / 2;
-  ocean.position.y = -12;
-  geografia.add(ocean);
-
-  if (cenario === 'porto') geografia.add(portoNoite(leve));
-  else if (cenario === 'carga') geografia.add(campoFal(leve));
-  else geografia.add(ilha(leve));
+  const terreno = criarTerreno({ perfil: perfilTerreno(cenario), pistas, leve });
+  geografia.add(terreno.grupo);
+  if (pose) actualizarTerreno(terreno, pose.x, pose.z, Infinity);
   scene.add(geografia);
 
   const aviao = criarLus222({ leve });
@@ -511,6 +417,8 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', apresenta
     aviao,
     ameaças,
     geografia,
+    terreno,
+    ambienteRT,
     sol: sun,
     origemVisual: { x: 0, z: 0 },
     alvoLook: null,
@@ -519,6 +427,35 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', apresenta
     cenario,
     apresentacaoS: apresentacao === false || matchMedia('(prefers-reduced-motion: reduce)').matches ? APRESENTACAO_S : 0,
   };
+}
+
+/** Por frame, com a pose ABSOLUTA (antes de recentrarOrigem): carrega e larga mosaicos. */
+export function actualizarCena(mundo, visual) {
+  if (!mundo?.terreno) return;
+  actualizarTerreno(mundo.terreno, visual.pose.x, visual.pose.z, 1);
+}
+
+/**
+ * Liberta a GPU ao sair da missão: o canvas reutiliza o mesmo contexto WebGL,
+ * e renderer.dispose() sozinho deixava lá geometrias, texturas e sombras.
+ * Materiais partilhados são libertados mais de uma vez; em Three isso é inócuo.
+ */
+export function largarCena(mundo) {
+  if (!mundo) return;
+  if (mundo.terreno) largarTerreno(mundo.terreno);
+  mundo.scene.traverse((o) => {
+    o.geometry?.dispose();
+    for (const m of [o.material].flat().filter(Boolean)) {
+      m.map?.dispose();
+      m.roughnessMap?.dispose();
+      m.dispose();
+    }
+    // Mapa de sombra do sol (render target próprio).
+    if (o.isLight) o.dispose?.();
+  });
+  mundo.scene.environment?.dispose();
+  mundo.ambienteRT?.dispose();
+  mundo.renderer.dispose();
 }
 
 /** Mantém a câmara perto da origem numérica sem alterar coordenadas da missão. */
