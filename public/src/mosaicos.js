@@ -19,8 +19,19 @@ export function mosaicosNecessarios(x, z, { tamanho = TAMANHO_MOSAICO_M, raio = 
   return lista.sort((a, b) => a.d2 - b.d2);
 }
 
-export function planearMosaicos(existentes, necessarios) {
-  const quer = new Set(necessarios.map((m) => m.chave));
+/**
+ * Mosaicos que se podem manter: o disco de `raio` com mais um anel. Um mosaico
+ * só se larga quando fica para lá desse anel extra (histerese). As rotas voam
+ * ao longo de x ≈ 0, a fronteira entre colunas; sem isto, cada pequena
+ * oscilação lateral largava e recriava colunas inteiras.
+ */
+export function mosaicosAManter(x, z, { tamanho = TAMANHO_MOSAICO_M, raio = 3 } = {}) {
+  return mosaicosNecessarios(x, z, { tamanho, raio: raio + 1 });
+}
+
+/** Cria os necessários que faltam; remove só os existentes fora de `manter`. */
+export function planearMosaicos(existentes, necessarios, manter = necessarios) {
+  const quer = new Set(manter.map((m) => m.chave));
   return {
     criar: necessarios.filter((m) => !existentes.has(m.chave)),
     remover: [...existentes.keys()].filter((k) => !quer.has(k)),
