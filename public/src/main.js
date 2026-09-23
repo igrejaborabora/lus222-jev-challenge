@@ -17,6 +17,7 @@ import {
   metricasPiloto,
   novoControloPiloto,
   novoPipelinePiloto,
+  obstaculosCenario,
   obstaculosVisiveis,
   percursoConcluido,
   reservarPasso,
@@ -183,7 +184,14 @@ function desenharMundo(dt) {
   try {
     const pose = api.recentrarOrigem(estado.mundo, parametrosVoo());
     api.aplicarPose(estado.mundo, pose);
-    if (!emModoPiloto()) api.posicionarBaloes(estado.mundo, estado.missao.ameacaAtiva, estado.missao.voo, pose);
+    if (emModoPiloto() && estado.piloto) {
+      api.mostrarAmeacas(
+        estado.mundo,
+        obstaculosCenario(estado.piloto.percurso, estado.piloto.automato),
+        parametrosVoo(),
+        { escalaDistancia: 1 },
+      );
+    } else if (!emModoPiloto()) api.posicionarBaloes(estado.mundo, estado.missao.ameacaAtiva, estado.missao.voo, pose);
     api.actualizarAmeacas(estado.mundo, dt);
     api.actualizarCamara(estado.mundo, pose, dt);
     estado.mundo.renderer.render(estado.mundo.scene, estado.mundo.camera);
@@ -404,12 +412,6 @@ async function processarPassoPiloto(ticket, gen) {
   }
   estado.log.linhas.push(resultado.registo);
   mostrarPassoPiloto(resultado.registo);
-  if (estado.mundo) estado.mundoApi.mostrarAmeacas(
-    estado.mundo,
-    ticket.entrada.geometria.obstaculos,
-    parametrosVoo(),
-    { escalaDistancia: 1, distanciaMinima: 260 },
-  );
   atualizarProvaPiloto();
 }
 
