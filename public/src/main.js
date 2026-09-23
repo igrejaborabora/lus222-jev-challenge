@@ -1,4 +1,4 @@
-import { CENARIOS_SIM, PERFIL, criarMissao, avancarMissao, aplicarDecisao, proximoEvento, estadoParaAvaliacao, combustivelNecessarioKg, pistaNecessariaM } from './simulacao.js';
+import { CENARIOS_SIM, PERFIL, ambienteAposEvento, criarMissao, avancarMissao, aplicarDecisao, proximoEvento, estadoParaAvaliacao, combustivelNecessarioKg, pistaNecessariaM } from './simulacao.js';
 import { validarRespostas } from './contrato-jev.js';
 import { avaliarLinha, resumirLinhas } from './avaliacao-sim.js';
 import { decisaoGeometrica, etiquetarAcao, etiquetarDestino, etiquetarManobraV, etiquetarManobraL, evasaoDeAnswers } from './decisao.js';
@@ -33,6 +33,8 @@ const $ = (id) => document.getElementById(id);
 const FALHAS_ATE_PARAR = 5;
 const LABEL_DESTINO = { planeado: 'Destino planeado', origem: 'Origem', hospital_alternativo: 'Hospital alternativo', aeroporto_alternativo: 'Aeroporto alternativo', stol_proximo: 'Pista STOL próxima' };
 const QUESTOES = { configuracaoCabine: 'Cabine', prioridadeOperacional: 'Prioridade', pistaAdequada: 'Pista adequada', combustivelSuficiente: 'Combustível suficiente', acaoMissao: 'Ação de missão', manobraVertical: 'Vertical', manobraLateral: 'Lateral', destinoPreferido: 'Destino se mudar rota', urgencia: 'Urgência', riscoMeteorologico: 'Risco meteorológico', precisaRevisaoPIC: 'Revisão PIC', continuarVoo: 'Continuar voo' };
+// O corredor do piloto não tem meteorologia própria: tecto alto, bom tempo, sem vento.
+const AMBIENTE_PILOTO = Object.freeze({ tetoFt: 3000, visKm: 12, luzDia: true, ventoMs: Object.freeze({ x: 0, z: 0 }) });
 const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0 };
 
 function mostrar(nome) {
@@ -184,13 +186,23 @@ function largarMundo() {
   try { if (estado.mundo) estado.mundoApi?.largarCena(estado.mundo); } catch { /* libertar a GPU nunca impede sair da missão */ }
   estado.mundo = null; estado.mundoApi = null;
 }
+/**
+ * O céu mostra o ambiente que o JEV recebe: com um incidente à espera da
+ * decisão, já é o ambiente depois do evento (estadoParaAvaliacao), embora
+ * m.ambiente só mude quando a decisão é aplicada.
+ */
+function ambienteVisivel() {
+  if (emModoPiloto()) return AMBIENTE_PILOTO;
+  const m = estado.missao;
+  return estado.incidentePendente ? ambienteAposEvento(m, estado.incidentePendente) : m.ambiente;
+}
 function desenharMundo(dt) {
   if (!estado.mundo) return;
   const api = estado.mundoApi;
   try {
-    // Terreno com a pose absoluta, antes de recentrar a origem visual.
+    // Ordem: recentrar → pose → ameaças → câmara → cena (terreno com a pose
+    // absoluta; céu com a local e a câmara deste frame) → desenhar.
     const absoluta = parametrosVoo();
-    api.actualizarCena(estado.mundo, { pose: absoluta });
     const pose = api.recentrarOrigem(estado.mundo, absoluta);
     api.aplicarPose(estado.mundo, pose);
     if (emModoPiloto() && estado.piloto) {
@@ -203,6 +215,7 @@ function desenharMundo(dt) {
     } else if (!emModoPiloto()) api.posicionarBaloes(estado.mundo, estado.missao.ameacaAtiva, estado.missao.voo, pose);
     api.actualizarAmeacas(estado.mundo, dt);
     api.actualizarCamara(estado.mundo, pose, dt);
+    api.actualizarCena(estado.mundo, { pose: absoluta, poseLocal: pose, ambiente: ambienteVisivel() }, dt);
     estado.mundo.renderer.render(estado.mundo.scene, estado.mundo.camera);
   } catch { /* falha visual não altera a decisão */ }
 }

@@ -94,7 +94,8 @@ export function combustivelNecessarioKg(missao, destino) {
 function destinos(c) { return [c.origem, c.planeado, ...c.alternativas]; }
 function destinoDe(m, id) { return m.destinos.find((d) => d.id === id) ?? m.destinos[1]; }
 
-function ambienteAposEvento(m, e) {
+/** Ambiente que o JEV recebe com o evento `e` (m.ambiente só muda em aplicarDecisao). */
+export function ambienteAposEvento(m, e) {
   return {
     ...m.ambiente,
     ventoMs: e?.ventoKt == null ? m.ambiente.ventoMs : { x: m.ambiente.ventoMs.x, z: -e.ventoKt / 1.94384 },

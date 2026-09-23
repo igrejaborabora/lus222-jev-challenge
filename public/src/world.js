@@ -9,6 +9,7 @@ import { posicaoVisualBaloes } from './ameaca-visual.js';
 import { actualizarTerreno, criarTerreno, largarTerreno } from './terreno.js';
 import { alturaTerreno, perfilTerreno } from './relevo.js';
 import { TAMANHO_MOSAICO_M } from './mosaicos.js';
+import { actualizarCeu, criarCeu } from './ceu.js';
 
 // Suavização do desvio da câmara em relação ao avião (por segundo); a vertical
 // é quase rígida para não largar a cauda na subida/descida do dodge.
@@ -28,24 +29,6 @@ export function perfilGraficoLeve() {
 
 function mat(color, extras = {}) {
   return new THREE.MeshLambertMaterial({ color, ...extras });
-}
-
-function ceuDe(cenario) {
-  switch (cenario) {
-    case 'porto':
-      return { top: 0x29364b, fog: 0x566071, hemi: 0xe1b6a4, dir: 0xffbb80 };
-    case 'sar':
-      return { top: 0x2a3c58, fog: 0x3a4e68, hemi: 0xb7c6d4, dir: 0xffd2a8 };
-    case 'medevac':
-      return { top: 0x4d6a82, fog: 0x6a8496, hemi: 0xc5d4de, dir: 0xf0e6d0 };
-    case 'carga':
-      return { top: 0x3d7ec9, fog: 0x6ea0d4, hemi: 0xd7e8ff, dir: 0xfff4dc };
-    default: {
-      const _x = cenario;
-      void _x;
-      return { top: 0x3d7ec9, fog: 0x6ea0d4, hemi: 0xd7e8ff, dir: 0xfff4dc };
-    }
-  }
 }
 
 function limparGrupo(grupo) {
@@ -342,8 +325,31 @@ export function actualizarAmeacas(mundo, dt) {
   }
 }
 
+/**
+ * Luzes de navegação em coordenadas do modelo (antes da escala 1,35 do
+ * grupo; nariz em +Z, esquerda do piloto em +X): vermelha na ponta da asa
+ * esquerda, verde na direita (pontas em x = ±7,9, corda da ponta de z 0,77 a
+ * −0,34) e branca no fim do cone de cauda (z −6,72, y 0,58).
+ */
+const LUZES_NAV = [
+  { nome: 'luz-nav-vermelha', cor: 0xff2a2a, pos: [7.96, 1.24, 0.5] },
+  { nome: 'luz-nav-verde', cor: 0x2aff66, pos: [-7.96, 1.24, 0.5] },
+  { nome: 'luz-nav-branca', cor: 0xffffff, pos: [0, 0.6, -6.84] },
+];
+
+function luzesNavegacao(aviao) {
+  const geo = new THREE.SphereGeometry(0.18, 10, 8);
+  return LUZES_NAV.map(({ nome, cor, pos }) => {
+    const luz = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: cor }));
+    luz.name = nome;
+    luz.position.set(...pos);
+    luz.visible = false;
+    aviao.add(luz);
+    return luz;
+  });
+}
+
 export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null, pistas = [], apresentacao = true } = {}) {
-  const pal = ceuDe(cenario);
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: !leve,
@@ -352,22 +358,20 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     logarithmicDepthBuffer: true,
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, leve ? 1.25 : 1.75));
-  renderer.setClearColor(pal.top, 1);
+  // A cúpula do céu cobre todo o fundo; o preto só se vê se ela falhar.
+  renderer.setClearColor(0x000000, 1);
 
   const scene = new THREE.Scene();
-  // Provisório (a Task 7 substitui o nevoeiro): a 1:1 o fim do nevoeiro fica
-  // pouco antes da orla dos mosaicos carregados.
-  scene.fog = new THREE.Fog(pal.fog, 2500, TAMANHO_MOSAICO_M * (leve ? 2 : 3) * 0.95);
-  scene.background = new THREE.Color(pal.top);
-
   const camera = new THREE.PerspectiveCamera(48, 1, 0.5, 30000);
   camera.position.set(-95, 50, 22);
 
-  const hemi = new THREE.HemisphereLight(pal.hemi, 0x2a3328, 1.05);
-  scene.add(hemi);
-  const sun = new THREE.DirectionalLight(pal.dir, 1.35);
+  // Cor, intensidade e direcção do sol vêm do céu (actualizarCeu), por frame.
+  const sun = new THREE.DirectionalLight(0xfff1d8, 1.35);
   sun.position.set(-90, 70, 30);
   scene.add(sun, sun.target);
+  // Cúpula, nevoeiro, luz hemisférica, nuvens e rastos; o nevoeiro fecha
+  // antes da orla dos mosaicos carregados.
+  const ceu = criarCeu(scene, { cenario, leve, alcanceTerrenoM: TAMANHO_MOSAICO_M * (leve ? 2 : 3) });
 
   let ambienteRT = null;
   // Só o LUS-222 usa MeshStandardMaterial: o ambiente dá-lhe reflexos suaves
@@ -412,6 +416,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
       }
     });
   }
+  const luzesNav = luzesNavegacao(aviao);
   scene.add(aviao);
 
   const ameaças = new THREE.Group();
@@ -434,6 +439,8 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     terreno,
     ambienteRT,
     sol: sun,
+    ceu,
+    luzesNav,
     origemVisual: { x: 0, z: 0 },
     alvoLook: null,
     tAmeaca: 0,
@@ -459,10 +466,28 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   return mundo;
 }
 
-/** Por frame, com a pose ABSOLUTA (antes de recentrarOrigem): carrega e larga mosaicos. */
-export function actualizarCena(mundo, visual) {
+/**
+ * Por frame, DEPOIS de recentrarOrigem e de actualizarCamara, com
+ * `visual = { pose, poseLocal, ambiente }`: o terreno carrega e larga
+ * mosaicos com a pose ABSOLUTA (vivem em coordenadas absolutas dentro de
+ * `geografia`, por isso a ordem face ao recentrar não importa); o céu usa a
+ * pose LOCAL e a câmara já deste frame (a cúpula segue-a).
+ */
+export function actualizarCena(mundo, visual, dt = 0) {
   if (!mundo?.terreno) return;
   actualizarTerreno(mundo.terreno, visual.pose.x, visual.pose.z, 1);
+  if (!mundo.ceu || !visual.poseLocal || !visual.ambiente) return;
+  const pal = actualizarCeu(mundo.ceu, {
+    scene: mundo.scene,
+    sol: mundo.sol,
+    camera: mundo.camera,
+    ambiente: visual.ambiente,
+    pose: visual.poseLocal,
+    origem: mundo.origemVisual,
+    dt,
+  });
+  const acesas = pal.luzes > 0.05;
+  for (const luz of mundo.luzesNav) luz.visible = acesas;
 }
 
 /**
@@ -482,8 +507,8 @@ export function largarCena(mundo) {
       m.roughnessMap?.dispose();
       m.dispose();
     }
-    // Mapa de sombra do sol (render target próprio).
-    if (o.isLight) o.dispose?.();
+    // Mapa de sombra do sol (render target próprio) e matrizes das nuvens.
+    if (o.isLight || o.isInstancedMesh) o.dispose?.();
   });
   mundo.scene.environment?.dispose();
   mundo.ambienteRT?.dispose();
@@ -532,11 +557,7 @@ export function aplicarPose(mundo, pose) {
   mundo.aviao.rotation.z = pose.bank;
   mundo.aviao.rotation.x = pose.pitch;
   actualizarHelices(mundo.aviao, pose.hélice);
-  const sol = mundo.sol;
-  if (sol?.castShadow) {
-    sol.target.position.set(pose.x, pose.y, pose.z);
-    sol.position.set(pose.x - 54, pose.y + 42, pose.z + 18);
-  }
+  // O sol (direcção fixa no mundo, alvo no avião) é posto pelo céu: actualizarCena.
 }
 
 /**
