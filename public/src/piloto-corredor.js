@@ -241,6 +241,10 @@ export function percursoConcluido(percurso, aviao) {
   return coordenadasCurso(aviao).aoLongo >= percurso.distancia_total_m;
 }
 
+export function deveDespacharNoPercurso(percurso, aviao) {
+  return !percursoConcluido(percurso, aviao) && obstaculosVisiveis(percurso, aviao).length >= 3;
+}
+
 export function novoControloPiloto({ duracaoManobraMs = 900 } = {}) {
   return {
     duracaoManobraMs,
@@ -380,7 +384,10 @@ function mediana(valores) {
 export function metricasPiloto(pipeline, agoraMs) {
   const validos = pipeline.historico.filter((item) => !item.erro);
   const latencias = validos.map((item) => Number(item.latencia_ms)).filter(Number.isFinite);
-  const separacoes = validos.map((item) => Number(item.separacao_min_m)).filter(Number.isFinite);
+  const separacoes = validos
+    .filter((item) => item.separacao_min_m != null)
+    .map((item) => Number(item.separacao_min_m))
+    .filter(Number.isFinite);
   const duracaoMs = Math.max(1, agoraMs - (pipeline.iniciadoEm ?? agoraMs));
   return {
     decisoes: validos.length,

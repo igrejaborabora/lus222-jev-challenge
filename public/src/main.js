@@ -10,6 +10,7 @@ import {
   assinaturaObstaculos,
   concluirPasso,
   criarPercursoPiloto,
+  deveDespacharNoPercurso,
   deveDespacharPasso,
   estadoPassoPiloto,
   falharPasso,
@@ -320,7 +321,9 @@ function mostrarPassoPiloto(registo) {
   $('flow-input').textContent = obstaculo ? `${entrada.geometria.obstaculos.length} ameaças · primeira a ${obstaculo.distancia_m} m` : 'Saída do corredor';
   $('flow-choice').textContent = `${etiquetarManobraL(answers.manobraLateral.choice)} + ${etiquetarManobraV(answers.manobraVertical.choice)}`;
   $('flow-detail').textContent = `Folga calculada: ${melhorFolga?.id ?? '—'} · ${melhorFolga?.folga_min_m ?? '—'} m`;
-  $('flow-effect').textContent = 'O controlador local executa uma manobra finita; o JEV volta a ler o corredor em 400 ms. A separação deste intervalo está em medição.';
+  $('flow-effect').textContent = registo.executou_manobra
+    ? 'O controlador local executa uma manobra finita; o JEV volta a ler o corredor em 400 ms. A separação deste intervalo está em medição.'
+    : 'O JEV confirmou a ordem desta janela; o controlador não reinicia a manobra e mantém o ciclo de 400 ms.';
   $('decision-origin').textContent = jev.replay_source
     ? `REPLAY ${jev.replay_source.cenario.toUpperCase()} / ${jev.replay_source.evento.toUpperCase()}`
     : 'JEV / AO VIVO · PIPELINE 2';
@@ -356,18 +359,21 @@ async function processarPassoPiloto(ticket, gen) {
     { separacao_min_m: null },
   );
   if (!resultado.aplicar) return;
-  fecharOrdemActivaPiloto();
-  aplicarOrdemPiloto(
+  const executouManobra = aplicarOrdemPiloto(
     estado.piloto.controlo,
     estado.piloto.automato,
     evasaoDeAnswers(resposta.answers),
     performance.now(),
     ticket.assinatura,
   );
-  estado.piloto.ordemActiva = {
-    registo: resultado.registo,
-    separacaoMinM: separacaoInstantanea(estado.piloto.percurso, estado.piloto.automato),
-  };
+  resultado.registo.executou_manobra = executouManobra;
+  if (executouManobra) {
+    fecharOrdemActivaPiloto();
+    estado.piloto.ordemActiva = {
+      registo: resultado.registo,
+      separacaoMinM: separacaoInstantanea(estado.piloto.percurso, estado.piloto.automato),
+    };
+  }
   estado.log.linhas.push(resultado.registo);
   mostrarPassoPiloto(resultado.registo);
   if (estado.mundo) estado.mundoApi.mostrarAmeacas(
@@ -383,7 +389,7 @@ function quadroPiloto(t, dt) {
   const piloto = estado.piloto;
   if (!piloto || estado.pausa || estado.falha) return;
   const factor = estado.velocidade === 8 ? 1.6 : estado.velocidade === 4 ? 1.25 : 1;
-  actualizarOrdemPiloto(piloto.controlo, piloto.automato, t);
+  if (actualizarOrdemPiloto(piloto.controlo, piloto.automato, t)) fecharOrdemActivaPiloto();
   passoAutomato(piloto.automato, dt * factor);
   actualizarSeparacoes(piloto.percurso, piloto.automato);
   const separacaoAgora = separacaoInstantanea(piloto.percurso, piloto.automato);
@@ -393,7 +399,7 @@ function quadroPiloto(t, dt) {
   const entrada = estadoPassoPiloto(piloto.percurso, piloto.automato, piloto.base);
   const obstaculos = obstaculosVisiveis(piloto.percurso, piloto.automato);
   const assinatura = assinaturaObstaculos(obstaculos);
-  if (obstaculos.length && deveDespacharPasso(piloto.pipeline, t, assinatura)) {
+  if (deveDespacharNoPercurso(piloto.percurso, piloto.automato) && deveDespacharPasso(piloto.pipeline, t, assinatura)) {
     const ticket = reservarPasso(piloto.pipeline, entrada, t, assinatura);
     void processarPassoPiloto(ticket, estado.geracao);
   }
@@ -603,6 +609,7 @@ function renderDebriefPiloto() {
     const right = elemento('div'); right.append(
       elemento('h3', '', 'DECISÃO E EXECUÇÃO'),
       elemento('p', '', `${etiquetarAcao(a.acaoMissao.choice)} · ${etiquetarManobraL(a.manobraLateral.choice)} / ${etiquetarManobraV(a.manobraVertical.choice)} · ${row.latencia_ms} ms.`),
+      elemento('p', '', row.executou_manobra ? 'Manobra finita iniciada neste snapshot.' : 'Ordem repetida; o controlador não reiniciou a manobra.'),
       elemento('p', '', row.resposta.replay_source
         ? `Replay de ${row.resposta.replay_source.cenario}/${row.resposta.replay_source.evento}, gravado em ${row.resposta.replay_source.gravado_em ?? 'data não registada'}; reaplicado a este snapshot.`
         : 'Eixos aplicados pelo controlador local; resposta ao vivo ligada ao estado que a originou.'),
