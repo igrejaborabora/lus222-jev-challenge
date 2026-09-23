@@ -124,9 +124,11 @@ function pinturaFuselagem(zMin, zMax, leve) {
   ctx.fillStyle = BRANCO;
   ctx.fillRect(0, 0, W, H);
 
-  // Ventre e cone de cauda marinho: fronteira diagonal do fim dos sponsons à deriva.
-  const zIni = -2.85;
-  const yFronteira = (z) => -0.98 + ((zIni - z) / (zIni + 5.3)) * 2.13;
+  // Ventre e cone de cauda marinho: fronteira diagonal do fim dos sponsons ao
+  // bordo de ataque da deriva, como na render.
+  const zIni = -2.45;
+  const zTopo = -4.05;
+  const yFronteira = (z) => -0.98 + ((zIni - z) / (zIni - zTopo)) * 2.1;
   for (const s of [1, -1]) {
     const borda = [];
     for (let z = zIni; z >= zMin - 0.01; z -= 0.05) {
@@ -152,9 +154,9 @@ function pinturaFuselagem(zMin, zMax, leve) {
   // Para-brisas em dois painéis com pilar central, e janelas laterais da cabine.
   const vidro = '#121a22';
   for (const s of [1, -1]) {
-    poligono([topo(3.98, s * 0.06), topo(3.98, s * 0.6), topo(4.46, s * 0.5), topo(4.46, s * 0.05)], vidro, true);
-    poligono([lado(3.84, 0.5, s), lado(3.36, 0.56, s), lado(3.38, 0.82, s), lado(3.82, 0.74, s)], vidro, true);
-    poligono([lado(4.28, 0.3, s), lado(3.92, 0.44, s), lado(3.93, 0.68, s), lado(4.18, 0.54, s)], vidro, true);
+    poligono([topo(3.08, s * 0.06), topo(3.08, s * 0.66), topo(3.68, s * 0.5), topo(3.68, s * 0.05)], vidro, true);
+    poligono([lado(2.98, 0.46, s), lado(2.52, 0.5, s), lado(2.54, 0.86, s), lado(2.96, 0.8, s)], vidro, true);
+    poligono([lado(3.42, 0.26, s), lado(3.06, 0.4, s), lado(3.07, 0.68, s), lado(3.36, 0.5, s)], vidro, true);
 
     // Vigias da cabine: seis por lado, de cantos arredondados.
     for (let i = 0; i < 6; i++) {
@@ -174,7 +176,7 @@ function pinturaFuselagem(zMin, zMax, leve) {
     }
 
     // Porta dianteira: só o contorno.
-    const porta = [lado(2.28, -0.72, s), lado(1.74, -0.72, s), lado(1.74, 0.78, s), lado(2.28, 0.78, s)];
+    const porta = [lado(2.22, -0.72, s), lado(1.68, -0.72, s), lado(1.68, 0.78, s), lado(2.22, 0.78, s)];
     ctx.strokeStyle = '#c9ced4';
     ctx.lineWidth = W / 900;
     ctx.beginPath();
@@ -182,7 +184,7 @@ function pinturaFuselagem(zMin, zMax, leve) {
     ctx.closePath();
     ctx.stroke();
 
-    texto(s, [['EEA', MARINHO], ['+', VERMELHO], ['AIRCRAFT', MARINHO]], 3.4, 2.38, -0.04, 0.2);
+    texto(s, [['EEA', MARINHO], ['+', VERMELHO], ['AIRCRAFT', MARINHO]], 3.55, 2.45, -0.12, 0.2);
     texto(s, [['CS-001', MARINHO]], -1.32, -2.0, -0.08, 0.13);
   }
 
@@ -236,14 +238,17 @@ function materiais(leve) {
   };
 }
 
+// Hélice em z ≈ 1,7, como o ponto médio das duas hélices na vista lateral da
+// render; a nacele quase não passa à frente do bordo de ataque.
+const Z_HELICE = 1.86;
 const ESTACOES_NACELE = [
-  { z: 2.36, w: 0.17, yc: 0.84, hTop: 0.17, hBot: 0.17, nTop: 2, nBot: 2 },
-  { z: 2.22, w: 0.33, yc: 0.84, hTop: 0.34, hBot: 0.34, nTop: 2.2, nBot: 2.2 },
-  { z: 1.7, w: 0.43, yc: 0.86, hTop: 0.44, hBot: 0.48, nTop: 2.4, nBot: 2.4 },
-  { z: 0.7, w: 0.44, yc: 0.88, hTop: 0.44, hBot: 0.5, nTop: 2.5, nBot: 2.5 },
-  { z: -0.5, w: 0.38, yc: 0.92, hTop: 0.38, hBot: 0.4, nTop: 2.4, nBot: 2.4 },
-  { z: -1.45, w: 0.22, yc: 1.02, hTop: 0.22, hBot: 0.2, nTop: 2.2, nBot: 2.2 },
-  { z: -2.0, w: 0.06, yc: 1.1, hTop: 0.05, hBot: 0.05, nTop: 2, nBot: 2 },
+  { z: 1.72, w: 0.17, yc: 0.84, hTop: 0.17, hBot: 0.17, nTop: 2, nBot: 2 },
+  { z: 1.6, w: 0.33, yc: 0.84, hTop: 0.34, hBot: 0.34, nTop: 2.2, nBot: 2.2 },
+  { z: 1.2, w: 0.43, yc: 0.86, hTop: 0.44, hBot: 0.48, nTop: 2.4, nBot: 2.4 },
+  { z: 0.45, w: 0.44, yc: 0.88, hTop: 0.44, hBot: 0.5, nTop: 2.5, nBot: 2.5 },
+  { z: -0.45, w: 0.37, yc: 0.95, hTop: 0.37, hBot: 0.38, nTop: 2.4, nBot: 2.4 },
+  { z: -1.0, w: 0.2, yc: 1.08, hTop: 0.18, hBot: 0.16, nTop: 2.2, nBot: 2.2 },
+  { z: -1.35, w: 0.05, yc: 1.17, hTop: 0.04, hBot: 0.04, nTop: 2, nBot: 2 },
 ];
 
 const ESTACOES_SPONSON = [
@@ -350,10 +355,10 @@ export function criarLus222({ leve = false } = {}) {
       m.branco,
     );
     spinner.rotation.x = Math.PI / 2;
-    spinner.position.set(x, 0.84, 2.34);
+    spinner.position.set(x, 0.84, Z_HELICE - 0.16);
     g.add(spinner);
     const prop = helice(m, geoPa);
-    prop.position.set(x, 0.84, 2.5);
+    prop.position.set(x, 0.84, Z_HELICE);
     g.add(prop);
     props.push(prop);
   }
@@ -362,7 +367,7 @@ export function criarLus222({ leve = false } = {}) {
   const perfilCauda = perfilNaca({ m: 0, t: 0.11, n: leve ? 16 : 22 });
   const planoDeriva = (e, c, t) => [t * e.corda, e.s, e.le - c * e.corda];
   g.add(superficie([
-    { s: 0.9, le: -3.55, corda: 2.85 },
+    { s: 0.55, le: -3.4, corda: 3.1 },
     { s: 1.35, le: -4.3, corda: 2.1 },
     { s: 3.3, le: -5.5, corda: 1.3 },
     { s: 3.42, le: -5.58, corda: 1.12 },
