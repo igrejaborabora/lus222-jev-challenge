@@ -9,6 +9,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "build": "node scripts/verify-deploy-assets.mjs",
     "dev": "npx --yes serve public -l 43123",
     "preview": "vercel dev --listen 43123",
     "test": "node --test lib/*.test.mjs",
