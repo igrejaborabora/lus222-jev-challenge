@@ -52,7 +52,7 @@ export function fbm(x, z, seed = 1, oitavas = 4) {
 // o relevo não subir ao corredor de cruzeiro.
 const PERFIS = {
   porto: { agua: 'costa', costaX: 7000, recorteM: 1800, amplitude: 90, escala: 1 / 2600, seed: 11 },
-  sar:{ agua: 'costa', costaX: -6000, recorteM: 1500, amplitude: 120, escala: 1 / 2200, seed: 23 },
+  sar: { agua: 'costa', costaX: -6000, recorteM: 1500, amplitude: 120, escala: 1 / 2200, seed: 23 },
   carga: { agua: 'terra', amplitude: 45, escala: 1 / 4200, seed: 31 },
   medevac: {
     agua: 'ilhas', escala: 1 / 1600, seed: 47,
