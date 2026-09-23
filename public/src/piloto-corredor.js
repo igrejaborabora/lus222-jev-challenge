@@ -44,6 +44,18 @@ function geometriaDoObstaculo(item, aviao, posicao) {
     folga_pela_direita_m: abreDireita ? 64 : abreEsquerda ? -16 : 24,
     altura_m: item.visual === 'canyon' ? 120 : item.visual === 'guerra' ? 14 : 8,
     offset_lateral_m: arredondar(lateral),
+    // Posição no corredor, independente do rumo do avião. A vista usa isto
+    // para não voltar a colar a cidade, o bando ou a formação ao nariz.
+    mundo_x: arredondar(
+      ORIGEM.x + Math.sin(ORIGEM.heading) * item.ao_longo_m + Math.cos(ORIGEM.heading) * item.lateral_m,
+      1,
+    ),
+    mundo_z: arredondar(
+      ORIGEM.z + Math.cos(ORIGEM.heading) * item.ao_longo_m - Math.sin(ORIGEM.heading) * item.lateral_m,
+      1,
+    ),
+    mundo_y: item.altitude_m,
+    mundo_rumo: ORIGEM.heading,
     _offset_vertical_m: arredondar(item.altitude_m - (Number(aviao?.y) || 42)),
     _raio_protecao_m: item.raio_protecao_m,
   };
@@ -87,6 +99,18 @@ export function obstaculosVisiveis(percurso, aviao) {
       return frente >= -40 && frente <= JANELA_OBSTACULOS_M;
     })
     .slice(0, 5)
+    .map((item) => geometriaDoObstaculo(item, aviao, posicao));
+}
+
+/** Cenário desenhado: mais largo que a janela do JEV, para a cidade não
+ * desaparecer enquanto o avião ainda a atravessa. */
+export function obstaculosCenario(percurso, aviao) {
+  const posicao = coordenadasCurso(aviao);
+  return percurso.obstaculos
+    .filter((item) => {
+      const frente = item.ao_longo_m - posicao.aoLongo;
+      return frente >= -240 && frente <= 900;
+    })
     .map((item) => geometriaDoObstaculo(item, aviao, posicao));
 }
 

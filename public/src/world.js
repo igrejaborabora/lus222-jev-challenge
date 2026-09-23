@@ -162,11 +162,34 @@ function anelChao(cor) {
   return ring;
 }
 
-function meshAmeaca(o, pose, leve) {
-  const p = pontoAmeaca(pose, o);
+function ameacaFixa(o) {
+  return Number.isFinite(Number(o?.mundo_x)) && Number.isFinite(Number(o?.mundo_z));
+}
+
+function pontoResolvido(o, pose, mundo) {
+  if (!ameacaFixa(o)) return { ...pontoAmeaca(pose, o), fixa: false };
+  const rumo = Number.isFinite(Number(o.mundo_rumo)) ? Number(o.mundo_rumo) : numHeading(pose);
+  const visual = o.visual;
+  const noAr = visual === 'aves' || visual === 'guerra' || visual === 'trafego' || visual === 'baloes';
+  const origem = mundo?.origemVisual ?? { x: 0, z: 0 };
+  return {
+    x: Number(o.mundo_x) - (origem.x || 0),
+    y: noAr ? (Number(o.mundo_y) || Number(pose?.y) || 42) : 0,
+    z: Number(o.mundo_z) - (origem.z || 0),
+    visual,
+    altura: Math.max(4, Math.min(220, Number(o.altura_m) || 56)),
+    rumo,
+    heading: rumo + (visual === 'trafego' ? Math.PI / 2 : 0),
+    fixa: true,
+  };
+}
+
+function meshAmeaca(o, pose, leve, mundo) {
+  const p = pontoResolvido(o, pose, mundo);
   const g = new THREE.Group();
   g.position.set(p.x, 0, p.z);
   g.userData.visual = p.visual;
+  g.userData.fixa = p.fixa;
 
   switch (p.visual) {
     case 'canyon':
@@ -270,22 +293,58 @@ function meshAmeaca(o, pose, leve) {
     }
   }
 
+  // Ameaça do corredor: fica no chão (ou à altitude do obstáculo) uma vez.
+  // Sem isto, a cidade acompanhava a altitude e o rumo do LUS-222.
+  if (p.fixa && g.userData.ancora) {
+    g.userData.ancora.position.y = p.visual === 'canyon' ? 0 : p.y;
+  }
+
   return g;
+}
+
+function mostrarAmeacasFixas(mundo, lista, local) {
+  const ids = new Set(lista.map((o) => o.id));
+  for (const child of [...mundo.ameaças.children]) {
+    if (!ids.has(child.userData.id)) mundo.ameaças.remove(child);
+  }
+  for (const o of lista) {
+    if (mundo.ameaças.children.some((child) => child.userData.id === o.id)) continue;
+    const mesh = meshAmeaca(o, local, mundo.leve, mundo);
+    mesh.userData.id = o.id;
+    mundo.ameaças.add(mesh);
+  }
+  const fx = Math.sin(numHeading(local));
+  const fz = Math.cos(numHeading(local));
+  let foco = null;
+  let melhor = Infinity;
+  for (const child of mundo.ameaças.children) {
+    const frente = (child.position.x - local.x) * fx + (child.position.z - local.z) * fz;
+    if (frente > 24 && frente < melhor) {
+      melhor = frente;
+      foco = child;
+    }
+  }
+  mundo.alvoLook = foco ? { x: foco.position.x, y: local.y + 2, z: foco.position.z } : null;
 }
 
 export function mostrarAmeacas(mundo, obstaculos, pose, opcoes = {}) {
   if (!mundo?.ameaças) return;
   const local = { ...pose, x: pose.x - mundo.origemVisual.x, z: pose.z - mundo.origemVisual.z };
+  const lista = (Array.isArray(obstaculos) ? obstaculos : []).filter((o) => o && o.em_rota);
+  if (lista.some(ameacaFixa)) {
+    mostrarAmeacasFixas(mundo, lista, local);
+    return;
+  }
   limparGrupo(mundo.ameaças);
   mundo.alvoLook = null;
   const escalaDistancia = Math.max(0.1, Number(opcoes.escalaDistancia) || 15);
   const distanciaMinima = Math.max(25, Number(opcoes.distanciaMinima) || 25);
-  const lista = (Array.isArray(obstaculos) ? obstaculos : []).filter((o) => o && o.em_rota)
+  const projectadas = lista
     .map((o) => ({ ...o, distancia_m: Math.max(distanciaMinima, o.distancia_m / escalaDistancia) }));
-  for (const o of lista) {
-    mundo.ameaças.add(meshAmeaca(o, local, mundo.leve));
+  for (const o of projectadas) {
+    mundo.ameaças.add(meshAmeaca(o, local, mundo.leve, mundo));
   }
-  const foco = lista[0];
+  const foco = projectadas[0];
   if (foco) mundo.alvoLook = pontoAmeaca(local, foco);
   // Uma vez, no instante do incidente: a malha fica no mundo e o avião
   // aproxima-se. Repetir isto em cada frame cola a ameaça ao nariz.
@@ -317,6 +376,7 @@ export function ancorarVisuais(mundo, pose) {
   const h = numHeading(pose);
   const y = Number.isFinite(Number(pose.y)) ? Number(pose.y) : 42;
   for (const child of mundo.ameaças.children) {
+    if (child.userData.fixa) continue;
     const ancora = child.userData.ancora;
     const o = child.userData.obstaculo;
     if (!ancora || !o) continue;
@@ -521,12 +581,12 @@ export function actualizarCamara(mundo, pose, dt) {
     return;
   }
   const look = mundo.alvoLook;
-  const dodge = Boolean(pose.dodge || look);
+  // Distância fixa: abrir o enquadramento a cada dodge fazia a vista saltar.
   // Ecrã estreito (telemóvel em pé): afasta a cauda para a asa caber no quadro.
   const fit = Math.min(1, Math.max(0.42, (cam.aspect || 1) / 1.2));
-  const back = (dodge ? 38 : 28) / fit;
-  const up = (dodge ? 10 : 7) / fit;
-  const ahead = dodge ? 56 : 48;
+  const back = 30 / fit;
+  const up = 7.5 / fit;
+  const ahead = 46;
   const fx = Math.sin(pose.heading);
   const fz = Math.cos(pose.heading);
   const lado = -4 * Math.max(0, (fit - 0.5) / 0.5);
@@ -554,7 +614,7 @@ export function actualizarCamara(mundo, pose, dt) {
   const miraY = pose.y + 2.2;
   let miraZ = pose.z + fz * ahead;
   if (look) {
-    const peso = 0.18 * fit;
+    const peso = 0.06 * fit;
     const ax = miraX + (look.x - miraX) * peso - pose.x;
     const az = miraZ + (look.z - miraZ) * peso - pose.z;
     const frente = ax * fx + az * fz;
