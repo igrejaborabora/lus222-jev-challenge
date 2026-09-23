@@ -16,6 +16,12 @@ A regra geométrica de comparação é deliberadamente limitada e nunca controla
 
 A interface usa uma paleta preta e branca e uma animação de pontos “J·EV” na abertura, inspirada na linguagem visual da Pixelgrammar. A animação fica estática quando o sistema pede movimento reduzido; a missão também funciona sem WebGL (`?sem-webgl=1` permite verificar essa apresentação).
 
+Cada ecrã cabe na altura da janela (`100dvh`) a 375, 390, 768, 1366 e 1440 px, sem scroll de página. Só os painéis secundários (linha de decisão, respostas tipadas, gavetas) fazem scroll interno; nenhum comando fica fora da vista. A render do LUS-222 é o exlibris: ocupa a abertura, aparece esbatida na mesa e no relatório, recortada nas cartas de missão e em miniatura na identidade do voo. O voo abre com dois segundos de órbita à volta do avião antes da vista atrás da cauda.
+
+- **Mesa de missão:** cartas numa linha (deslizam na horizontal no telemóvel), parâmetros compactos e `Iniciar JEV ao vivo` / `Ver replay gravado` fixos em baixo. A pista real abre numa sobreposição.
+- **Voo:** canvas a ecrã inteiro; topo com identidade, fase e `Terminar`; selo da decisão com a manobra e os milissegundos do JEV; dock com `Decisão`, `Pausar`, velocidade, `Intervenção PIC` e `Pista real`. O painel de decisão é uma gaveta, aberta por omissão no desktop e fechada no telemóvel.
+- **Relatório:** métricas numa linha, linha de decisão com scroll interno e laboratório numa gaveta.
+
 ## Cenários e rubricagem
 
 | Cenário | Incidentes possíveis na rota | Critério observado |
@@ -35,7 +41,7 @@ No incidente dos balões, o JEV recebe geometria estruturada (distância, tempo 
 
 A referência da pista principal é a **LDA publicada de 3180 m para a pista 17** no [AIP Portugal, LPPR AD 2.13](https://ais.nav.pt/wp-content/uploads/AIS_Files/eAIP_Current/eAIP_Online/eAIP/html/eAIP/LP-AD-2.LPPR-en-PT.html). Esse valor contextual não calibra o avião. A [informação turística oficial do Porto](https://backoffice.visitporto.travel/pt-PT/sao-joao-the-porto-celebration) descreve os balões de São João; a presença no corredor de chegada nesta missão é **ficcional**.
 
-A referência visual da pista é uma [incorporação oficial do Google Maps](https://support.google.com/maps/answer/11471036?hl=pt-PT) em modo satélite, com atribuição no próprio mapa. É uma imagem cartográfica estática; o anoitecer, os balões, a trajetória e a aeronave são simulados separadamente. A aplicação não guarda nem redistribui imagens do Google Maps. O iframe carrega conteúdo do Google quando a vista é aberta.
+A referência visual da pista é uma [incorporação oficial do Google Maps](https://support.google.com/maps/answer/11471036?hl=pt-PT) em modo satélite, com atribuição no próprio mapa. É uma imagem cartográfica estática; o anoitecer, os balões, a trajetória e a aeronave são simulados separadamente. A aplicação não guarda nem redistribui imagens do Google Maps. O iframe só carrega conteúdo do Google quando a sobreposição `Pista real` é aberta (na mesa ou durante o voo).
 
 ## Estrutura
 

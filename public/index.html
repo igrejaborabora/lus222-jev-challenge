@@ -22,55 +22,91 @@
     <main class="hero-copy">
       <p class="kicker">01 / ESTADO → ESCOLHA → CONSEQUÊNCIA</p>
       <h1>Uma decisão<br><em>muda a missão.</em></h1>
-      <p class="hero-lead">Acompanha uma aproximação ao Porto no anoitecer de São João. O JEV decide perante balões, tráfego e vento; cada escolha altera o voo.</p>
+      <p class="hero-lead">Aproximação ao Porto no anoitecer de São João. O JEV decide perante balões, tráfego e vento; cada escolha altera o voo.</p>
       <div class="hero-example" aria-label="Exemplo de decisão">
         <div><span>ESTADO</span><strong>Balões no corredor · 800 m</strong></div>
         <div><span>JEV / REPLAY</span><strong>Prosseguir · direita + subir</strong></div>
         <div><span>EFEITO SIMULADO</span><strong>Separação ≈190 m · rota mantida</strong></div>
       </div>
       <div class="hero-actions"><button type="button" class="button button-accent" id="btn-open">Escolher missão <span aria-hidden="true">↗</span></button><span class="gateway-status" id="gateway-status" role="status">A verificar o Gateway…</span></div>
-      <p class="hero-foot">Modelo: typesafe-ai/jev via AI Gateway. O JEV recebe dados estruturados, não imagens. Física e operação ilustrativas, sem certificação. Render do LUS-222: crédito EEA Aircraft.</p>
+      <p class="hero-foot">typesafe-ai/jev via AI Gateway · dados estruturados, não imagens · física ilustrativa, não certificável · render do LUS-222: EEA Aircraft</p>
     </main>
-    <div class="hero-index">QUATRO CENÁRIOS · PORTO EM DESTAQUE <span>↓</span></div>
+    <div class="hero-index">QUATRO CENÁRIOS · PORTO EM DESTAQUE</div>
   </section>
 
   <section class="screen" id="screen-commander">
+    <div class="exlibris" aria-hidden="true"><img src="./img/lus-222-hero.webp" alt=""></div>
     <header class="page-header"><button type="button" class="text-button" id="btn-home">← Início</button><span>JEV / MESA DE MISSÃO</span><span class="page-step">01 — PREPARAR</span></header>
     <main class="setup-layout">
-      <div class="setup-main"><p class="kicker">ESCOLHE O CONTEXTO</p><h1>O mesmo modelo.<br><em>Decisões diferentes.</em></h1><p class="intro">Cada missão coloca um compromisso concreto: tempo clínico, carga ou incerteza visual. O voo reage às escolhas do JEV e às restrições que definires.</p><div class="mission-cards" id="mission-cards"></div><section class="airport-reference" id="porto-reference"><div><span class="kicker">REFERÊNCIA REAL / PORTO</span><h2>Pista 17 no terreno.</h2><p>Imagem de satélite incorporada do Google Maps. A imagem não representa a noite de São João nem acompanha a posição simulada.</p></div><iframe title="Vista de satélite do Aeroporto Francisco Sá Carneiro no Google Maps" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2812.334669533097!2d-8.6806638!3d41.2473992!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd246f64614a2bad%3A0x151a578a6d6039d1!2sAeroporto%20Francisco%20S%C3%A1%20Carneiro!5e1!3m2!1spt-PT!2spt!4v1790075229286!5m2!1spt-PT!2spt" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></section></div>
-      <aside class="setup-controls"><div class="control-heading"><span class="kicker">PARÂMETROS</span><strong>Briefing do comandante</strong></div>
-        <label class="control-row"><span>Risco máximo</span><select id="select-risk"><option value="baixo">Baixo</option><option value="medio" selected>Médio</option><option value="alto">Alto</option></select></label>
-        <label class="control-row"><span>Carga útil <small>kg</small></span><input id="input-payload" type="number" min="0" max="2700" step="50" value="620"></label>
-        <label class="control-row check"><input id="check-stol" type="checkbox"><span>Preferir pistas STOL</span></label>
-        <label class="control-row check"><input id="check-no-divert" type="checkbox"><span>Evitar desvios, se possível</span></label>
-        <label class="control-row"><span>Semente reproduzível</span><input id="input-seed" type="number" min="1" max="999999999" value="222"></label>
-        <div class="mode-info" id="mode-info">A verificar a ligação ao JEV…</div>
-        <button type="button" class="button button-accent" id="btn-launch">Iniciar JEV ao vivo <span aria-hidden="true">↗</span></button>
-        <button type="button" class="button button-outline" id="btn-replay">Ver replay gravado</button>
-        <p class="fine-print">Um percurso completo dura cerca de 3–5 minutos a 8×; um regresso pode terminá-lo antes. O comandante pode pausar e sobrepor uma escolha. Não é treino de voo.</p>
+      <div class="setup-main">
+        <div class="setup-title"><p class="kicker">ESCOLHE O CONTEXTO</p><h1>O mesmo modelo. <em>Decisões diferentes.</em></h1><p class="intro">Cada missão coloca um compromisso concreto: tempo clínico, carga ou incerteza visual. O voo reage às escolhas do JEV e às restrições que definires.</p></div>
+        <div class="mission-cards" id="mission-cards"></div>
+      </div>
+      <aside class="setup-controls" aria-label="Parâmetros do briefing">
+        <div class="control-heading"><span class="kicker">PARÂMETROS</span><strong>Briefing do comandante</strong></div>
+        <div class="control-grid">
+          <label class="control-row"><span>Risco máximo</span><select id="select-risk"><option value="baixo">Baixo</option><option value="medio" selected>Médio</option><option value="alto">Alto</option></select></label>
+          <label class="control-row"><span>Carga útil <small>kg</small></span><input id="input-payload" type="number" min="0" max="2700" step="50" value="620"></label>
+          <label class="control-row"><span>Semente</span><input id="input-seed" type="number" min="1" max="999999999" value="222"></label>
+          <div class="control-checks">
+            <label class="control-row check"><input id="check-stol" type="checkbox"><span>Preferir pistas STOL</span></label>
+            <label class="control-row check"><input id="check-no-divert" type="checkbox"><span>Evitar desvios</span></label>
+          </div>
+        </div>
+        <button type="button" class="text-button map-link" id="btn-setup-map">Pista real no Google Maps ↗</button>
+        <p class="fine-print setup-note">Um percurso dura 3–5 minutos a 8×. O comandante pode pausar e sobrepor uma escolha. Não é treino de voo.</p>
       </aside>
+      <div class="setup-dock">
+        <div class="mode-info" id="mode-info" role="status">A verificar a ligação ao JEV…</div>
+        <div class="dock-buttons">
+          <button type="button" class="button button-accent" id="btn-launch">Iniciar JEV ao vivo <span aria-hidden="true">↗</span></button>
+          <button type="button" class="button button-outline" id="btn-replay">Ver replay gravado</button>
+        </div>
+      </div>
     </main>
   </section>
 
   <section class="screen" id="screen-live">
     <canvas id="flight-canvas" aria-hidden="true"></canvas><div class="flight-tint"></div>
-    <header class="flight-header"><div class="flight-identity"><span class="brand-mark small">J<span>·</span>EV</span><span class="identity-divider"></span><div><b id="flight-name">—</b><small id="flight-source">—</small></div></div><div class="flight-phase"><span class="pulse"></span><span id="flight-phase">Em voo</span></div><button type="button" class="flight-exit" id="btn-exit">Terminar missão</button></header>
-    <div class="flight-grid">
-      <aside class="decision-panel"><p class="kicker light">SITUAÇÃO ACTUAL <span id="event-number">01</span></p><h2 id="event-title">A preparar briefing</h2><p class="event-desc" id="event-desc">O JEV vai receber o estado da missão.</p>
-        <div class="decision-flow"><div class="flow-step"><span class="flow-index">01</span><div><small>ENTRADA</small><strong id="flow-input">—</strong></div></div><div class="flow-step"><span class="flow-index">02</span><div><small>DECISÃO</small><strong id="flow-choice">À espera do JEV</strong><span id="flow-detail">—</span></div></div><div class="flow-step"><span class="flow-index">03</span><div><small>EFEITO NA MISSÃO</small><strong id="flow-effect">—</strong></div></div></div>
-        <div class="decision-flags"><span id="decision-origin">—</span><span id="decision-pic">—</span></div>
-        <details class="typed-details"><summary>Respostas tipadas e probabilidades <span>+</span></summary><div id="typed-answers"></div></details>
-      </aside>
-      <div class="flight-viewport"><div class="flight-label">SIMULAÇÃO ILUSTRATIVA / PERFIL ASSUMIDO</div><div class="map-card"><span class="map-label">ROTA ACTIVA</span><svg id="route-map" viewBox="0 0 270 112" role="img" aria-label="Esquema da rota da missão"><path id="map-planned" d="" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-dasharray="4 6"/><path id="map-path" d="" fill="none" stroke="#f4f6f8" stroke-width="3"/><circle id="map-plane" cx="20" cy="82" r="6" fill="#f4f6f8"/><circle id="map-target" cx="248" cy="82" r="5" fill="#f4f6f8"/></svg><strong id="map-destination">—</strong><small id="map-caption">Traçado esquemático</small></div></div>
-      <aside class="telemetry"><p class="kicker light">VÔO / TEMPO SIMULADO</p><div><span>VELOCIDADE</span><strong><b id="tel-speed">—</b><small>kt</small></strong></div><div><span>ALTITUDE</span><strong><b id="tel-alt">—</b><small>ft</small></strong></div><div><span>COMBUSTÍVEL</span><strong><b id="tel-fuel">—</b><small>kg</small></strong></div><div><span>ETA</span><strong><b id="tel-eta">—</b><small>min</small></strong></div><div><span>RELÓGIO</span><strong><b id="tel-time">—</b><small>min</small></strong></div></aside>
+    <header class="flight-header"><div class="flight-identity"><span class="brand-mark small">J<span>·</span>EV</span><img class="identity-thumb" src="./img/lus-222-hero.webp" alt="" aria-hidden="true"><div><b id="flight-name">—</b><small id="flight-source">—</small></div></div><div class="flight-phase"><span class="pulse"></span><span id="flight-phase">Em voo</span></div><button type="button" class="flight-exit" id="btn-exit">Terminar</button></header>
+    <aside class="decision-panel drawer" id="decision-panel" aria-label="Decisão actual">
+      <p class="kicker light">SITUAÇÃO ACTUAL <span id="event-number">01</span></p><h2 id="event-title">A preparar briefing</h2><p class="event-desc" id="event-desc">O JEV vai receber o estado da missão.</p>
+      <div class="decision-flow"><div class="flow-step"><span class="flow-index">01</span><div><small>ENTRADA</small><strong id="flow-input">—</strong></div></div><div class="flow-step"><span class="flow-index">02</span><div><small>DECISÃO</small><strong id="flow-choice">À espera do JEV</strong><span id="flow-detail">—</span></div></div><div class="flow-step"><span class="flow-index">03</span><div><small>EFEITO NA MISSÃO</small><strong id="flow-effect">—</strong></div></div></div>
+      <div class="decision-flags"><span id="decision-origin">—</span><span id="decision-pic">—</span></div>
+      <details class="typed-details"><summary>Respostas tipadas e probabilidades <span>+</span></summary><div id="typed-answers"></div></details>
+    </aside>
+    <aside class="telemetry" aria-label="Telemetria"><p class="kicker light">VOO / TEMPO SIMULADO</p><div><span>VELOCIDADE</span><strong><b id="tel-speed">—</b><small>kt</small></strong></div><div><span>ALTITUDE</span><strong><b id="tel-alt">—</b><small>ft</small></strong></div><div><span>COMBUSTÍVEL</span><strong><b id="tel-fuel">—</b><small>kg</small></strong></div><div><span>ETA</span><strong><b id="tel-eta">—</b><small>min</small></strong></div><div><span>RELÓGIO</span><strong><b id="tel-time">—</b><small>min</small></strong></div></aside>
+    <div class="map-card"><span class="map-label">ROTA ACTIVA</span><svg id="route-map" viewBox="0 0 270 112" role="img" aria-label="Esquema da rota da missão"><path id="map-planned" d="" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-dasharray="4 6"/><path id="map-path" d="" fill="none" stroke="#f4f6f8" stroke-width="3"/><circle id="map-plane" cx="20" cy="82" r="6" fill="#f4f6f8"/><circle id="map-target" cx="248" cy="82" r="5" fill="#f4f6f8"/></svg><strong id="map-destination">—</strong><small id="map-caption">Traçado esquemático</small></div>
+    <div class="flight-label">SIMULAÇÃO ILUSTRATIVA / PERFIL ASSUMIDO</div>
+    <div class="flight-seal" id="flight-seal" aria-live="polite"><small id="seal-source">JEV</small><strong id="seal-choice">À espera do JEV</strong><span id="seal-ms">— ms</span></div>
+    <div class="flight-footer">
+      <div class="flight-controls">
+        <button type="button" id="btn-drawer" class="control-button" aria-controls="decision-panel" aria-expanded="false">Decisão</button>
+        <button type="button" id="btn-pause" class="control-button">Pausar</button>
+        <button type="button" id="btn-speed" class="control-button">8× velocidade</button>
+        <button type="button" id="btn-pic" class="control-button">Intervenção PIC</button>
+        <button type="button" id="btn-real-map" class="control-button" aria-label="Pista real no Google Maps">Pista real</button>
+      </div>
+      <p id="flight-status" role="status" aria-live="polite">A iniciar simulação…</p>
     </div>
-    <div class="flight-footer"><div class="flight-controls"><button type="button" id="btn-pause" class="control-button">Pausar</button><button type="button" id="btn-speed" class="control-button">8× velocidade</button><button type="button" id="btn-pic" class="control-button">Intervenção PIC</button><button type="button" id="btn-real-map" class="control-button" aria-label="Pista real no Google Maps">Pista real</button></div><p id="flight-status" role="status" aria-live="polite">A iniciar simulação…</p></div>
     <div class="overlay" id="failure-overlay" hidden><div class="overlay-card"><p class="kicker">LIGAÇÃO INTERROMPIDA</p><h2>O JEV não respondeu.</h2><p id="failure-reason">—</p><div class="overlay-actions"><button type="button" class="button button-accent" id="btn-retry">Tentar novamente</button><button type="button" class="button button-outline" id="btn-incomplete">Terminar como incompleta</button></div></div></div>
     <div class="overlay" id="pic-overlay" hidden><div class="overlay-card"><p class="kicker">COMANDANTE / PIC</p><h2>Sobrepor a escolha</h2><p>A intervenção humana fica identificada no registo. O supervisor continua a verificar os limites calculados.</p><label class="control-row"><span>Nova ação</span><select id="pic-action"><option value="orbitar">Orbitar</option><option value="regressar_base">Regressar à origem</option><option value="desviar_alternativo">Desviar para alternativo</option><option value="prosseguir">Prosseguir</option></select></label><div class="overlay-actions"><button type="button" class="button button-accent" id="btn-pic-apply">Aplicar intervenção</button><button type="button" class="button button-outline" id="btn-pic-cancel">Cancelar</button></div></div></div>
-    <div class="overlay" id="map-overlay" hidden><div class="overlay-card map-overlay-card"><p class="kicker">GOOGLE MAPS / IMAGEM REAL</p><h2>Pista do Porto.</h2><p>Vista de satélite do aeroporto; o voo, os balões e o anoitecer são simulados à parte.</p><iframe title="Vista de satélite da pista do Porto no Google Maps" loading="eager" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe><button type="button" class="button button-outline" id="btn-map-close">Fechar mapa</button></div></div>
   </section>
 
-  <section class="screen" id="screen-debrief"><header class="page-header"><span>JEV / RELATÓRIO DE MISSÃO</span><span class="page-step">03 — ANALISAR</span></header><main class="debrief-layout"><div class="debrief-head"><p class="kicker">O QUE ACONTECEU</p><h1 id="result-title">Missão concluída</h1><p id="result-summary">—</p><div class="result-mode" id="result-mode">—</div></div><div class="metrics" id="result-metrics"></div><div class="debrief-main"><section><div class="section-title"><h2>Linha de decisão</h2><span>ESTADO · MODELO · EFEITO</span></div><div id="decision-list" class="decision-list"></div></section><aside class="lab"><p class="kicker">LABORATÓRIO</p><h2>Muda uma condição.<br><em>Compara a resposta.</em></h2><p>Reavalia uma cópia do estado de um incidente. A missão original fica intacta.</p><label class="control-row"><span>Incidente</span><select id="lab-event"></select></label><label class="control-row"><span>Variável</span><select id="lab-variable"><option value="vento_kt">Vento (kt)</option><option value="payload_kg">Carga útil (kg)</option><option value="comprimento_pista_m">Pista (m)</option><option value="relogio_s">Tempo restante (s)</option></select></label><label class="control-row"><span>Novo valor</span><input id="lab-value" type="number" value="40"></label><button type="button" class="button button-accent" id="btn-lab">Reavaliar com JEV</button><div id="lab-result" role="status" aria-live="polite"></div><p class="fine-print">Disponível apenas com Gateway. Uma nova resposta pode coincidir com a original.</p></aside></div><div class="result-actions"><button type="button" class="button button-accent" id="btn-new">Nova missão</button><button type="button" class="button button-outline" id="btn-download">Descarregar registo JSON</button></div><p class="fine-print">Comparação com regra geométrica limitada. O JEV recebe dados estruturados; a simulação não valida desempenho aeronáutico real.</p></main></section>
+  <section class="screen" id="screen-debrief">
+    <div class="exlibris" aria-hidden="true"><img src="./img/lus-222-hero.webp" alt=""></div>
+    <header class="page-header"><span>JEV / RELATÓRIO DE MISSÃO</span><span class="page-step">03 — ANALISAR</span></header>
+    <main class="debrief-layout">
+      <div class="debrief-head"><p class="kicker">O QUE ACONTECEU</p><h1 id="result-title">Missão concluída</h1><p id="result-summary">—</p><div class="result-mode" id="result-mode">—</div></div>
+      <div class="metrics" id="result-metrics"></div>
+      <section class="debrief-list"><div class="section-title"><h2>Linha de decisão</h2><span>ESTADO · MODELO · EFEITO</span></div><div id="decision-list" class="decision-list"></div></section>
+      <div class="result-actions"><button type="button" class="button button-accent" id="btn-new">Nova missão</button><button type="button" class="button button-outline" id="btn-lab-open">Laboratório</button><button type="button" class="button button-outline" id="btn-download">Descarregar JSON</button></div>
+      <p class="fine-print debrief-note">Comparação com regra geométrica limitada. O JEV recebe dados estruturados; a simulação não valida desempenho aeronáutico real.</p>
+    </main>
+    <div class="overlay" id="lab-overlay" hidden><aside class="overlay-card lab" aria-label="Laboratório"><p class="kicker">LABORATÓRIO</p><h2>Muda uma condição. <em>Compara a resposta.</em></h2><p>Reavalia uma cópia do estado de um incidente. A missão original fica intacta.</p><label class="control-row"><span>Incidente</span><select id="lab-event"></select></label><label class="control-row"><span>Variável</span><select id="lab-variable"><option value="vento_kt">Vento (kt)</option><option value="payload_kg">Carga útil (kg)</option><option value="comprimento_pista_m">Pista (m)</option><option value="relogio_s">Tempo restante (s)</option></select></label><label class="control-row"><span>Novo valor</span><input id="lab-value" type="number" value="40"></label><div id="lab-result" role="status" aria-live="polite"></div><div class="overlay-actions"><button type="button" class="button button-accent" id="btn-lab">Reavaliar com JEV</button><button type="button" class="button button-outline" id="btn-lab-close">Fechar</button></div><p class="fine-print">Disponível apenas com Gateway. Uma nova resposta pode coincidir com a original.</p></aside></div>
+  </section>
+
+  <div class="overlay" id="map-overlay" hidden><div class="overlay-card map-overlay-card"><p class="kicker">GOOGLE MAPS / IMAGEM REAL</p><h2>Pista do Porto.</h2><p>Vista de satélite do Aeroporto Francisco Sá Carneiro. A imagem não representa a noite de São João nem acompanha a posição simulada.</p><iframe title="Vista de satélite da pista do Porto no Google Maps" data-src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2812.334669533097!2d-8.6806638!3d41.2473992!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd246f64614a2bad%3A0x151a578a6d6039d1!2sAeroporto%20Francisco%20S%C3%A1%20Carneiro!5e1!3m2!1spt-PT!2spt!4v1790075229286!5m2!1spt-PT!2spt" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe><button type="button" class="button button-outline" id="btn-map-close">Fechar mapa</button></div></div>
 </div>
 <script type="module" src="./src/ambient.js"></script>
 <script type="module" src="./src/main.js"></script>
