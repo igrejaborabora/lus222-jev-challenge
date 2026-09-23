@@ -22,6 +22,7 @@ import {
   reservarPasso,
   separacaoInstantanea,
   selecionarRespostaReplay,
+  suspenderControloPiloto,
 } from './piloto-corredor.js';
 
 const $ = (id) => document.getElementById(id);
@@ -42,6 +43,20 @@ function nomeCenario() { return CENARIOS_SIM[estado.cenario]?.nome ?? 'Missão';
 function nomeDestino(id) { return id === 'planeado' && estado.cenario === 'porto' ? 'Francisco Sá Carneiro' : LABEL_DESTINO[id] ?? id; }
 function emModoPiloto() { return estado.modo === 'pilot-live' || estado.modo === 'pilot-replay'; }
 function emReplay() { return estado.modo === 'replay' || estado.modo === 'pilot-replay'; }
+function definirPausa(pausa) {
+  const proxima = Boolean(pausa);
+  if (estado.pausa === proxima) return;
+  if (emModoPiloto() && estado.piloto) {
+    const agora = performance.now();
+    if (proxima) estado.piloto.pausaIniciadaEm = agora;
+    else if (estado.piloto.pausaIniciadaEm != null) {
+      suspenderControloPiloto(estado.piloto.controlo, estado.piloto.pausaIniciadaEm, agora);
+      estado.piloto.pausaIniciadaEm = null;
+    }
+  }
+  estado.pausa = proxima;
+  $('btn-pause').textContent = estado.pausa ? 'Continuar' : 'Pausar';
+}
 
 async function sondarGateway() {
   try {
@@ -334,25 +349,33 @@ function mostrarPassoPiloto(registo) {
 }
 
 async function processarPassoPiloto(ticket, gen) {
+  const piloto = estado.piloto;
+  if (!piloto) return;
   let resposta;
   try {
     if (estado.modo === 'pilot-replay') {
       const visual = ticket.entrada.geometria.obstaculos[0]?.visual ?? 'canyon';
-      resposta = safeClone(selecionarRespostaReplay(estado.piloto.replays, visual));
+      resposta = safeClone(selecionarRespostaReplay(piloto.replays, visual));
       await new Promise((resolve) => setTimeout(resolve, Math.max(80, Number(resposta.latencia_ms) || 400)));
     } else {
       resposta = await avaliarPassoPiloto(ticket, ticket.entrada);
     }
   } catch (erro) {
-    if (gen !== estado.geracao || !estado.piloto) return;
-    falharPasso(estado.piloto.pipeline, ticket.id, erro, performance.now());
+    if (gen !== estado.geracao || estado.piloto !== piloto) return;
+    falharPasso(piloto.pipeline, ticket.id, erro, performance.now());
     $('flight-status').textContent = `Passo sem resposta: ${erro.message} O avião mantém a última ordem e o pipeline continua.`;
     atualizarProvaPiloto();
     return;
   }
-  if (gen !== estado.geracao || estado.ecra !== 'live' || !estado.piloto) return;
+  while (estado.pausa && gen === estado.geracao && estado.ecra === 'live' && estado.piloto === piloto) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  if (gen !== estado.geracao || estado.ecra !== 'live' || estado.piloto !== piloto) {
+    piloto.pipeline.emVoo.delete(ticket.id);
+    return;
+  }
   const resultado = concluirPasso(
-    estado.piloto.pipeline,
+    piloto.pipeline,
     ticket.id,
     resposta,
     performance.now(),
@@ -360,8 +383,8 @@ async function processarPassoPiloto(ticket, gen) {
   );
   if (!resultado.aplicar) return;
   const executouManobra = aplicarOrdemPiloto(
-    estado.piloto.controlo,
-    estado.piloto.automato,
+    piloto.controlo,
+    piloto.automato,
     evasaoDeAnswers(resposta.answers),
     performance.now(),
     ticket.assinatura,
@@ -369,9 +392,9 @@ async function processarPassoPiloto(ticket, gen) {
   resultado.registo.executou_manobra = executouManobra;
   if (executouManobra) {
     fecharOrdemActivaPiloto();
-    estado.piloto.ordemActiva = {
+    piloto.ordemActiva = {
       registo: resultado.registo,
-      separacaoMinM: separacaoInstantanea(estado.piloto.percurso, estado.piloto.automato),
+      separacaoMinM: separacaoInstantanea(piloto.percurso, piloto.automato),
     };
   }
   estado.log.linhas.push(resultado.registo);
@@ -432,7 +455,7 @@ async function iniciarPiloto() {
   const pipeline = novoPipelinePiloto();
   const automato = novoAutomato();
   const controlo = novoControloPiloto();
-  estado.piloto = { percurso, pipeline, automato, controlo, ordemActiva: null, replays, base: { restricoes: configuracao() } };
+  estado.piloto = { percurso, pipeline, automato, controlo, ordemActiva: null, pausaIniciadaEm: null, replays, base: { restricoes: configuracao() } };
   estado.missao = { resultado: null };
   estado.log = { versao: 5, fonte: modo === 'pilot-replay' ? 'jev-replay-gravado-equivalente' : 'jev-ao-vivo', modelo: 'typesafe-ai/jev', perfil: PERFIL.versao, cenario: 'corredor-piloto', semente: seed, restricoes: configuracao(), linhas: [], incompleta: false, motivo: null, resultado: null };
   estado.pausa = false; estado.espera = false; estado.falha = false; estado.velocidade = 8;
@@ -726,7 +749,7 @@ function ligarUI() {
   $('btn-replay').addEventListener('click', () => void iniciar('replay'));
   $('btn-pilot').addEventListener('click', () => void iniciarPiloto());
   $('btn-exit').addEventListener('click', () => terminarIncompleta('O comandante terminou a missão antes do desfecho.'));
-  $('btn-pause').addEventListener('click', () => { estado.pausa = !estado.pausa; $('btn-pause').textContent = estado.pausa ? 'Continuar' : 'Pausar'; atualizarTelemetria(); });
+  $('btn-pause').addEventListener('click', () => { definirPausa(!estado.pausa); atualizarTelemetria(); });
   $('btn-speed').addEventListener('click', () => { estado.velocidade = estado.velocidade === 8 ? 1 : estado.velocidade === 1 ? 4 : 8; $('btn-speed').textContent = `${estado.velocidade}× velocidade`; });
   $('btn-pic').addEventListener('click', () => { estado.pausa = true; $('btn-pause').textContent = 'Continuar'; $('pic-overlay').hidden = false; });
   const abrirMapa = (origem) => {

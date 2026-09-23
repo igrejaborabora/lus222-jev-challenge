@@ -265,6 +265,12 @@ export function aplicarOrdemPiloto(controlo, aviao, evasao, agoraMs, assinatura 
   return true;
 }
 
+export function suspenderControloPiloto(controlo, inicioMs, fimMs) {
+  const duracao = Math.max(0, Number(fimMs) - Number(inicioMs));
+  if (controlo.iniciadaEm != null) controlo.iniciadaEm += duracao;
+  controlo.actualizadoEm = Number(fimMs);
+}
+
 export function actualizarOrdemPiloto(controlo, aviao, agoraMs) {
   const dt = controlo.actualizadoEm == null
     ? 0
