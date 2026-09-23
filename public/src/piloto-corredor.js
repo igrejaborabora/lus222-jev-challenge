@@ -246,6 +246,7 @@ export function novoControloPiloto({ duracaoManobraMs = 900 } = {}) {
     duracaoManobraMs,
     chave: null,
     iniciadaEm: null,
+    actualizadoEm: null,
     neutralizada: true,
   };
 }
@@ -261,14 +262,28 @@ export function aplicarOrdemPiloto(controlo, aviao, evasao, agoraMs, assinatura 
 }
 
 export function actualizarOrdemPiloto(controlo, aviao, agoraMs) {
-  if (controlo.neutralizada || controlo.iniciadaEm == null) return false;
-  if (agoraMs - controlo.iniciadaEm < controlo.duracaoManobraMs) return false;
-  aviao.acao = 'prosseguir';
-  aviao.vertical = 'manter';
-  aviao.lateral = 'manter';
-  aviao.dodgeT = 0;
-  controlo.neutralizada = true;
-  return true;
+  const dt = controlo.actualizadoEm == null
+    ? 0
+    : Math.max(0, Math.min(0.12, (agoraMs - controlo.actualizadoEm) / 1000));
+  controlo.actualizadoEm = agoraMs;
+  let mudou = false;
+  if (!controlo.neutralizada && controlo.iniciadaEm != null && agoraMs - controlo.iniciadaEm >= controlo.duracaoManobraMs) {
+    aviao.acao = 'prosseguir';
+    aviao.vertical = 'manter';
+    aviao.lateral = 'manter';
+    aviao.dodgeT = 0;
+    controlo.neutralizada = true;
+    mudou = true;
+  }
+  if (controlo.neutralizada && dt > 0) {
+    const posicao = coordenadasCurso(aviao);
+    const correccaoLateral = Math.max(-0.48, Math.min(0.48, posicao.lateral / 120));
+    const alvo = ORIGEM.heading - correccaoLateral;
+    const delta = Math.atan2(Math.sin(alvo - aviao.heading), Math.cos(alvo - aviao.heading));
+    const maximo = 1.45 * dt;
+    aviao.heading += Math.max(-maximo, Math.min(maximo, delta));
+  }
+  return mudou;
 }
 
 export function novoPipelinePiloto({
