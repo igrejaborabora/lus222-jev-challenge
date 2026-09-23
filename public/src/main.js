@@ -154,7 +154,12 @@ async function criarMundo() {
     const api = await import('./world.js');
     if (!api.webglDisponivel()) throw new Error('WebGL indisponível');
     estado.mundoApi = api;
-    estado.mundo = api.criarCena($('flight-canvas'), { leve: api.perfilGraficoLeve(), cenario: estado.cenario, pose: parametrosVoo() });
+    estado.mundo = api.criarCena($('flight-canvas'), {
+      leve: api.perfilGraficoLeve(),
+      cenario: estado.cenario,
+      pose: parametrosVoo(),
+      apresentacao: !emModoPiloto(),
+    });
     ajustarMundo();
   } catch {
     estado.mundo = null;
@@ -411,7 +416,7 @@ async function processarPassoPiloto(ticket, gen) {
 function quadroPiloto(t, dt) {
   const piloto = estado.piloto;
   if (!piloto || estado.pausa || estado.falha) return;
-  const factor = estado.velocidade === 8 ? 1.6 : estado.velocidade === 4 ? 1.25 : 1;
+  const factor = estado.velocidade === 8 ? 1.35 : estado.velocidade === 4 ? 1.15 : 1;
   if (actualizarOrdemPiloto(piloto.controlo, piloto.automato, t)) fecharOrdemActivaPiloto();
   passoAutomato(piloto.automato, dt * factor);
   actualizarSeparacoes(piloto.percurso, piloto.automato);
@@ -458,10 +463,10 @@ async function iniciarPiloto() {
   estado.piloto = { percurso, pipeline, automato, controlo, ordemActiva: null, pausaIniciadaEm: null, replays, base: { restricoes: configuracao() } };
   estado.missao = { resultado: null };
   estado.log = { versao: 5, fonte: modo === 'pilot-replay' ? 'jev-replay-gravado-equivalente' : 'jev-ao-vivo', modelo: 'typesafe-ai/jev', perfil: PERFIL.versao, cenario: 'corredor-piloto', semente: seed, restricoes: configuracao(), linhas: [], incompleta: false, motivo: null, resultado: null };
-  estado.pausa = false; estado.espera = false; estado.falha = false; estado.velocidade = 8;
+  estado.pausa = false; estado.espera = false; estado.falha = false; estado.velocidade = 1;
   $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true;
   $('btn-real-map').hidden = true; $('btn-pic').hidden = true; $('pilot-proof').hidden = false;
-  $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade';
+  $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '1× velocidade';
   $('flight-name').textContent = 'Corredor autónomo LUS-222';
   $('flight-source').textContent = modo === 'pilot-replay' ? 'REPLAY JEV GRAVADO · CENÁRIOS EQUIVALENTES' : 'JEV AO VIVO · PASSOS DE 400 MS';
   $('decision-origin').textContent = modo === 'pilot-replay' ? 'JEV / REPLAY GRAVADO EQUIVALENTE' : 'JEV / AO VIVO · PIPELINE 2';

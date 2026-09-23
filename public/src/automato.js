@@ -46,18 +46,17 @@ export function passoAutomato(aviao, dt) {
   let alvoPitch = 0;
   let alvoSpeed = CRUZEIRO;
   let alvoAlt = 46;
-  let turn = 0;
 
   // Na câmara atrás da cauda, heading a subir vira para a esquerda do ecrã
-  // e bank negativo baixa essa asa. Pitch negativo levanta o nariz.
+  // e bank negativo baixa essa asa. O rumo sai do bank — nunca de um yaw seco.
+  // Pitch negativo levanta o nariz.
+  const banco = 0.32 * Math.min(u, 1.2) * Math.max(dodge, 0.85);
   switch (aviao.lateral) {
     case 'esquerda':
-      turn = 0.78 * u * dodge;
-      alvoBank = -0.52 * u;
+      alvoBank = -banco;
       break;
     case 'direita':
-      turn = -0.78 * u * dodge;
-      alvoBank = 0.52 * u;
+      alvoBank = banco;
       break;
     case 'manter':
       break;
@@ -70,12 +69,12 @@ export function passoAutomato(aviao, dt) {
 
   switch (aviao.vertical) {
     case 'subir':
-      alvoAlt = aviao.y + 26 * dodge + 10;
-      alvoPitch = -0.22 * u;
+      alvoAlt = aviao.y + 16;
+      alvoPitch = -0.12;
       break;
     case 'descer':
-      alvoAlt = Math.max(16, aviao.y - 16 * dodge);
-      alvoPitch = 0.18 * u;
+      alvoAlt = Math.max(16, aviao.y - 12);
+      alvoPitch = 0.1;
       break;
     case 'manter':
       break;
@@ -94,36 +93,28 @@ export function passoAutomato(aviao, dt) {
           Math.sin(aviao.rumoAlvo - aviao.heading),
           Math.cos(aviao.rumoAlvo - aviao.heading),
         );
-        turn = Math.max(-0.42, Math.min(0.42, delta * 1.1));
-        alvoBank = Math.max(-0.38, Math.min(0.38, -turn * 0.9));
+        alvoBank = Math.max(-0.24, Math.min(0.24, -delta * 0.7));
       }
       break;
     case 'desviar_alternativo':
-      if (aviao.lateral === 'manter') {
-        turn = 0.62 * u * dodge;
-        alvoBank = -0.4;
-      }
+      if (aviao.lateral === 'manter') alvoBank = -0.26;
       if (aviao.vertical === 'manter') alvoAlt = Math.max(alvoAlt, 58);
       break;
     case 'orbitar':
-      turn += -0.62;
-      alvoBank = 0.44;
+      alvoBank = 0.3;
       alvoSpeed = ORBITA;
       if (aviao.vertical === 'manter') alvoAlt = 48;
       aviao.orbit += t;
       break;
     case 'regressar_base':
-      if (aviao.lateral === 'manter') {
-        turn = -0.68;
-        alvoBank = 0.34;
-      }
+      if (aviao.lateral === 'manter') alvoBank = 0.24;
       if (aviao.vertical === 'manter') alvoAlt = 40;
       break;
     case 'abortar_emergencia':
-      alvoPitch = 0.2;
+      alvoPitch = 0.12;
       alvoAlt = Math.min(alvoAlt, 18);
       alvoSpeed = 28;
-      if (aviao.lateral === 'manter') alvoBank = 0.2;
+      if (aviao.lateral === 'manter') alvoBank = 0.16;
       break;
     default: {
       const _x = aviao.acao;
@@ -134,14 +125,14 @@ export function passoAutomato(aviao, dt) {
 
   if (aviao.vertical === 'manter' && aviao.acao !== 'abortar_emergencia') {
     const erroAlt = alvoAlt - aviao.y;
-    alvoPitch = Math.max(-0.18, Math.min(0.16, -erroAlt * 0.012));
+    alvoPitch = Math.max(-0.1, Math.min(0.08, -erroAlt * 0.01));
   }
 
-  aviao.heading += turn * t;
-  aviao.bank += (alvoBank - aviao.bank) * 2.4 * t;
-  aviao.pitch += (alvoPitch - aviao.pitch) * 2.0 * t;
+  aviao.bank += (alvoBank - aviao.bank) * 1.5 * t;
+  aviao.heading += -aviao.bank * 0.95 * t;
+  aviao.pitch += (alvoPitch - aviao.pitch) * 1.6 * t;
   aviao.speed += (alvoSpeed - aviao.speed) * 1.4 * t;
-  const taxaVertical = Math.max(-7, Math.min(7, (alvoAlt - aviao.y) * 0.6));
+  const taxaVertical = Math.max(-4.5, Math.min(4.5, (alvoAlt - aviao.y) * 0.45));
   aviao.y += taxaVertical * t;
   aviao.x += Math.sin(aviao.heading) * aviao.speed * t;
   aviao.z += Math.cos(aviao.heading) * aviao.speed * t;
