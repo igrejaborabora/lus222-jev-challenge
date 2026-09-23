@@ -42,7 +42,8 @@ export function paletaCeu(noite) {
     corSol: misturarCor(DIA.sol, NOITE.sol, suave(0.2, 0.7, n)),
     intensidadeSol: 1.35 * (1 - 0.8 * n),
     intensidadeCeu: 1.05 * (1 - 0.6 * n),
-    elevacaoSolRad: 0.9 - 0.98 * n,
+    // De dia ~37°, como a luz afinada; de noite abaixo do horizonte (só para o céu).
+    elevacaoSolRad: 0.64 - 0.72 * n,
     luzes: suave(0.45, 0.8, n),
   };
 }
