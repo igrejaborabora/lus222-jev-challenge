@@ -345,7 +345,12 @@ async function processarPassoPiloto(ticket, gen) {
   aplicarEvasao(estado.piloto.automato, evasaoDeAnswers(resposta.answers));
   estado.log.linhas.push(resultado.registo);
   mostrarPassoPiloto(resultado.registo);
-  if (estado.mundo) estado.mundoApi.mostrarAmeacas(estado.mundo, ticket.entrada.geometria.obstaculos, parametrosVoo());
+  if (estado.mundo) estado.mundoApi.mostrarAmeacas(
+    estado.mundo,
+    ticket.entrada.geometria.obstaculos,
+    parametrosVoo(),
+    { escalaDistancia: 1, distanciaMinima: 140 },
+  );
   atualizarProvaPiloto();
 }
 

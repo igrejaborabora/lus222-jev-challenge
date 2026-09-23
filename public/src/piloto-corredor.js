@@ -107,7 +107,7 @@ export function folgasCandidatas(obstaculos) {
 
 export function assinaturaObstaculos(obstaculos) {
   return (Array.isArray(obstaculos) ? obstaculos : [])
-    .map((o) => `${o.id}:${Math.round((Number(o.distancia_m) || 0) / 40)}`)
+    .map((o) => o.id)
     .join('|');
 }
 
