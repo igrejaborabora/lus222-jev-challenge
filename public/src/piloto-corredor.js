@@ -1,5 +1,4 @@
 import { mulberry32 } from './decisao.js';
-import { aplicarEvasao } from './automato.js';
 
 export const INTERVALO_DECISAO_MS = 400;
 export const MAX_PEDIDOS_EM_VOO = 2;
@@ -14,23 +13,61 @@ function arredondar(valor, casas = 0) {
   return Math.round(valor * escala) / escala;
 }
 
+// Deslocamentos que o controlador consegue numa manobra: os mesmos para as
+// folgas por obstáculo e para as folgas candidatas.
+const DESLOCAMENTO_LATERAL_M = 52;
+const DESLOCAMENTO_SUBIDA_M = 40;
+const DESLOCAMENTO_DESCIDA_M = 24;
+const ALTITUDE_MINIMA_M = 16;
+
+/**
+ * Coordenadas no referencial do corredor. Lateral positivo = direita do
+ * piloto, como `offset_lateral_m` em decisao.js. No automato, heading a subir
+ * vira à esquerda, por isso a direita é −d(posição)/d(heading).
+ */
 function coordenadasCurso(aviao) {
   const dx = Number(aviao?.x ?? ORIGEM.x) - ORIGEM.x;
   const dz = Number(aviao?.z ?? ORIGEM.z) - ORIGEM.z;
   return {
     aoLongo: Math.sin(ORIGEM.heading) * dx + Math.cos(ORIGEM.heading) * dz,
-    lateral: Math.cos(ORIGEM.heading) * dx - Math.sin(ORIGEM.heading) * dz,
+    lateral: Math.sin(ORIGEM.heading) * dz - Math.cos(ORIGEM.heading) * dx,
   };
+}
+
+/** Inverso de coordenadasCurso: lateral positivo = direita do piloto. */
+function pontoNoMundo(item) {
+  const h = ORIGEM.heading;
+  return {
+    mundo_x: arredondar(ORIGEM.x + Math.sin(h) * item.ao_longo_m - Math.cos(h) * item.lateral_m, 1),
+    mundo_z: arredondar(ORIGEM.z + Math.cos(h) * item.ao_longo_m + Math.sin(h) * item.lateral_m, 1),
+    mundo_y: item.altitude_m,
+    mundo_rumo: h,
+  };
+}
+
+function altitudeDe(aviao) {
+  const y = Number(aviao?.y);
+  return Number.isFinite(y) ? y : 42;
+}
+
+/** Folga ao perímetro de protecção depois de deslocar o avião (dl, dv). */
+function folgaComDeslocamento(relativo, dl, dv) {
+  return Math.hypot(dl - relativo.lateral, dv - relativo.vertical) - relativo.raio;
 }
 
 function geometriaDoObstaculo(item, aviao, posicao) {
   const emFrente = item.ao_longo_m - posicao.aoLongo;
-  const lateral = item.lateral_m - posicao.lateral;
-  const distancia = Math.hypot(emFrente, lateral);
+  const altitude = altitudeDe(aviao);
+  const relativo = {
+    lateral: item.lateral_m - posicao.lateral,
+    vertical: item.altitude_m - altitude,
+    raio: item.raio_protecao_m,
+  };
+  const distancia = Math.hypot(emFrente, relativo.lateral);
   const velocidade = Math.max(12, Number(aviao?.speed) || 38);
-  const abreDireita = item.folga === 'direita';
-  const abreEsquerda = item.folga === 'esquerda';
-  const abreCima = item.folga === 'alta';
+  const descida = Math.min(DESLOCAMENTO_DESCIDA_M, Math.max(0, altitude - ALTITUDE_MINIMA_M));
+  // As folgas saem da geometria actual: mudam com a posição do avião e usam
+  // os mesmos deslocamentos das folgas candidatas.
   return {
     id: item.id,
     tipo: item.tipo,
@@ -38,25 +75,16 @@ function geometriaDoObstaculo(item, aviao, posicao) {
     em_rota: true,
     distancia_m: Math.max(0, Math.round(distancia)),
     segundos_ate_ao_contacto: arredondar(Math.max(0, emFrente) / velocidade, 1),
-    folga_por_cima_m: abreCima ? 86 : 34,
-    folga_por_baixo_m: -18,
-    folga_pela_esquerda_m: abreEsquerda ? 64 : abreDireita ? -16 : 24,
-    folga_pela_direita_m: abreDireita ? 64 : abreEsquerda ? -16 : 24,
-    altura_m: item.visual === 'canyon' ? 120 : item.visual === 'guerra' ? 14 : 8,
-    offset_lateral_m: arredondar(lateral),
+    folga_por_cima_m: Math.round(folgaComDeslocamento(relativo, 0, DESLOCAMENTO_SUBIDA_M)),
+    folga_por_baixo_m: Math.round(folgaComDeslocamento(relativo, 0, -descida)),
+    folga_pela_esquerda_m: Math.round(folgaComDeslocamento(relativo, -DESLOCAMENTO_LATERAL_M, 0)),
+    folga_pela_direita_m: Math.round(folgaComDeslocamento(relativo, DESLOCAMENTO_LATERAL_M, 0)),
+    altura_m: Math.round(item.altitude_m + item.raio_protecao_m),
+    offset_lateral_m: arredondar(relativo.lateral),
     // Posição no corredor, independente do rumo do avião. A vista usa isto
     // para não voltar a colar a cidade, o bando ou a formação ao nariz.
-    mundo_x: arredondar(
-      ORIGEM.x + Math.sin(ORIGEM.heading) * item.ao_longo_m + Math.cos(ORIGEM.heading) * item.lateral_m,
-      1,
-    ),
-    mundo_z: arredondar(
-      ORIGEM.z + Math.cos(ORIGEM.heading) * item.ao_longo_m - Math.sin(ORIGEM.heading) * item.lateral_m,
-      1,
-    ),
-    mundo_y: item.altitude_m,
-    mundo_rumo: ORIGEM.heading,
-    _offset_vertical_m: arredondar(item.altitude_m - (Number(aviao?.y) || 42)),
+    ...pontoNoMundo(item),
+    _offset_vertical_m: arredondar(relativo.vertical),
     _raio_protecao_m: item.raio_protecao_m,
   };
 }
@@ -64,7 +92,10 @@ function geometriaDoObstaculo(item, aviao, posicao) {
 export function criarPercursoPiloto(semente = 222) {
   const seed = Number(semente) || 222;
   const rnd = mulberry32(seed);
-  let aoLongo = 170;
+  // O primeiro obstáculo fica a ~11 s: com a curva coordenada suave, o
+  // avião precisa desse tempo para ganhar deslocamento, mesmo com 1,5 s de
+  // latência na primeira resposta.
+  let aoLongo = 420;
   const obstaculos = VISUAIS.map((visual, indice) => {
     const intervalo = indice === 0 ? 0 : 150 + Math.round(rnd() * 45);
     aoLongo += intervalo;
@@ -86,8 +117,9 @@ export function criarPercursoPiloto(semente = 222) {
     origem: ORIGEM,
     obstaculos,
     separacoes: new Map(),
-    // Os dois últimos obstáculos são buffer: garantem 3–5 itens até à saída.
-    distancia_total_m: obstaculos.at(-3).ao_longo_m + 40,
+    // Os dois últimos obstáculos são buffer: garantem 3–5 itens à frente até à
+    // saída, que coincide com a passagem do último obstáculo pontuado.
+    distancia_total_m: obstaculos.at(-3).ao_longo_m,
   };
 }
 
@@ -96,7 +128,9 @@ export function obstaculosVisiveis(percurso, aviao) {
   return percurso.obstaculos
     .filter((item) => {
       const frente = item.ao_longo_m - posicao.aoLongo;
-      return frente >= -40 && frente <= JANELA_OBSTACULOS_M;
+      // Só o que ainda está à frente: um obstáculo já ultrapassado não pode
+      // ser o primeiro da lista nem pesar nas folgas candidatas.
+      return frente > 0 && frente <= JANELA_OBSTACULOS_M;
     })
     .slice(0, 5)
     .map((item) => geometriaDoObstaculo(item, aviao, posicao));
@@ -118,10 +152,10 @@ export function folgasCandidatas(obstaculos) {
   const lista = Array.isArray(obstaculos) ? obstaculos : [];
   const candidatos = [
     ['esquerda-alta', 'subir', 'esquerda', -42, 34],
-    ['centro-alta', 'subir', 'manter', 0, 42],
+    ['centro-alta', 'subir', 'manter', 0, DESLOCAMENTO_SUBIDA_M],
     ['direita-alta', 'subir', 'direita', 42, 34],
-    ['esquerda-nivel', 'manter', 'esquerda', -52, 0],
-    ['direita-nivel', 'manter', 'direita', 52, 0],
+    ['esquerda-nivel', 'manter', 'esquerda', -DESLOCAMENTO_LATERAL_M, 0],
+    ['direita-nivel', 'manter', 'direita', DESLOCAMENTO_LATERAL_M, 0],
   ];
   return candidatos
     .map(([id, vertical, lateral, deslocamentoLateral, deslocamentoVertical]) => ({
@@ -203,7 +237,7 @@ export function estadoPassoPiloto(percurso, aviao, base = {}) {
     voo: {
       posicao_x_m: arredondar(posicao.lateral),
       posicao_z_m: arredondar(posicao.aoLongo),
-      altitude_m: arredondar(Number(aviao?.y) || 42),
+      altitude_m: arredondar(altitudeDe(aviao)),
       velocidade_ms: arredondar(Number(aviao?.speed) || 38, 1),
       subida_ms: arredondar(-(Number(aviao?.pitch) || 0) * 10, 1),
       rumo_rad: arredondar(Number(aviao?.heading) || ORIGEM.heading, 3),
@@ -233,7 +267,7 @@ export function estadoPassoPiloto(percurso, aviao, base = {}) {
 
 export function actualizarSeparacoes(percurso, aviao) {
   const posicao = coordenadasCurso(aviao);
-  const altitude = Number(aviao?.y) || 42;
+  const altitude = altitudeDe(aviao);
   for (const item of percurso.obstaculos) {
     const aoLongo = item.ao_longo_m - posicao.aoLongo;
     if (aoLongo < -120 || aoLongo > JANELA_OBSTACULOS_M) continue;
@@ -250,7 +284,7 @@ export function actualizarSeparacoes(percurso, aviao) {
 
 export function separacaoInstantanea(percurso, aviao) {
   const posicao = coordenadasCurso(aviao);
-  const altitude = Number(aviao?.y) || 42;
+  const altitude = altitudeDe(aviao);
   const proximos = percurso.obstaculos
     .map((item) => Math.max(0, Math.hypot(
       item.ao_longo_m - posicao.aoLongo,
@@ -269,60 +303,80 @@ export function deveDespacharNoPercurso(percurso, aviao) {
   return !percursoConcluido(percurso, aviao) && obstaculosVisiveis(percurso, aviao).length >= 3;
 }
 
-export function novoControloPiloto({ duracaoManobraMs = 900 } = {}) {
+// Alvos que uma ordem do JEV fixa no referencial do corredor.
+export const ALTITUDE_CRUZEIRO_M = 46;
+const LATERAL_ALVO_M = { esquerda: -DESLOCAMENTO_LATERAL_M, direita: DESLOCAMENTO_LATERAL_M, manter: 0 };
+const ALTITUDE_ALVO_M = {
+  subir: ALTITUDE_CRUZEIRO_M + DESLOCAMENTO_SUBIDA_M,
+  descer: ALTITUDE_CRUZEIRO_M - DESLOCAMENTO_DESCIDA_M,
+  manter: ALTITUDE_CRUZEIRO_M,
+};
+const RUMO_MAX_RAD = 0.5;
+
+/**
+ * O JEV confirma a ordem a cada ~400 ms. Uma ordem fixa um alvo de posição
+ * (lateral e altitude no corredor), não um impulso de pranchamento: repetir a
+ * mesma ordem mantém o alvo, uma ordem nova muda-o, e sem confirmações durante
+ * `retencaoMs` o avião regressa ao eixo. O rumo nunca se afasta mais de
+ * RUMO_MAX_RAD do corredor, por isso um desvio não vira uma curva permanente.
+ */
+export function novoControloPiloto({ retencaoMs = 1600, ganhoLateralM = 60, antecipacaoS = 3 } = {}) {
   return {
-    duracaoManobraMs,
+    retencaoMs,
+    ganhoLateralM,
+    antecipacaoS,
     chave: null,
-    iniciadaEm: null,
-    actualizadoEm: null,
+    ultimaOrdemEm: null,
+    lateralAlvoM: 0,
+    altitudeAlvoM: ALTITUDE_CRUZEIRO_M,
     neutralizada: true,
   };
 }
 
-export function aplicarOrdemPiloto(controlo, aviao, evasao, agoraMs, assinatura = '') {
-  // A janela de obstáculos não reinicia a curva. Os mesmos eixos, mesmo
-  // depois de neutralizados, não voltam a aplicar — senão o nariz chicoteia
-  // entre a manobra e o regresso ao eixo. Só uma acção ou um eixo novo aplica.
-  void assinatura;
-  const chave = `${evasao?.acao}|${evasao?.vertical}|${evasao?.lateral}`;
-  if (chave === controlo.chave) return false;
+export function aplicarOrdemPiloto(controlo, aviao, evasao, agoraMs) {
+  const lateral = evasao?.lateral in LATERAL_ALVO_M ? evasao.lateral : 'manter';
+  const vertical = evasao?.vertical in ALTITUDE_ALVO_M ? evasao.vertical : 'manter';
+  const chave = `${lateral}|${vertical}`;
+  const nova = controlo.neutralizada || chave !== controlo.chave;
   controlo.chave = chave;
-  controlo.iniciadaEm = agoraMs;
+  controlo.ultimaOrdemEm = agoraMs;
   controlo.neutralizada = false;
-  aviao.rumoAlvo = null;
-  aplicarEvasao(aviao, evasao);
-  return true;
+  controlo.lateralAlvoM = LATERAL_ALVO_M[lateral];
+  controlo.altitudeAlvoM = ALTITUDE_ALVO_M[vertical];
+  // O autómato só segue rumo e altitude: a acção de missão fica no registo,
+  // porque orbitar ou regressar não fazem sentido num slalom.
+  aviao.acao = 'prosseguir';
+  aviao.lateral = 'manter';
+  aviao.vertical = 'manter';
+  const u = Number(evasao?.urgencia);
+  aviao.urgencia = Number.isFinite(u) ? Math.min(3, Math.max(0, Math.round(u))) : 1;
+  return nova;
 }
 
 export function suspenderControloPiloto(controlo, inicioMs, fimMs) {
   const duracao = Math.max(0, Number(fimMs) - Number(inicioMs));
-  if (controlo.iniciadaEm != null) controlo.iniciadaEm += duracao;
-  controlo.actualizadoEm = Number(fimMs);
+  if (controlo.ultimaOrdemEm != null) controlo.ultimaOrdemEm += duracao;
 }
 
 export function actualizarOrdemPiloto(controlo, aviao, agoraMs) {
-  const dt = controlo.actualizadoEm == null
-    ? 0
-    : Math.max(0, Math.min(0.12, (agoraMs - controlo.actualizadoEm) / 1000));
-  controlo.actualizadoEm = agoraMs;
-  let mudou = false;
-  if (!controlo.neutralizada && controlo.iniciadaEm != null && agoraMs - controlo.iniciadaEm >= controlo.duracaoManobraMs) {
-    aviao.acao = 'prosseguir';
-    aviao.vertical = 'manter';
-    aviao.lateral = 'manter';
-    aviao.dodgeT = 0;
+  let expirou = false;
+  if (!controlo.neutralizada && agoraMs - controlo.ultimaOrdemEm > controlo.retencaoMs) {
     controlo.neutralizada = true;
-    mudou = true;
+    controlo.chave = null;
+    controlo.lateralAlvoM = 0;
+    controlo.altitudeAlvoM = ALTITUDE_CRUZEIRO_M;
+    expirou = true;
   }
-  if (!controlo.neutralizada) {
-    aviao.rumoAlvo = null;
-  } else if (dt > 0) {
-    // Regresso ao eixo com curva coordenada (bank no passo), não um yaw seco.
-    const posicao = coordenadasCurso(aviao);
-    const correccaoLateral = Math.max(-0.35, Math.min(0.35, posicao.lateral / 180));
-    aviao.rumoAlvo = ORIGEM.heading - correccaoLateral;
-  }
-  return mudou;
+  const posicao = coordenadasCurso(aviao);
+  // Lateral positivo = direita; virar à direita baixa o heading. A curva
+  // coordenada atrasa o rumo, por isso o erro usa a lateral prevista daqui a
+  // antecipacaoS — sem isto o avião passa do alvo e oscila à volta do eixo.
+  const velocidadeLateral = -(Number(aviao.speed) || 0) * Math.sin((Number(aviao.heading) || ORIGEM.heading) - ORIGEM.heading);
+  const prevista = posicao.lateral + velocidadeLateral * controlo.antecipacaoS;
+  const erro = (prevista - controlo.lateralAlvoM) / controlo.ganhoLateralM;
+  aviao.rumoAlvo = ORIGEM.heading + Math.max(-RUMO_MAX_RAD, Math.min(RUMO_MAX_RAD, erro));
+  aviao.altitudeAlvo = controlo.altitudeAlvoM;
+  return expirou;
 }
 
 export function novoPipelinePiloto({

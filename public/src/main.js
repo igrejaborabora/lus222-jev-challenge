@@ -27,6 +27,7 @@ import {
 } from './piloto-corredor.js';
 
 const $ = (id) => document.getElementById(id);
+const FALHAS_ATE_PARAR = 5;
 const LABEL_DESTINO = { planeado: 'Destino planeado', origem: 'Origem', hospital_alternativo: 'Hospital alternativo', aeroporto_alternativo: 'Aeroporto alternativo', stol_proximo: 'Pista STOL próxima' };
 const QUESTOES = { configuracaoCabine: 'Cabine', prioridadeOperacional: 'Prioridade', pistaAdequada: 'Pista adequada', combustivelSuficiente: 'Combustível suficiente', acaoMissao: 'Ação de missão', manobraVertical: 'Vertical', manobraLateral: 'Lateral', destinoPreferido: 'Destino se mudar rota', urgencia: 'Urgência', riscoMeteorologico: 'Risco meteorológico', precisaRevisaoPIC: 'Revisão PIC', continuarVoo: 'Continuar voo' };
 const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0 };
@@ -119,7 +120,7 @@ async function avaliarJev(momento, entrada) {
   const timeout = setTimeout(() => ctrl.abort(), 13000);
   try {
     const r = await fetch('/api/jev', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ momento, estado: entrada }), signal: ctrl.signal });
-    const d = await r.json();
+    const d = await lerJson(r);
     if (!r.ok || d.fonte !== 'jev') throw new Error(d.mensagem || 'O JEV não respondeu.');
     const c = validarRespostas(momento, d.answers);
     if (!c.ok) throw new Error(`Contrato JEV inválido: ${c.erro}`);
@@ -313,6 +314,11 @@ function atualizarProvaPiloto() {
   });
 }
 
+async function lerJson(r) {
+  if (r.headers.get('content-type')?.includes('json')) return r.json();
+  return { mensagem: `HTTP ${r.status} sem resposta JSON.` };
+}
+
 async function avaliarPassoPiloto(ticket, entrada) {
   const ctrl = new AbortController();
   estado.pedidosPiloto.set(ticket.id, ctrl);
@@ -324,7 +330,7 @@ async function avaliarPassoPiloto(ticket, entrada) {
       body: JSON.stringify({ momento: 'incidente', estado: entrada }),
       signal: ctrl.signal,
     });
-    const d = await r.json();
+    const d = await lerJson(r);
     if (!r.ok || d.fonte !== 'jev') throw new Error(d.mensagem || 'O JEV não respondeu.');
     const contrato = validarRespostas('incidente', d.answers);
     if (!contrato.ok) throw new Error(`Contrato JEV inválido: ${contrato.erro}`);
@@ -350,8 +356,8 @@ function mostrarPassoPiloto(registo) {
   $('flow-choice').textContent = `${etiquetarManobraL(answers.manobraLateral.choice)} + ${etiquetarManobraV(answers.manobraVertical.choice)}`;
   $('flow-detail').textContent = `Folga calculada: ${melhorFolga?.id ?? '—'} · ${melhorFolga?.folga_min_m ?? '—'} m`;
   $('flow-effect').textContent = registo.executou_manobra
-    ? 'O controlador local executa uma manobra finita; o JEV volta a ler o corredor em 400 ms. A separação deste intervalo está em medição.'
-    : 'O JEV confirmou a ordem desta janela; o controlador não reinicia a manobra e mantém o ciclo de 400 ms.';
+    ? 'Nova ordem: o controlador local fixa a lateral e a altitude-alvo e converge sem ultrapassar 0,5 rad de rumo.'
+    : 'O JEV confirmou a ordem: o alvo mantém-se. Sem confirmação durante 1,6 s, o avião regressa ao eixo.';
   $('decision-origin').textContent = jev.replay_source
     ? `REPLAY ${jev.replay_source.cenario.toUpperCase()} / ${jev.replay_source.evento.toUpperCase()}`
     : 'JEV / AO VIVO · PIPELINE 2';
@@ -375,11 +381,20 @@ async function processarPassoPiloto(ticket, gen) {
     }
   } catch (erro) {
     if (gen !== estado.geracao || estado.piloto !== piloto) return;
-    falharPasso(piloto.pipeline, ticket.id, erro, performance.now());
-    $('flight-status').textContent = `Passo sem resposta: ${erro.message} O avião mantém a última ordem e o pipeline continua.`;
+    const agora = performance.now();
+    falharPasso(piloto.pipeline, ticket.id, erro, agora);
+    // Sem backoff, um Gateway em baixo ou em 429 recebia dois pedidos a cada 400 ms.
+    piloto.falhasSeguidas += 1;
+    piloto.pipeline.proximoEm = Math.max(piloto.pipeline.proximoEm, agora + Math.min(8000, 400 * 2 ** piloto.falhasSeguidas));
     atualizarProvaPiloto();
+    if (piloto.falhasSeguidas >= FALHAS_ATE_PARAR) {
+      terminarIncompleta(`${FALHAS_ATE_PARAR} passos seguidos sem resposta do JEV: ${erro.message}`);
+      return;
+    }
+    $('flight-status').textContent = `Passo sem resposta: ${erro.message} O avião mantém a última ordem; novo pedido após espera.`;
     return;
   }
+  piloto.falhasSeguidas = 0;
   while (estado.pausa && gen === estado.geracao && estado.ecra === 'live' && estado.piloto === piloto) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
@@ -395,12 +410,21 @@ async function processarPassoPiloto(ticket, gen) {
     { separacao_min_m: null },
   );
   if (!resultado.aplicar) return;
+  const alvo = ticket.entrada.geometria.obstaculos[0]?.id;
+  if (alvo && !obstaculosVisiveis(piloto.percurso, piloto.automato).some((o) => o.id === alvo)) {
+    // A resposta chegou depois de o avião passar o obstáculo que a motivou:
+    // fica no registo, mas não comanda a geometria seguinte.
+    resultado.registo.aplicar = false;
+    resultado.registo.motivo = 'obstaculo_ja_ultrapassado';
+    estado.log.linhas.push(resultado.registo);
+    atualizarProvaPiloto();
+    return;
+  }
   const executouManobra = aplicarOrdemPiloto(
     piloto.controlo,
     piloto.automato,
     evasaoDeAnswers(resposta.answers),
     performance.now(),
-    ticket.assinatura,
   );
   resultado.registo.executou_manobra = executouManobra;
   if (executouManobra) {
@@ -426,10 +450,9 @@ function quadroPiloto(t, dt) {
   if (piloto.ordemActiva && Number.isFinite(separacaoAgora)) {
     piloto.ordemActiva.separacaoMinM = Math.min(piloto.ordemActiva.separacaoMinM ?? Infinity, separacaoAgora);
   }
-  const entrada = estadoPassoPiloto(piloto.percurso, piloto.automato, piloto.base);
-  const obstaculos = obstaculosVisiveis(piloto.percurso, piloto.automato);
-  const assinatura = assinaturaObstaculos(obstaculos);
-  if (deveDespacharNoPercurso(piloto.percurso, piloto.automato) && deveDespacharPasso(piloto.pipeline, t, assinatura)) {
+  if (deveDespacharPasso(piloto.pipeline, t) && deveDespacharNoPercurso(piloto.percurso, piloto.automato)) {
+    const entrada = estadoPassoPiloto(piloto.percurso, piloto.automato, piloto.base);
+    const assinatura = assinaturaObstaculos(entrada.geometria.obstaculos);
     const ticket = reservarPasso(piloto.pipeline, entrada, t, assinatura);
     void processarPassoPiloto(ticket, estado.geracao);
   }
@@ -462,7 +485,7 @@ async function iniciarPiloto() {
   const pipeline = novoPipelinePiloto();
   const automato = novoAutomato();
   const controlo = novoControloPiloto();
-  estado.piloto = { percurso, pipeline, automato, controlo, ordemActiva: null, pausaIniciadaEm: null, replays, base: { restricoes: configuracao() } };
+  estado.piloto = { percurso, pipeline, automato, controlo, ordemActiva: null, pausaIniciadaEm: null, falhasSeguidas: 0, replays, base: { restricoes: configuracao() } };
   estado.missao = { resultado: null };
   estado.log = { versao: 5, fonte: modo === 'pilot-replay' ? 'jev-replay-gravado-equivalente' : 'jev-ao-vivo', modelo: 'typesafe-ai/jev', perfil: PERFIL.versao, cenario: 'corredor-piloto', semente: seed, restricoes: configuracao(), linhas: [], incompleta: false, motivo: null, resultado: null };
   estado.pausa = false; estado.espera = false; estado.falha = false; estado.velocidade = 1;
@@ -603,7 +626,7 @@ function renderDebriefPiloto() {
   const separacao = separacaoMinimaPiloto();
   $('result-title').textContent = log.incompleta ? 'Prova interrompida.' : 'Corredor concluído.';
   $('result-summary').textContent = log.fonte === 'jev-ao-vivo'
-    ? `${log.linhas.length} decisões tipadas. O JEV escolheu os eixos e o controlador local executou manobras finitas; cada resposta ao vivo ficou ligada ao snapshot que a originou.`
+    ? `${log.linhas.length} decisões tipadas. O JEV escolheu os eixos e o controlador local converteu-os em alvos de lateral e altitude; cada resposta ao vivo ficou ligada ao snapshot que a originou.`
     : `${log.linhas.length} decisões tipadas reproduzidas. As respostas foram gravadas nos cenários equivalentes indicados em cada linha e reaplicadas aos snapshots do corredor; não são novas avaliações destes estados.`;
   $('result-mode').textContent = log.fonte === 'jev-ao-vivo' ? '● JEV AO VIVO / PIPELINE DE 2' : '○ REPLAY JEV GRAVADO / SEM NOVAS RESPOSTAS';
   const metrics = $('result-metrics'); metrics.replaceChildren();
@@ -639,7 +662,7 @@ function renderDebriefPiloto() {
     const right = elemento('div'); right.append(
       elemento('h3', '', 'DECISÃO E EXECUÇÃO'),
       elemento('p', '', `${etiquetarAcao(a.acaoMissao.choice)} · ${etiquetarManobraL(a.manobraLateral.choice)} / ${etiquetarManobraV(a.manobraVertical.choice)} · ${row.latencia_ms} ms.`),
-      elemento('p', '', row.executou_manobra ? 'Manobra finita iniciada neste snapshot.' : 'Ordem repetida; o controlador não reiniciou a manobra.'),
+      elemento('p', '', row.executou_manobra ? 'Nova ordem: alvo de lateral e altitude fixado neste snapshot.' : 'Ordem reconfirmada; o alvo mantém-se.'),
       elemento('p', '', row.resposta.replay_source
         ? `Replay de ${row.resposta.replay_source.cenario}/${row.resposta.replay_source.evento}, gravado em ${row.resposta.replay_source.gravado_em ?? 'data não registada'}; reaplicado a este snapshot.`
         : 'Eixos aplicados pelo controlador local; resposta ao vivo ligada ao estado que a originou.'),
@@ -686,8 +709,15 @@ function renderDebrief() {
   $('lab-overlay').hidden = true;
   $('lab-result').replaceChildren();
 }
+function cancelarPedidos() {
+  if (estado.pedido) estado.pedido.abort();
+  for (const ctrl of estado.pedidosPiloto.values()) ctrl.abort();
+  estado.pedidosPiloto.clear();
+}
 function abrirDebrief() {
   if (estado.ecra !== 'live') return;
+  // Pedidos ainda em voo continuariam a gastar o Gateway depois do fim.
+  cancelarPedidos(); ++estado.geracao;
   if (emModoPiloto()) fecharOrdemActivaPiloto();
   else atualizarResultadoLinha();
   estado.log.resultado = estado.missao.resultado;
@@ -742,9 +772,7 @@ function descarregar() {
   const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `jev-${estado.cenario}-${estado.log.semente}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function sair() {
-  if (estado.pedido) estado.pedido.abort();
-  for (const ctrl of estado.pedidosPiloto.values()) ctrl.abort();
-  estado.pedidosPiloto.clear();
+  cancelarPedidos();
   ++estado.geracao; cancelAnimationFrame(estado.raf); largarMundo(); estado.missao = null; estado.log = null; mostrar('commander');
   estado.piloto = null; document.documentElement.classList.remove('pilot-active'); $('pilot-proof').hidden = true; $('btn-pic').hidden = false;
 }

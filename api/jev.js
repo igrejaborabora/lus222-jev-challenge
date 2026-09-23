@@ -14,6 +14,8 @@ import { validarRespostas } from '../public/src/contrato-jev.js';
 
 const MODEL = MODELO_JEV;
 const TIMEOUT_MS = 12_000;
+// No corredor contínuo uma resposta com mais de ~3 s já descreve outra geometria.
+const TIMEOUT_PILOTO_MS = 3_000;
 const buckets = new Map();
 const LIMITE_POR_MIN = Number(process.env.JEV_RATE_LIMIT_PER_MIN || 400);
 
@@ -32,13 +34,6 @@ function gatewayConfigurado() {
   return Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN);
 }
 
-function withTimeout(promise, ms) {
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error('timeout')), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
 
 function momentoDe(body) {
   return body?.momento === 'briefing' ? 'briefing' : 'incidente';
@@ -78,13 +73,19 @@ export async function POST(request) {
   const momento = momentoDe(body);
   const estado = estadoParaJev(body?.estado ?? body);
   const questions = perguntasPara(momento, estado);
+  const piloto = estado?.voo?.fase === 'piloto_continuo';
   const inicio = Date.now();
 
   try {
-    const resultado = await withTimeout(
-      evaluate({ model: MODEL, state: estado, questions }),
-      TIMEOUT_MS,
-    );
+    // abortSignal cancela mesmo o pedido ao Gateway (um Promise.race deixava-o
+    // a correr e a ser cobrado). No piloto, repetir um passo não tem valor.
+    const resultado = await evaluate({
+      model: MODEL,
+      state: estado,
+      questions,
+      abortSignal: AbortSignal.timeout(piloto ? TIMEOUT_PILOTO_MS : TIMEOUT_MS),
+      maxRetries: piloto ? 0 : 2,
+    });
     const contrato = validarRespostas(momento, resultado.answers);
     if (!contrato.ok) {
       return Response.json(
@@ -105,18 +106,20 @@ export async function POST(request) {
   } catch (erro) {
     const mensagem = String(erro?.message ?? erro);
     const semChave = /api key|unauthor|credential|401|403/i.test(mensagem);
+    const expirou = erro?.name === 'TimeoutError' || erro?.name === 'AbortError' || /timeout|abort/i.test(mensagem);
+    if (!semChave && !expirou) console.error('[api/jev] gateway', mensagem.slice(0, 300));
     return Response.json(
       {
         fonte: 'bloqueio',
         modelo: null,
         momento,
         latencia_ms: Date.now() - inicio,
-        erro: semChave ? 'gateway_nao_configurado' : /timeout/i.test(mensagem) ? 'timeout' : 'gateway_indisponivel',
+        erro: semChave ? 'gateway_nao_configurado' : expirou ? 'timeout' : 'gateway_indisponivel',
         mensagem: semChave
           ? 'AI Gateway sem credenciais. A regra geométrica não se vende como JEV.'
-          : /timeout/i.test(mensagem)
+          : expirou
             ? 'O JEV não respondeu a tempo. A missão fica incompleta — não se finge uma decisão JEV.'
-            : `Gateway indisponível (${mensagem.slice(0, 140)}). A missão não continua como JEV.`,
+            : 'Gateway indisponível. A missão não continua como JEV.',
       },
       { status: 503 },
     );

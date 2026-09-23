@@ -97,6 +97,8 @@ export function passoAutomato(aviao, dt) {
 
   switch (aviao.acao) {
     case 'prosseguir':
+      // Alvo de altitude do piloto contínuo; o modo de missão não o define.
+      if (aviao.vertical === 'manter' && Number.isFinite(aviao.altitudeAlvo)) alvoAlt = aviao.altitudeAlvo;
       if (aviao.lateral === 'manter' && Number.isFinite(aviao.rumoAlvo)) {
         const delta = Math.atan2(
           Math.sin(aviao.rumoAlvo - aviao.heading),
