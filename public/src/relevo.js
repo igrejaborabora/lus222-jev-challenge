@@ -1,8 +1,14 @@
 import { pontoMundo } from './escala.js';
 
 // Relevo procedural determinístico, em coordenadas do mundo (metros, x
-// espelhado). Nível do mar = 0; terra ≥ 2 m. Sem dependências.
+// espelhado). Nível do mar = 0; terra ≥ 2 m; da orla ao fundo (−40 m) desce
+// a 5 %. Sem dependências.
 export const PLANO_PISTA_M = 2;
+const FUNDO_M = -40;
+// Declive da plataforma submersa: a terra entra no mar sem paredes.
+const PLATAFORMA = 0.05;
+// Declive máximo da rampa entre o plano da pista e o relevo natural.
+const RAMPA_MAX = 0.05;
 
 function hash(ix, iz, seed) {
   let h = (Math.imul(ix, 374761393) + Math.imul(iz, 668265263) + Math.imul(seed, 1442695041)) | 0;
@@ -46,12 +52,12 @@ export function fbm(x, z, seed = 1, oitavas = 4) {
 // o relevo não subir ao corredor de cruzeiro.
 const PERFIS = {
   porto: { agua: 'costa', costaX: 7000, recorteM: 1800, amplitude: 90, escala: 1 / 2600, seed: 11 },
-  sar: { agua: 'costa', costaX: -6000, recorteM: 1500, amplitude: 120, escala: 1 / 2200, seed: 23 },
+  sar: { agua: 'costa', costaX: -6000, recorteM: 1500, amplitude: 100, escala: 1 / 2200, seed: 23 },
   carga: { agua: 'terra', amplitude: 45, escala: 1 / 4200, seed: 31 },
   medevac: {
     agua: 'ilhas', escala: 1 / 1600, seed: 47,
     ilhas: [
-      { x: 9000, z: -2000, raio: 16000, alturaM: 900 },
+      { x: 12000, z: -2000, raio: 16000, alturaM: 900 },
       { x: -14000, z: 170000, raio: 22000, alturaM: 950 },
       { x: 24000, z: 72000, raio: 7000, alturaM: 600 },
     ],
@@ -68,15 +74,18 @@ function alturaBase(perfil, x, z) {
   if (perfil.agua === 'costa') {
     const costa = perfil.costaX + perfil.recorteM * ruido2(z / 7000, 3.7, perfil.seed + 5);
     const terra = costa - x; // metros para dentro de terra; mar para +X
-    if (terra < 0) return Math.max(-40, terra * 0.05);
+    if (terra < 0) return Math.max(FUNDO_M, PLANO_PISTA_M + terra * PLATAFORMA);
     const afastamentoRota = entre01((Math.abs(x) - 800) / 4000);
     return PLANO_PISTA_M + entre01(terra / 2500) * perfil.amplitude * relevo * (0.35 + 0.65 * afastamentoRota);
   }
   if (perfil.agua === 'ilhas') {
-    let h = -40;
+    let h = FUNDO_M;
     for (const i of perfil.ilhas) {
       const d = Math.hypot(x - i.x, z - i.z) / i.raio;
-      if (d < 1) h = Math.max(h, PLANO_PISTA_M + i.alturaM * (1 - d) ** 1.8 * (0.55 + 0.45 * relevo));
+      const hi = d < 1
+        ? PLANO_PISTA_M + i.alturaM * (1 - d) ** 1.8 * (0.55 + 0.45 * relevo)
+        : PLANO_PISTA_M - (d - 1) * i.raio * PLATAFORMA;
+      h = Math.max(h, hi);
     }
     return h;
   }
@@ -88,16 +97,74 @@ export function pistasDaMissao(destinos) {
   return destinos.map((d) => ({ id: d.id, ...pontoMundo(d.xM, d.zM), raioPlanoM: 1200 }));
 }
 
-/** Altura do terreno; à volta de cada pista o chão fica plano e seco. */
+// Ilhéu da pista: uma pista junto ao mar assenta numa pequena ilha natural,
+// em vez de um disco plano a flutuar; a orla desce para o fundo sem parede.
+const RAIO_ILHEU_M = 4000;
+function ilheuDaPista(d) {
+  if (d < RAIO_ILHEU_M) return PLANO_PISTA_M + 35 * (1 - d / RAIO_ILHEU_M) ** 1.5;
+  return PLANO_PISTA_M - (d - RAIO_ILHEU_M) * PLATAFORMA;
+}
+
+// Há mar a menos de ~2 raios do centro? (a pista pode estar em terra, à beira-mar)
+function haMarPerto(perfil, p) {
+  for (let r = 400; r <= 2400; r += 400) {
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * 2 * Math.PI;
+      if (alturaBase(perfil, p.x + r * Math.cos(a), p.z + r * Math.sin(a)) < PLANO_PISTA_M) return true;
+    }
+  }
+  return false;
+}
+
+function prepararPista(perfil, p) {
+  const baseM = alturaBase(perfil, p.x, p.z);
+  return { ...p, baseM, ilheu: baseM < PLANO_PISTA_M || haMarPerto(perfil, p) };
+}
+
+/**
+ * Calcula uma vez por pista a altura natural no centro (baseM) e se leva
+ * ilhéu. O construtor do terreno chama isto uma vez e não por vértice.
+ */
+export function prepararPistas(perfil, pistas) {
+  return pistas.map((p) => prepararPista(perfil, p));
+}
+
+// Rede de segurança: pistas passadas sem preparar são preparadas uma só vez
+// por objeto (e perfil), em vez de a cada vértice (~100 amostras por pista).
+const jaPreparadas = new WeakMap();
+function pistaPronta(perfil, p) {
+  if (p.baseM !== undefined && p.ilheu !== undefined) return p;
+  const guardada = jaPreparadas.get(p);
+  if (guardada?.perfil === perfil) return guardada.pista;
+  const pista = prepararPista(perfil, p);
+  jaPreparadas.set(p, { perfil, pista });
+  return pista;
+}
+
+// Desnível máximo permitido a d metros do centro da pista: zero no plano,
+// depois uma rampa a RAMPA_MAX (a entrada arredonda em ARREDONDAR_M, sem
+// aresta). Com o relevo à altura baseM, a rampa mede |baseM − plano| / RAMPA_MAX.
+const ARREDONDAR_M = 400;
+function folgaRampa(d, raio) {
+  const e = d - raio;
+  if (e <= 0) return 0;
+  return RAMPA_MAX * (e < ARREDONDAR_M ? (e * e) / (2 * ARREDONDAR_M) : e - ARREDONDAR_M / 2);
+}
+
+/**
+ * Altura do terreno; à volta de cada pista o chão fica plano (PLANO_PISTA_M)
+ * e liga-se ao relevo por uma rampa que nunca passa RAMPA_MAX, mesmo quando o
+ * relevo sobe para lá do centro. Sem paredes, nem em terra nem debaixo de água.
+ */
 export function alturaTerreno(perfil, x, z, pistas = []) {
   let h = alturaBase(perfil, x, z);
-  for (const p of pistas) {
-    const d = Math.hypot(x - p.x, z - p.z);
-    const raio = p.raioPlanoM ?? 1200;
-    if (d < raio * 1.8) {
-      const t = suave(entre01((d - raio) / (raio * 0.8)));
-      h = PLANO_PISTA_M + (h - PLANO_PISTA_M) * t;
-    }
+  const prontas = pistas.map((p) => pistaPronta(perfil, p));
+  for (const p of prontas) {
+    if (p.ilheu) h = Math.max(h, ilheuDaPista(Math.hypot(x - p.x, z - p.z)));
+  }
+  for (const p of prontas) {
+    const folga = folgaRampa(Math.hypot(x - p.x, z - p.z), p.raioPlanoM ?? 1200);
+    h = Math.min(PLANO_PISTA_M + folga, Math.max(PLANO_PISTA_M - folga, h));
   }
   return h;
 }
