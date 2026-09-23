@@ -52,9 +52,7 @@ export function fbm(x, z, seed = 1, oitavas = 4) {
 // o relevo não subir ao corredor de cruzeiro.
 const PERFIS = {
   porto: { agua: 'costa', costaX: 7000, recorteM: 1800, amplitude: 90, escala: 1 / 2600, seed: 11 },
-  // Amplitude 100 e não 120: com 120, as colinas naturais junto ao stol_proximo
-  // passavam os 8 % de declive (o limite «sem paredes» dos testes).
-  sar: { agua: 'costa', costaX: -6000, recorteM: 1500, amplitude: 100, escala: 1 / 2200, seed: 23 },
+  sar:{ agua: 'costa', costaX: -6000, recorteM: 1500, amplitude: 120, escala: 1 / 2200, seed: 23 },
   carga: { agua: 'terra', amplitude: 45, escala: 1 / 4200, seed: 31 },
   medevac: {
     agua: 'ilhas', escala: 1 / 1600, seed: 47,
@@ -173,12 +171,16 @@ export function alcanceRampaM(pista) {
  */
 export function alturaTerreno(perfil, x, z, pistas = []) {
   let h = alturaBase(perfil, x, z);
-  const prontas = pistas.map((p) => pistaPronta(perfil, p));
-  for (const p of prontas) {
+  // Chamado por vértice: sem alocações. Primeiro todos os ilhéus, depois
+  // todas as rampas (a ordem conta quando as zonas se sobrepõem).
+  for (const q of pistas) {
+    const p = pistaPronta(perfil, q);
+    if (!p.ilheu) continue;
     const d = Math.hypot(x - p.x, z - p.z);
-    if (p.ilheu && d < ALCANCE_ILHEU_M) h = Math.max(h, ilheuDaPista(perfil, x, z, d));
+    if (d < ALCANCE_ILHEU_M) h = Math.max(h, ilheuDaPista(perfil, x, z, d));
   }
-  for (const p of prontas) {
+  for (const q of pistas) {
+    const p = pistaPronta(perfil, q);
     const folga = folgaRampa(Math.hypot(x - p.x, z - p.z), p.raioPlanoM ?? 1200);
     h = Math.min(PLANO_PISTA_M + folga, Math.max(PLANO_PISTA_M - folga, h));
   }
