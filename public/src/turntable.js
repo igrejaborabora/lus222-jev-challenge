@@ -9,6 +9,10 @@ const botoes = {
   leve: document.getElementById('leve'),
 };
 const estado = { rodar: false, silhueta: false, leve: false, angulo: 0 };
+// ?foco=0..3 mostra uma só vista (lado, frente, 3/4, cima) em ecrã inteiro.
+const focoParam = Number.parseInt(new URLSearchParams(location.search).get('foco') ?? '', 10);
+const foco = focoParam >= 0 && focoParam <= 3 ? focoParam : null;
+if (foco !== null) document.querySelector('.grelha').style.display = 'none';
 
 let renderer;
 try {
@@ -98,14 +102,16 @@ function frame(agora) {
 
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
-  const vw = Math.floor(w / 2);
-  const vh = Math.floor(h / 2);
+  const vw = Math.floor(w / (foco === null ? 2 : 1));
+  const vh = Math.floor(h / (foco === null ? 2 : 1));
   scene.background = estado.silhueta ? papel : ceu;
   scene.overrideMaterial = estado.silhueta ? silhueta : null;
+  for (const p of aviao.userData.props) p.userData.disco.visible = !estado.silhueta;
 
   vistas.forEach((v, i) => {
-    const x = (i % 2) * vw;
-    const y = i < 2 ? h - vh : 0;
+    if (foco !== null && i !== foco) return;
+    const x = foco === null ? (i % 2) * vw : 0;
+    const y = foco === null && i < 2 ? h - vh : 0;
     const aspect = vw / vh;
     if (v.persp) {
       const r = 26;

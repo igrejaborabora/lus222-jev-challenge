@@ -9,7 +9,7 @@ import {
   vEmY,
 } from './lus222-forma.js';
 
-const BRANCO = '#f3f5f7';
+const BRANCO = '#ebeef1';
 const MARINHO = '#152033';
 const VERMELHO = '#c8423a';
 
@@ -96,7 +96,7 @@ function pinturaFuselagem(zMin, zMax, leve) {
   if (rug) {
     rug.width = W / 4;
     rug.height = H / 4;
-    rctx.fillStyle = 'rgb(110,110,110)';
+    rctx.fillStyle = 'rgb(122,122,122)';
     rctx.fillRect(0, 0, rug.width, rug.height);
     rctx.scale(0.25, 0.25);
   }
@@ -224,8 +224,8 @@ function pinturaFuselagem(zMin, zMax, leve) {
 function materiais(leve) {
   const std = (color, roughness, extras = {}) => new THREE.MeshStandardMaterial({ color, roughness, metalness: 0.04, ...extras });
   return {
-    branco: std(0xf3f5f7, 0.42),
-    marinho: std(0x152033, 0.48),
+    branco: std(0xebeef1, 0.48),
+    marinho: std(0x152033, 0.62, { envMapIntensity: 0.45 }),
     escuro: std(0x1c1f24, 0.55),
     metal: std(0xb9bec4, 0.35, { metalness: 0.5 }),
     pneu: std(0x141414, 0.9),
@@ -235,13 +235,13 @@ function materiais(leve) {
 }
 
 const ESTACOES_NACELE = [
-  { z: 2.36, w: 0.18, yc: 1.0, hTop: 0.18, hBot: 0.18, nTop: 2, nBot: 2 },
-  { z: 2.22, w: 0.34, yc: 1.0, hTop: 0.38, hBot: 0.36, nTop: 2.2, nBot: 2.2 },
-  { z: 1.7, w: 0.45, yc: 1.0, hTop: 0.5, hBot: 0.52, nTop: 2.4, nBot: 2.4 },
-  { z: 0.7, w: 0.46, yc: 1.0, hTop: 0.52, hBot: 0.55, nTop: 2.5, nBot: 2.5 },
-  { z: -0.5, w: 0.4, yc: 1.02, hTop: 0.46, hBot: 0.45, nTop: 2.4, nBot: 2.4 },
-  { z: -1.45, w: 0.24, yc: 1.1, hTop: 0.3, hBot: 0.22, nTop: 2.2, nBot: 2.2 },
-  { z: -2.0, w: 0.06, yc: 1.16, hTop: 0.05, hBot: 0.05, nTop: 2, nBot: 2 },
+  { z: 2.36, w: 0.17, yc: 0.84, hTop: 0.17, hBot: 0.17, nTop: 2, nBot: 2 },
+  { z: 2.22, w: 0.33, yc: 0.84, hTop: 0.34, hBot: 0.34, nTop: 2.2, nBot: 2.2 },
+  { z: 1.7, w: 0.43, yc: 0.86, hTop: 0.44, hBot: 0.48, nTop: 2.4, nBot: 2.4 },
+  { z: 0.7, w: 0.44, yc: 0.88, hTop: 0.44, hBot: 0.5, nTop: 2.5, nBot: 2.5 },
+  { z: -0.5, w: 0.38, yc: 0.92, hTop: 0.38, hBot: 0.4, nTop: 2.4, nBot: 2.4 },
+  { z: -1.45, w: 0.22, yc: 1.02, hTop: 0.22, hBot: 0.2, nTop: 2.2, nBot: 2.2 },
+  { z: -2.0, w: 0.06, yc: 1.1, hTop: 0.05, hBot: 0.05, nTop: 2, nBot: 2 },
 ];
 
 const ESTACOES_SPONSON = [
@@ -316,7 +316,7 @@ export function criarLus222({ leve = false } = {}) {
     roughnessMap: pintura.roughnessMap,
     metalness: 0.04,
   });
-  if (!pintura.roughnessMap) pele.roughness = 0.42;
+  if (!pintura.roughnessMap) pele.roughness = 0.48;
   const fuselagem = malhaLoft(fus.aneis, pele, { us: fus.us, tampaInicio: true, tampaFim: true });
   fuselagem.name = 'fuselagem';
   g.add(fuselagem);
@@ -348,10 +348,10 @@ export function criarLus222({ leve = false } = {}) {
       m.branco,
     );
     spinner.rotation.x = Math.PI / 2;
-    spinner.position.set(x, 1.0, 2.34);
+    spinner.position.set(x, 0.84, 2.34);
     g.add(spinner);
     const prop = helice(m, geoPa);
-    prop.position.set(x, 1.0, 2.5);
+    prop.position.set(x, 0.84, 2.5);
     g.add(prop);
     props.push(prop);
   }
