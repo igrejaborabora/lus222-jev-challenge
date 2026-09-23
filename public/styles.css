@@ -58,14 +58,14 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .setup-title h1{font-size:clamp(38px,4.6vw,76px);line-height:1.02;letter-spacing:-.065em;margin:10px 0 14px;max-width:14ch}
 .setup-title h1 em{color:#bec7ce}
 .intro{max-width:580px;line-height:1.55;color:#aeb7c0;font-size:15px;margin:0}
-.mission-cards{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-content:start}
-.mission-card{position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:0;padding:0;text-align:left;border:1px solid #353d44;background:var(--card);color:var(--ink);transition:transform .25s,border-color .25s,box-shadow .25s}
+.mission-cards{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:12px;align-content:start}
+.mission-card{position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:0;max-height:420px;padding:0;text-align:left;border:1px solid #353d44;background:var(--card);color:var(--ink);transition:transform .25s,border-color .25s,box-shadow .25s}
 .mission-card:hover{transform:translateY(-3px);box-shadow:0 0 0 1px rgba(255,255,255,.42) inset}
 .mission-card.selected{border-color:#e9edf1;box-shadow:0 0 0 2px #e9edf1 inset}
-.mission-art{display:flex;flex:none;height:clamp(64px,11vh,110px);align-items:flex-end;justify-content:space-between;padding:12px 14px;background:linear-gradient(135deg,#3c444c,#101317 72%);color:#fff;overflow:hidden}
+.mission-art{display:flex;flex:1 1 auto;min-height:clamp(64px,11vh,110px);align-items:flex-end;justify-content:space-between;padding:12px 14px;background:linear-gradient(135deg,#3c444c,#101317 72%);color:#fff;overflow:hidden}
 .mission-art span:first-child{font:500 10px var(--mono);letter-spacing:.14em}
 .mission-art span:last-child{font:600 clamp(40px,6vh,64px)/.7 var(--display);opacity:.34;letter-spacing:-.09em}
-.mission-body{padding:14px 15px 16px;min-height:0;overflow:hidden}
+.mission-body{flex:none;padding:14px 15px 16px;overflow:hidden}
 .mission-body h2{font-size:clamp(20px,1.8vw,26px);line-height:1.04;margin:0 0 8px}
 .mission-body p{font-size:12px;line-height:1.5;color:#abb4bc;margin:0 0 10px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .mission-thesis{display:block;font:600 10px/1.5 var(--mono);color:#d6dde3;letter-spacing:.06em}
@@ -236,9 +236,9 @@ button:disabled{opacity:.42;cursor:not-allowed}
   .intro{display:none}
   .mission-cards{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding:0 var(--pad);padding:0 var(--pad) 4px;scrollbar-width:none}
   .mission-cards::-webkit-scrollbar{display:none}
-  .mission-card{flex:0 0 min(78vw,300px);scroll-snap-align:start}
+  .mission-card{flex:0 0 min(78vw,300px);max-height:none;scroll-snap-align:start}
   .mission-card:hover{transform:none}
-  .mission-art{height:clamp(48px,8dvh,86px)}
+  .mission-art{min-height:clamp(48px,8dvh,86px)}
   .mission-body{padding:11px 13px 12px}
   .mission-body h2{font-size:21px;margin-bottom:6px}
   .mission-body p{-webkit-line-clamp:3;margin-bottom:6px}
@@ -260,7 +260,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
   .brand-mark.small{font-size:21px}.identity-thumb{width:44px;height:28px}
   .flight-identity b{font-size:11px}.flight-identity small{font-size:9px}
   .flight-phase{display:none}.flight-exit{font-size:10px;padding:8px 10px}
-  .flight-label{top:calc(98px + var(--safe-t));font-size:8px}
+  .flight-label{top:calc(116px + var(--safe-t));left:12px;transform:none;font-size:8px}
   .telemetry{top:calc(54px + var(--safe-t));left:0;right:0;width:auto;display:flex;align-items:center;justify-content:space-around;gap:6px;padding:5px 8px;border:0;border-bottom:1px solid rgba(255,255,255,.12);background:rgba(6,8,10,.72)}
   .telemetry .kicker{display:none}.telemetry>div{border:0;padding:2px}
   .telemetry>div>span{font-size:7px}.telemetry strong{font-size:17px}.telemetry strong small{font-size:7px}
@@ -269,7 +269,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
   .flight-seal{bottom:calc(76px + var(--safe-b));min-width:0;width:calc(100vw - 24px);padding:9px 14px 10px}
   .flight-seal strong{font-size:20px}.flight-seal span{font-size:12px}
   .decision-panel{top:auto;left:0;right:0;bottom:calc(64px + var(--safe-b));width:auto;max-height:58dvh;border-width:1px 0 0;padding:14px 18px 16px;background:rgba(8,11,14,.97)}
-  .decision-panel:not(.is-open){transform:translateY(calc(100% + 80px))}
+  .decision-panel:not(.is-open){transform:translateY(24px);visibility:hidden}
   .decision-panel h2{font-size:26px;margin:8px 0 6px}
   .event-desc{font-size:12px;margin-bottom:8px}
   .decision-flow{display:grid;grid-template-columns:repeat(3,1fr)}
