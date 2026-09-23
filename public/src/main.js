@@ -51,8 +51,25 @@ function criarCartoes() {
     b.addEventListener('click', () => { estado.cenario = id; $('input-payload').value = c.payloadKg; criarCartoes(); });
     host.append(b);
   }
-  $('porto-reference').hidden = estado.cenario !== 'porto';
+  $('btn-setup-map').hidden = estado.cenario !== 'porto';
 }
+
+function ecraLargo() { return matchMedia('(min-width: 761px)').matches; }
+function abrirGaveta(aberta) {
+  $('decision-panel').classList.toggle('is-open', aberta);
+  $('btn-drawer').setAttribute('aria-expanded', String(aberta));
+}
+function manobraCurta(vertical, lateral) {
+  const partes = [lateral && lateral !== 'manter' ? etiquetarManobraL(lateral) : null, vertical && vertical !== 'manter' ? etiquetarManobraV(vertical) : null].filter(Boolean);
+  return partes.length ? partes.join(' + ') : 'eixos mantidos';
+}
+function selo(origem, escolha, ms, aEsperar = false) {
+  $('seal-source').textContent = origem;
+  $('seal-choice').textContent = escolha;
+  $('seal-ms').textContent = Number.isFinite(ms) ? `${Math.round(ms)} ms${estado.modo === 'replay' ? ' · gravados' : ''}` : '— ms';
+  $('flight-seal').classList.toggle('is-waiting', aEsperar);
+}
+function origemSelo() { return estado.modo === 'replay' ? 'JEV / REPLAY GRAVADO' : 'JEV / AO VIVO'; }
 
 function configuracao() { return { payload_kg: Number($('input-payload').value), risco_maximo: $('select-risk').value, preferir_stol: $('check-stol').checked, nunca_desviar: $('check-no-divert').checked }; }
 function semente() { return Math.min(999999999, Math.max(1, Number($('input-seed').value) || 222)); }
@@ -153,6 +170,7 @@ function atualizarDecisao(evento, entrada, jev, supervisor) {
   $('decision-origin').textContent = supervisor.interveio ? 'SUPERVISOR INTERVEIO' : estado.modo === 'replay' ? 'JEV / REPLAY GRAVADO' : 'JEV / AO VIVO';
   $('decision-pic').textContent = Number(jev.answers.precisaRevisaoPIC.probability) >= .55 ? 'JEV SUGERE REVISÃO PIC' : 'SEM REVISÃO SUGERIDA';
   mostrarRespostas(jev.answers);
+  selo(supervisor.interveio ? 'SUPERVISOR INTERVEIO' : origemSelo(), `${etiquetarAcao(supervisor.aplicada.acao ?? jev.answers.acaoMissao.choice)} · ${manobraCurta(supervisor.aplicada.vertical, supervisor.aplicada.lateral)}`, jev.latencia_ms);
   $('flight-status').textContent = evento.tipo === 'baloes' ? 'Passagem apresentada a 2×; balões ampliados para leitura, separação calculada em metros.' : supervisor.interveio ? 'A escolha do JEV foi bloqueada; o supervisor protege a trajetória.' : 'Decisão aplicada à missão e ao voo.';
 }
 function atualizarTelemetria() {
@@ -200,6 +218,7 @@ async function processarEvento(evento, gen) {
   $('event-desc').textContent = evento.resumo;
   $('flow-input').textContent = entradaBreve(entrada);
   $('flow-choice').textContent = 'A avaliar…'; $('flow-detail').textContent = '—'; $('flow-effect').textContent = '—';
+  selo(origemSelo(), 'A avaliar…', null, true);
   $('flight-status').textContent = evento.obstaculos?.some((o) => o.segundos_ate_ao_contacto <= 15) ? 'Ameaça iminente: relógio simulado suspenso enquanto o JEV avalia.' : 'Voo a 1× sob a intenção anterior enquanto chega a resposta.';
   let jev;
   try {
@@ -239,6 +258,7 @@ async function processarBriefing(gen) {
   $('decision-origin').textContent = estado.modo === 'replay' ? 'JEV / REPLAY GRAVADO' : 'JEV / AO VIVO';
   $('decision-pic').textContent = '4 RESPOSTAS TIPADAS';
   mostrarRespostas(resposta.answers);
+  selo(origemSelo(), `Briefing · ${resposta.answers.prioridadeOperacional.choice}`, resposta.latencia_ms);
   $('flight-status').textContent = 'Briefing concluído. O primeiro incidente aproxima-se.';
   estado.revelarAte = performance.now() + 1800;
   estado.briefingPendente = false; estado.espera = false;
@@ -278,6 +298,8 @@ async function iniciar(modo) {
   $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true; $('btn-real-map').hidden = estado.cenario !== 'porto'; $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade';
   $('flight-name').textContent = nomeCenario(); $('flight-source').textContent = modo === 'replay' ? 'REPLAY GRAVADO · SEM NOVA AVALIAÇÃO' : 'JEV AO VIVO · AI GATEWAY';
   $('decision-origin').textContent = modo === 'replay' ? 'JEV / REPLAY GRAVADO' : 'JEV / AO VIVO';
+  selo(origemSelo(), 'A ler o briefing…', null, true);
+  abrirGaveta(ecraLargo());
   mostrar('live');
   largarMundo(); await criarMundo(); if (gen !== estado.geracao) return;
   cancelAnimationFrame(estado.raf); estado.ultimoFrame = performance.now(); estado.raf = requestAnimationFrame(quadro);
@@ -323,6 +345,8 @@ function renderDebrief() {
   const select = $('lab-event'); select.replaceChildren();
   log.linhas.forEach((l, i) => { const opt = document.createElement('option'); opt.value = String(i); opt.textContent = `${i + 1}. ${l.id}`; select.append(opt); });
   $('btn-lab').disabled = !estado.gateway || !log.linhas.length;
+  $('btn-lab-open').disabled = !log.linhas.length;
+  $('lab-overlay').hidden = true;
   $('lab-result').replaceChildren();
 }
 function abrirDebrief() {
@@ -392,21 +416,31 @@ function ligarUI() {
   $('btn-pause').addEventListener('click', () => { estado.pausa = !estado.pausa; $('btn-pause').textContent = estado.pausa ? 'Continuar' : 'Pausar'; atualizarTelemetria(); });
   $('btn-speed').addEventListener('click', () => { estado.velocidade = estado.velocidade === 8 ? 1 : estado.velocidade === 1 ? 4 : 8; $('btn-speed').textContent = `${estado.velocidade}× velocidade`; });
   $('btn-pic').addEventListener('click', () => { estado.pausa = true; $('btn-pause').textContent = 'Continuar'; $('pic-overlay').hidden = false; });
-  $('btn-real-map').addEventListener('click', () => {
-    estado.pausaAntesMapa = estado.pausa;
-    estado.pausa = true;
-    $('btn-pause').textContent = 'Continuar';
+  const abrirMapa = (origem) => {
+    estado.mapaOrigem = origem;
+    if (estado.ecra === 'live') {
+      estado.pausaAntesMapa = estado.pausa;
+      estado.pausa = true;
+      $('btn-pause').textContent = 'Continuar';
+    }
     const frame = $('map-overlay').querySelector('iframe');
-    if (!frame.src) frame.src = $('porto-reference').querySelector('iframe').src;
+    if (!frame.src) frame.src = frame.dataset.src;
     $('map-overlay').hidden = false;
     $('btn-map-close').focus();
-  });
+  };
+  $('btn-real-map').addEventListener('click', () => abrirMapa($('btn-real-map')));
+  $('btn-setup-map').addEventListener('click', () => abrirMapa($('btn-setup-map')));
   $('btn-map-close').addEventListener('click', () => {
     $('map-overlay').hidden = true;
-    estado.pausa = estado.pausaAntesMapa;
-    $('btn-pause').textContent = estado.pausa ? 'Continuar' : 'Pausar';
-    $('btn-real-map').focus();
+    if (estado.ecra === 'live') {
+      estado.pausa = estado.pausaAntesMapa;
+      $('btn-pause').textContent = estado.pausa ? 'Continuar' : 'Pausar';
+    }
+    estado.mapaOrigem?.focus();
   });
+  $('btn-drawer').addEventListener('click', () => abrirGaveta(!$('decision-panel').classList.contains('is-open')));
+  $('btn-lab-open').addEventListener('click', () => { $('lab-overlay').hidden = false; $('lab-event').focus(); });
+  $('btn-lab-close').addEventListener('click', () => { $('lab-overlay').hidden = true; $('btn-lab-open').focus(); });
   $('btn-pic-cancel').addEventListener('click', () => { $('pic-overlay').hidden = true; estado.pausa = false; $('btn-pause').textContent = 'Pausar'; });
   $('btn-pic-apply').addEventListener('click', () => {
     const acao = $('pic-action').value;
@@ -417,6 +451,7 @@ function ligarUI() {
     const ultima = estado.log.linhas.at(-1); if (ultima) ultima.pic.interveio = true;
     $('flow-effect').textContent = supervisor.interveio ? `PIC pediu ${etiquetarAcao(acao)}; supervisor bloqueou: ${supervisor.motivo}.` : `PIC sobrepôs: ${etiquetarAcao(acao)}. Nova rota ${nomeDestino(missao.destinoId)}.`;
     $('decision-origin').textContent = supervisor.interveio ? 'PIC + SUPERVISOR' : 'INTERVENÇÃO HUMANA / PIC';
+    selo(supervisor.interveio ? 'PIC + SUPERVISOR' : 'INTERVENÇÃO HUMANA / PIC', etiquetarAcao(supervisor.interveio ? supervisor.aplicada.acao : acao), null);
     $('pic-overlay').hidden = true; estado.pausa = false; $('btn-pause').textContent = 'Pausar';
   });
   $('btn-retry').addEventListener('click', () => { $('failure-overlay').hidden = true; estado.falha = false; if (estado.briefingPendente) void processarBriefing(estado.geracao); else if (estado.incidentePendente) void processarEvento(estado.incidentePendente, estado.geracao); });
@@ -426,6 +461,6 @@ function ligarUI() {
   $('btn-lab').addEventListener('click', () => void reavaliar());
   $('lab-variable').addEventListener('change', () => { const valores = { vento_kt: 40, payload_kg: 2600, comprimento_pista_m: 520, relogio_s: 480 }; $('lab-value').value = valores[$('lab-variable').value]; });
   addEventListener('resize', ajustarMundo);
-  document.addEventListener('keydown', (e) => { if (estado.ecra !== 'live') return; if (e.key === 'Escape' && !$('map-overlay').hidden) { $('btn-map-close').click(); } else if (e.key === 'Escape' && !$('pic-overlay').hidden) { $('btn-pic-cancel').click(); } else if (e.key === 'Escape' && $('failure-overlay').hidden) { e.preventDefault(); $('btn-pause').click(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('map-overlay').hidden) { $('btn-map-close').click(); return; } if (e.key === 'Escape' && !$('lab-overlay').hidden) { $('btn-lab-close').click(); return; } if (estado.ecra !== 'live') return; if (e.key === 'Escape' && !$('pic-overlay').hidden) { $('btn-pic-cancel').click(); } else if (e.key === 'Escape' && $('failure-overlay').hidden) { e.preventDefault(); $('btn-pause').click(); } });
 }
 ligarUI();
