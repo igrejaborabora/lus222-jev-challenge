@@ -3,24 +3,31 @@
 // Nariz em +Z, Y para cima, lado direito da aeronave em +X.
 
 /**
- * Estações da fuselagem tiradas das vistas lateral e frontal da render.
+ * Estações da fuselagem. O perfil vertical (topo e ventre ao longo do
+ * comprimento, normalizado pela altura da cabine) foi medido píxel a píxel na
+ * vista lateral da render pública do LUS-222: nariz em cunha, com a linha de
+ * topo recta da ponta ao para-brisas, e cone de cauda baixo, a acabar ~0,45
+ * abaixo do tecto. A largura continua estimada da vista de três quartos.
  * z · meia-largura w · centro yc · alturas acima/abaixo do centro · expoentes
  * da superelipse (topo arredondado, flancos quase planos, ventre plano).
  */
 export const ESTACOES_FUSELAGEM = [
-  { z: 5.34, w: 0.05, yc: -0.36, hTop: 0.04, hBot: 0.04, nTop: 2, nBot: 2 },
-  { z: 5.18, w: 0.24, yc: -0.33, hTop: 0.16, hBot: 0.13, nTop: 2.2, nBot: 2.6 },
-  { z: 4.9, w: 0.46, yc: -0.27, hTop: 0.33, hBot: 0.27, nTop: 2.4, nBot: 3.2 },
-  { z: 4.45, w: 0.7, yc: -0.18, hTop: 0.56, hBot: 0.5, nTop: 2.6, nBot: 3.8 },
-  { z: 3.9, w: 0.9, yc: -0.08, hTop: 0.82, hBot: 0.74, nTop: 2.8, nBot: 4.2 },
-  { z: 3.25, w: 1.01, yc: -0.02, hTop: 1.0, hBot: 0.88, nTop: 3, nBot: 4.6 },
+  { z: 5.34, w: 0.05, yc: -0.35, hTop: 0.05, hBot: 0.05, nTop: 2, nBot: 2 },
+  { z: 5.17, w: 0.16, yc: -0.335, hTop: 0.215, hBot: 0.215, nTop: 2.2, nBot: 2.6 },
+  { z: 4.99, w: 0.27, yc: -0.32, hTop: 0.3, hBot: 0.3, nTop: 2.3, nBot: 3 },
+  { z: 4.65, w: 0.41, yc: -0.285, hTop: 0.375, hBot: 0.375, nTop: 2.4, nBot: 3.4 },
+  { z: 4.3, w: 0.56, yc: -0.28, hTop: 0.52, hBot: 0.52, nTop: 2.5, nBot: 3.8 },
+  { z: 3.8, w: 0.76, yc: -0.22, hTop: 0.65, hBot: 0.65, nTop: 2.7, nBot: 4.2 },
+  { z: 3.3, w: 0.93, yc: -0.12, hTop: 0.8, hBot: 0.8, nTop: 2.9, nBot: 4.5 },
+  { z: 2.95, w: 1.03, yc: 0.02, hTop: 1.0, hBot: 0.95, nTop: 3.05, nBot: 4.7 },
   { z: 2.4, w: 1.05, yc: 0, hTop: 1.07, hBot: 0.95, nTop: 3.1, nBot: 4.8 },
   { z: -2.7, w: 1.05, yc: 0, hTop: 1.07, hBot: 0.95, nTop: 3.1, nBot: 4.8 },
-  { z: -3.55, w: 1.0, yc: 0.13, hTop: 0.95, hBot: 0.8, nTop: 3, nBot: 4.2 },
-  { z: -4.45, w: 0.86, yc: 0.36, hTop: 0.74, hBot: 0.52, nTop: 2.8, nBot: 3.4 },
-  { z: -5.35, w: 0.62, yc: 0.62, hTop: 0.5, hBot: 0.3, nTop: 2.6, nBot: 2.8 },
-  { z: -6.2, w: 0.33, yc: 0.86, hTop: 0.28, hBot: 0.14, nTop: 2.3, nBot: 2.4 },
-  { z: -6.72, w: 0.07, yc: 0.97, hTop: 0.06, hBot: 0.04, nTop: 2, nBot: 2 },
+  { z: -3.55, w: 1.0, yc: 0.19, hTop: 0.87, hBot: 0.86, nTop: 3, nBot: 4.2 },
+  { z: -4.45, w: 0.82, yc: 0.45, hTop: 0.58, hBot: 0.57, nTop: 2.8, nBot: 3.4 },
+  { z: -5.35, w: 0.56, yc: 0.67, hTop: 0.31, hBot: 0.3, nTop: 2.6, nBot: 2.8 },
+  { z: -6.0, w: 0.32, yc: 0.63, hTop: 0.13, hBot: 0.12, nTop: 2.3, nBot: 2.4 },
+  { z: -6.5, w: 0.13, yc: 0.59, hTop: 0.05, hBot: 0.05, nTop: 2, nBot: 2 },
+  { z: -6.72, w: 0.04, yc: 0.58, hTop: 0.02, hBot: 0.02, nTop: 2, nBot: 2 },
 ];
 
 const CHAVES = ['w', 'yc', 'hTop', 'hBot', 'nTop', 'nBot'];
