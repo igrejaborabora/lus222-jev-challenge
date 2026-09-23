@@ -349,7 +349,7 @@ async function processarPassoPiloto(ticket, gen) {
     estado.mundo,
     ticket.entrada.geometria.obstaculos,
     parametrosVoo(),
-    { escalaDistancia: 1, distanciaMinima: 140 },
+    { escalaDistancia: 1, distanciaMinima: 260 },
   );
   atualizarProvaPiloto();
 }
