@@ -14,6 +14,8 @@ O cenário principal é **São João / Porto**: uma aproximação hipotética ao
 
 A regra geométrica de comparação é deliberadamente limitada e nunca controla o voo. Uma percentagem global de “sucesso” esconderia desacordos importantes; por isso ação, destino, manobra, limites e revisão PIC são apresentados separadamente. Uma sugestão de revisão do JEV não é confundida com uma intervenção humana.
 
+A **Prova contínua JEV** é um modo separado: o avião atravessa um slalom de torres, aves e tráfego de época. A cada 400 ms o cliente envia um snapshot com três a cinco obstáculos e folgas candidatas recalculadas a partir da posição. Há no máximo dois pedidos em voo; uma resposta antiga que chegue depois de uma mais recente fica no registo mas não substitui a ordem actual. O JEV escolhe os eixos e o controlador local executa-os como manobras finitas, mantendo a última ordem entre respostas sem transformar um desvio numa curva permanente. A fita mostra latência por passo, decisões por minuto, mediana, p95 e separação ao envelope de protecção simulado. Sem Gateway, a prova reproduz também a espera e usa respostas JEV já gravadas em cenários visuais equivalentes; cada linha guarda cenário, evento e data da gravação e nunca se apresenta como avaliação nova do snapshot actual.
+
 A interface usa uma paleta preta e branca e uma animação de pontos “J·EV” na abertura, inspirada na linguagem visual da Pixelgrammar. A animação fica estática quando o sistema pede movimento reduzido; a missão também funciona sem WebGL (`?sem-webgl=1` permite verificar essa apresentação).
 
 Cada ecrã cabe na altura da janela (`100dvh`) a 375, 390, 768, 1366 e 1440 px, sem scroll de página. Só os painéis secundários (linha de decisão, respostas tipadas, gavetas) fazem scroll interno; nenhum comando fica fora da vista. A render do LUS-222 é o exlibris: ocupa a abertura, aparece esbatida na mesa e no relatório, recortada nas cartas de missão e em miniatura na identidade do voo. O voo abre com dois segundos de órbita à volta do avião antes da vista atrás da cauda.
@@ -51,6 +53,7 @@ public/src/simulacao.js     cenários, física, eventos, destinos e supervisor
 public/src/contrato-jev.js  validação de choice, score e boolean
 public/src/avaliacao-sim.js rubricagem por dimensão
 public/src/main.js          controlador de missão, UI, replay e laboratório
+public/src/piloto-corredor.js percurso contínuo, snapshots, pipeline de 2 e métricas
 public/src/world.js         representação 3D do estado do motor
 public/replays/*.json       quatro gravações reais do JEV, identificadas como replay
 scripts/record-replays.mjs  regenera gravações através do Gateway

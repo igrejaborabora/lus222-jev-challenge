@@ -649,13 +649,15 @@ function meshAmeaca(o, pose, leve) {
   return g;
 }
 
-export function mostrarAmeacas(mundo, obstaculos, pose) {
+export function mostrarAmeacas(mundo, obstaculos, pose, opcoes = {}) {
   if (!mundo?.ameaças) return;
   const local = { ...pose, x: pose.x - mundo.origemVisual.x, z: pose.z - mundo.origemVisual.z };
   limparGrupo(mundo.ameaças);
   mundo.alvoLook = null;
+  const escalaDistancia = Math.max(0.1, Number(opcoes.escalaDistancia) || 15);
+  const distanciaMinima = Math.max(25, Number(opcoes.distanciaMinima) || 25);
   const lista = (Array.isArray(obstaculos) ? obstaculos : []).filter((o) => o && o.em_rota)
-    .map((o) => ({ ...o, distancia_m: Math.max(25, o.distancia_m / 15) }));
+    .map((o) => ({ ...o, distancia_m: Math.max(distanciaMinima, o.distancia_m / escalaDistancia) }));
   for (const o of lista) {
     mundo.ameaças.add(meshAmeaca(o, local, mundo.leve));
   }

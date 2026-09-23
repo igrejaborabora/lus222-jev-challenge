@@ -90,6 +90,8 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .setup-dock{grid-area:dock;display:flex;flex-direction:column;gap:10px}
 .dock-buttons{display:grid;gap:8px}
 .dock-buttons .button{width:100%}
+.pilot-button{position:relative;overflow:hidden}
+.pilot-button::after{content:"400 MS · 2 PEDIDOS";font:500 8px var(--mono);letter-spacing:.1em;opacity:.58}
 .mode-info{font:11px/1.5 var(--mono);color:#d6dde3}
 
 /* Voo: canvas a ecrã inteiro; tudo o resto flutua por cima. */
@@ -135,6 +137,14 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .map-label{font:9px var(--mono);letter-spacing:.13em;color:#e1e6ea}
 .map-card svg{display:block;width:100%;height:70px;margin:4px 0}
 .map-card strong,.map-card small{display:block}.map-card strong{font-size:12px}.map-card small{font:9px var(--mono);color:#b6c0c8;margin-top:3px}
+.pilot-proof{position:absolute;z-index:3;right:calc(16px + var(--safe-r));bottom:calc(86px + var(--safe-b));width:min(320px,30vw);max-height:250px;overflow:hidden;background:rgba(8,11,14,.9);border:1px solid rgba(255,255,255,.2);padding:12px 14px;backdrop-filter:blur(6px)}
+.pilot-proof-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:9px;border-bottom:1px solid rgba(255,255,255,.15)}
+.pilot-proof-head span{font:600 8px/1.45 var(--mono);letter-spacing:.12em;color:#d4dbe1}
+.pilot-proof-head strong{font:500 9px/1.45 var(--mono);color:#fff;text-align:right}
+.pilot-tape{display:grid;gap:0;max-height:184px;overflow:hidden}
+.pilot-tape-row{display:grid;grid-template-columns:44px 1fr auto;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1);font:9px/1.35 var(--mono)}
+.pilot-tape-row time{color:#aeb8c0}.pilot-tape-row b{font-weight:500;color:#f4f6f8}.pilot-tape-row span{color:#c4cdd4;text-align:right}
+.pilot-active .map-card{display:none}
 .flight-seal{position:absolute;z-index:3;left:50%;bottom:calc(92px + var(--safe-b));transform:translateX(-50%);display:grid;justify-items:center;gap:4px;min-width:min(420px,70vw);max-width:calc(100vw - 32px);padding:12px 22px 14px;background:rgba(6,8,10,.82);border:1px solid rgba(255,255,255,.3);text-align:center;pointer-events:none;backdrop-filter:blur(6px)}
 @media(min-width:761px){.flight-seal{bottom:auto;top:calc(96px + var(--safe-t))}}
 @media(min-width:761px) and (max-width:1100px){
@@ -262,7 +272,9 @@ button:disabled{opacity:.42;cursor:not-allowed}
   .setup-note{display:none}
   .setup-dock{padding:0 var(--pad);gap:8px}
   .dock-buttons{grid-template-columns:1.25fr 1fr}
+  .dock-buttons .pilot-button{grid-column:1/-1}
   .dock-buttons .button{min-height:48px;padding:10px 12px;font-size:13px;gap:8px}
+  .pilot-button::after{font-size:7px}
   .mode-info{font-size:10px}
 
   .flight-header{height:calc(54px + var(--safe-t));padding-left:calc(12px + var(--safe-l));padding-right:calc(12px + var(--safe-r));gap:10px}
@@ -275,6 +287,10 @@ button:disabled{opacity:.42;cursor:not-allowed}
   .telemetry>div>span{font-size:7px}.telemetry strong{font-size:17px}.telemetry strong small{font-size:7px}
   .map-card{top:calc(112px + var(--safe-t));bottom:auto;right:10px;width:132px;padding:5px 8px}
   .map-card svg{height:32px;margin:0}.map-card strong{font-size:9px}.map-card small,.map-label{font-size:7px}
+  .pilot-proof{top:calc(112px + var(--safe-t));bottom:auto;right:10px;width:188px;max-height:142px;padding:8px 9px}
+  .decision-panel.is-open~.pilot-proof{opacity:0;pointer-events:none}
+  .pilot-proof-head{padding-bottom:6px}.pilot-proof-head span{font-size:7px}.pilot-proof-head strong{font-size:8px}
+  .pilot-tape{max-height:96px}.pilot-tape-row{grid-template-columns:34px 1fr auto;gap:5px;padding:5px 0;font-size:7px}
   .flight-seal{bottom:calc(76px + var(--safe-b));min-width:0;width:calc(100vw - 24px);padding:9px 14px 10px}
   .flight-seal strong{font-size:20px}.flight-seal span{font-size:12px}
   .decision-panel{top:auto;left:0;right:0;bottom:calc(152px + var(--safe-b));width:auto;max-height:calc(100dvh - 290px - var(--safe-t) - var(--safe-b));border-width:1px 0 0;padding:14px 18px 16px;background:rgba(8,11,14,.97)}

@@ -7,7 +7,7 @@
 
 export const MODELO_JEV = 'typesafe-ai/jev';
 export const TIPO_AERONAVE = 'LUS-222';
-export const MAX_OBSTACULOS = 4;
+export const MAX_OBSTACULOS = 5;
 export const LIMIAR_INTEGRIDADE_ABORTAR = 40;
 export const LIMIAR_ESCALAR_PIC = 0.55;
 export const LIMIAR_MAX_CHOICE = 0.55;
@@ -71,6 +71,15 @@ function lerObstaculo(o) {
     visual: umDe(o?.visual, VISUAIS, visualDefault),
     altura_m: round(o?.altura_m, 4, 220, 56),
     offset_lateral_m: o?.offset_lateral_m == null ? null : round(o.offset_lateral_m, -160, 160, 0),
+  };
+}
+
+function lerFolgaCandidata(f) {
+  return {
+    id: texto(f?.id, 'centro-alta', 40),
+    vertical: umDe(f?.vertical, MANOBRAS_V, 'manter'),
+    lateral: umDe(f?.lateral, MANOBRAS_L, 'manter'),
+    folga_min_m: round(f?.folga_min_m, -500, 500),
   };
 }
 
@@ -196,6 +205,9 @@ export function lerEstado(body) {
     },
     geometria: {
       obstaculos: obstaculosRaw.slice(0, MAX_OBSTACULOS).map(lerObstaculo),
+      folgas_candidatas: Array.isArray(g.folgas_candidatas)
+        ? g.folgas_candidatas.slice(0, 5).map(lerFolgaCandidata)
+        : [],
     },
     ...(v ? { voo: {
       posicao_x_m: round(v.posicao_x_m, -500000, 500000),
