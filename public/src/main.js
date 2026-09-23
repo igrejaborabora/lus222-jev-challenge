@@ -33,7 +33,7 @@ const $ = (id) => document.getElementById(id);
 const FALHAS_ATE_PARAR = 5;
 const LABEL_DESTINO = { planeado: 'Destino planeado', origem: 'Origem', hospital_alternativo: 'Hospital alternativo', aeroporto_alternativo: 'Aeroporto alternativo', stol_proximo: 'Pista STOL próxima' };
 const QUESTOES = { configuracaoCabine: 'Cabine', prioridadeOperacional: 'Prioridade', pistaAdequada: 'Pista adequada', combustivelSuficiente: 'Combustível suficiente', acaoMissao: 'Ação de missão', manobraVertical: 'Vertical', manobraLateral: 'Lateral', destinoPreferido: 'Destino se mudar rota', urgencia: 'Urgência', riscoMeteorologico: 'Risco meteorológico', precisaRevisaoPIC: 'Revisão PIC', continuarVoo: 'Continuar voo' };
-const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, poseLocal: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0 };
+const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0 };
 
 function mostrar(nome) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === `screen-${nome}`));
@@ -182,7 +182,7 @@ function ajustarMundo() {
 }
 function largarMundo() {
   try { if (estado.mundo) estado.mundoApi?.largarCena(estado.mundo); } catch { /* libertar a GPU nunca impede sair da missão */ }
-  estado.mundo = null; estado.mundoApi = null; estado.poseLocal = null;
+  estado.mundo = null; estado.mundoApi = null;
 }
 function desenharMundo(dt) {
   if (!estado.mundo) return;
@@ -192,7 +192,6 @@ function desenharMundo(dt) {
     const absoluta = parametrosVoo();
     api.actualizarCena(estado.mundo, { pose: absoluta });
     const pose = api.recentrarOrigem(estado.mundo, absoluta);
-    estado.poseLocal = pose;
     api.aplicarPose(estado.mundo, pose);
     if (emModoPiloto() && estado.piloto) {
       api.mostrarAmeacas(
@@ -542,9 +541,9 @@ async function processarEvento(evento, gen) {
   atualizarDecisao(evento, entrada, jev, supervisor);
   if (estado.mundo) {
     estado.mundoApi.mostrarAmeacas(estado.mundo, entrada.geometria.obstaculos, parametrosVoo(), { escalaDistancia: 1 });
-    // Enquadra avião e balões no momento da decisão; sem ameaça visível, cauda.
+    // Enquadra avião e balões no momento da decisão, com a pose deste instante.
     const ameaca = estado.missao.ameacaAtiva;
-    estado.mundoApi.focarEvento(estado.mundo, ameaca && estado.poseLocal ? posicaoVisualBaloes(estado.missao.voo, ameaca, estado.poseLocal) : null);
+    if (ameaca) estado.mundoApi.focarEvento(estado.mundo, posicaoVisualBaloes(estado.missao.voo, ameaca, estado.mundoApi.poseLocalAgora(estado.mundo, parametrosVoo())));
   }
   estado.incidentePendente = null; estado.espera = false;
 }

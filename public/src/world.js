@@ -7,13 +7,15 @@ import { actualizarHelices, criarLus222 } from './lus222.js';
 import { offsetLateral, pontoAmeaca } from './decisao.js';
 import { posicaoVisualBaloes } from './ameaca-visual.js';
 import { actualizarTerreno, criarTerreno, largarTerreno } from './terreno.js';
-import { perfilTerreno } from './relevo.js';
+import { alturaTerreno, perfilTerreno } from './relevo.js';
 import { TAMANHO_MOSAICO_M } from './mosaicos.js';
 
 // Suavização do desvio da câmara em relação ao avião (por segundo); a vertical
 // é quase rígida para não largar a cauda na subida/descida do dodge.
 const K_CAMARA = 3.4;
 const K_VERTICAL = 7;
+// Folga mínima da câmara acima do relevo (ou do mar, a y = 0).
+const FOLGA_CHAO_M = 5;
 
 export function perfilGraficoLeve() {
   if (typeof window === 'undefined') return true;
@@ -239,7 +241,7 @@ function mostrarAmeacasFixas(mundo, lista, local) {
 
 export function mostrarAmeacas(mundo, obstaculos, pose, opcoes = {}) {
   if (!mundo?.ameaças) return;
-  const local = { ...pose, x: pose.x - mundo.origemVisual.x, z: pose.z - mundo.origemVisual.z };
+  const local = poseLocalAgora(mundo, pose);
   const lista = (Array.isArray(obstaculos) ? obstaculos : []).filter((o) => o && o.em_rota);
   if (lista.some(ameacaFixa)) {
     mostrarAmeacasFixas(mundo, lista, local);
@@ -416,9 +418,10 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   scene.add(ameaças);
 
   // Órbita à mão à volta do LUS-222 (arrastar, pinçar, roda). Sem pan: o
-  // centro é sempre o avião; actualizarCamara move-o com o voo.
+  // centro é sempre o avião; actualizarCamara move-o com o voo. Deixa ver o
+  // avião por baixo (como no render oficial); o chão limita-se à parte.
   const controlos = new OrbitControls(camera, renderer.domElement);
-  Object.assign(controlos, { enablePan: false, enableDamping: true, dampingFactor: 0.08, minDistance: 14, maxDistance: 420 });
+  Object.assign(controlos, { enablePan: false, enableDamping: true, dampingFactor: 0.08, minDistance: 14, maxDistance: 420, maxPolarAngle: Math.PI * 0.8 });
   const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const mundo = {
@@ -512,7 +515,13 @@ export function recentrarOrigem(mundo, pose) {
     origem.x = pose.x;
     origem.z = pose.z;
   }
-  return { ...pose, x: pose.x - origem.x, z: pose.z - origem.z };
+  return poseLocalAgora(mundo, pose);
+}
+
+/** Pose absoluta → local com a origem visual actual (sem recentrar). */
+export function poseLocalAgora(mundo, pose) {
+  const o = mundo.origemVisual;
+  return { ...pose, x: pose.x - o.x, z: pose.z - o.z };
 }
 
 export function aplicarPose(mundo, pose) {
@@ -550,6 +559,16 @@ function puxarMiraParaAmeaca(mira, pose, look, fit) {
   mira.z = pose.z + fz * frente + fx * latC;
 }
 
+/** Nunca abaixo do relevo nem do mar: uma consulta ao perfil por frame. */
+function limitarAoChao(mundo) {
+  const t = mundo.terreno;
+  if (!t) return;
+  const cam = mundo.camera;
+  const o = mundo.origemVisual;
+  const chao = Math.max(0, alturaTerreno(t.perfil, cam.position.x + o.x, cam.position.z + o.z, t.pistas)) + FOLGA_CHAO_M;
+  if (cam.position.y < chao) cam.position.y = chao;
+}
+
 function focoLocal(mundo) {
   const f = mundo.focoEvento;
   if (!f) return null;
@@ -570,6 +589,8 @@ function seguirLivre(mundo, pose) {
   cam.position.z += pose.z - ant.z;
   ctl.target.set(pose.x, pose.y, pose.z);
   ctl.update();
+  limitarAoChao(mundo);
+  cam.lookAt(ctl.target);
   // Ao voltar a um modo automático, desliza a partir daqui (o livre só
   // corre depois do primeiro enquadrar, que cria os desvios).
   const d = mundo.desvioCamara;
@@ -618,6 +639,7 @@ function enquadrar(mundo, modo, pose, dt) {
   const d = mundo.desvioCamara;
   const m = mundo.desvioMira;
   cam.position.set(pose.x + d.x, pose.y + d.y, pose.z + d.z);
+  limitarAoChao(mundo);
   cam.lookAt(pose.x + m.x, pose.y + m.y, pose.z + m.z);
   // Um arrasto a meio de um modo automático roda à volta do avião.
   mundo.controlos.target.set(pose.x, pose.y, pose.z);
@@ -640,11 +662,14 @@ export function actualizarCamara(mundo, pose, dt) {
   return modo;
 }
 
-/** Enquadra avião e ameaça durante DURACAO_EVENTO_S; foco em coordenadas locais (ou null: cauda). */
+/**
+ * Enquadra avião e ameaça durante DURACAO_EVENTO_S (foco em coordenadas
+ * locais). Sem ameaça não há enquadramento: o modo escolhido mantém-se.
+ */
 export function focarEvento(mundo, foco) {
-  if (!mundo?.camara) return;
+  if (!mundo?.camara || !foco) return;
   const o = mundo.origemVisual;
-  mundo.focoEvento = foco ? { x: foco.x + o.x, y: foco.y, z: foco.z + o.z } : null;
+  mundo.focoEvento = { x: foco.x + o.x, y: foco.y, z: foco.z + o.z };
   mundo.camara = registarEvento(mundo.camara, performance.now() / 1000);
 }
 
