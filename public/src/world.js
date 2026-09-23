@@ -370,7 +370,7 @@ export function actualizarAmeacas(mundo, dt) {
   }
 }
 
-export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
+export function criarCena(canvas, { leve = false, cenario = 'medevac', apresentacao = true } = {}) {
   const pal = ceuDe(cenario);
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -456,7 +456,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
     tAmeaca: 0,
     leve,
     cenario,
-    apresentacaoS: matchMedia('(prefers-reduced-motion: reduce)').matches ? APRESENTACAO_S : 0,
+    apresentacaoS: apresentacao === false || matchMedia('(prefers-reduced-motion: reduce)').matches ? APRESENTACAO_S : 0,
   };
 }
 
@@ -554,14 +554,15 @@ export function actualizarCamara(mundo, pose, dt) {
   const miraY = pose.y + 2.2;
   let miraZ = pose.z + fz * ahead;
   if (look) {
-    const peso = 0.3 * fit; // ecrã estreito: menos puxão, o avião não encosta à borda
+    const peso = 0.18 * fit;
     const ax = miraX + (look.x - miraX) * peso - pose.x;
     const az = miraZ + (look.z - miraZ) * peso - pose.z;
     const frente = ax * fx + az * fz;
-    if (frente > 12) {
+    const fade = Math.max(0, Math.min(1, (frente - 24) / 60));
+    if (fade > 0) {
       const lat = az * fx - ax * fz;
-      const latMax = frente * 0.35;
-      const latC = Math.max(-latMax, Math.min(latMax, lat));
+      const latMax = frente * 0.18;
+      const latC = Math.max(-latMax, Math.min(latMax, lat)) * fade;
       miraX = pose.x + fx * frente - fz * latC;
       miraZ = pose.z + fz * frente + fx * latC;
     }
