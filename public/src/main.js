@@ -662,7 +662,7 @@ function renderDebriefPiloto() {
     const right = elemento('div'); right.append(
       elemento('h3', '', 'DECISÃO E EXECUÇÃO'),
       elemento('p', '', `${etiquetarAcao(a.acaoMissao.choice)} · ${etiquetarManobraL(a.manobraLateral.choice)} / ${etiquetarManobraV(a.manobraVertical.choice)} · ${row.latencia_ms} ms.`),
-      elemento('p', '', row.executou_manobra ? 'Manobra finita iniciada neste snapshot.' : 'Ordem repetida; o controlador não reiniciou a manobra.'),
+      elemento('p', '', row.executou_manobra ? 'Nova ordem: alvo de lateral e altitude fixado neste snapshot.' : 'Ordem reconfirmada; o alvo mantém-se.'),
       elemento('p', '', row.resposta.replay_source
         ? `Replay de ${row.resposta.replay_source.cenario}/${row.resposta.replay_source.evento}, gravado em ${row.resposta.replay_source.gravado_em ?? 'data não registada'}; reaplicado a este snapshot.`
         : 'Eixos aplicados pelo controlador local; resposta ao vivo ligada ao estado que a originou.'),
