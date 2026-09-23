@@ -302,7 +302,8 @@ button:disabled{opacity:.42;cursor:not-allowed}
   .flow-step:last-child{border:0;margin:0}.flow-index{display:none}.flow-step strong{font-size:11px}.flow-step div>span{display:none}
   .flight-footer{min-height:calc(64px + var(--safe-b));padding:8px calc(8px + var(--safe-r)) calc(8px + var(--safe-b)) calc(8px + var(--safe-l))}
   .flight-controls{width:100%;gap:4px}
-  .control-button{flex:1;min-width:0;min-height:46px;padding:0 3px;font-size:9px;white-space:normal;line-height:1.15}
+  /* Nunca abaixo da palavra mais longa ("Intervenção"): o texto não sai do botão. */
+  .control-button{flex:1;min-width:min-content;min-height:46px;padding:0 3px;font-size:9px;white-space:normal;line-height:1.15}
   .flight-footer p{display:none}
   .overlay-card{padding:20px}.overlay-card h2{font-size:30px}.overlay-actions{flex-direction:column}
   .map-overlay-card iframe{height:min(260px,38dvh)}
@@ -330,4 +331,6 @@ button:disabled{opacity:.42;cursor:not-allowed}
   .map-link{display:none}
 }
 @media(max-width:430px){.lab-compare{grid-template-columns:1fr}}
+/* Seis comandos no dock (Porto) cabem a 320 px sem sair do ecrã. */
+@media(max-width:350px){.control-button{font-size:8px;padding:0 2px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}.exlibris::after{animation:none}}

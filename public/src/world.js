@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { alternarPreferido, alvoCamara, modoCamara, novaCamara, registarEvento, registarInteracao } from './camara-modos.js';
 import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
 import { actualizarHelices, criarLus222 } from './lus222.js';
 import { offsetLateral, pontoAmeaca } from './decisao.js';
@@ -8,7 +10,10 @@ import { actualizarTerreno, criarTerreno, largarTerreno } from './terreno.js';
 import { perfilTerreno } from './relevo.js';
 import { TAMANHO_MOSAICO_M } from './mosaicos.js';
 
-const APRESENTACAO_S = 2;
+// Suavização do desvio da câmara em relação ao avião (por segundo); a vertical
+// é quase rígida para não largar a cauda na subida/descida do dodge.
+const K_CAMARA = 3.4;
+const K_VERTICAL = 7;
 
 export function perfilGraficoLeve() {
   if (typeof window === 'undefined') return true;
@@ -410,7 +415,13 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   const ameaças = new THREE.Group();
   scene.add(ameaças);
 
-  return {
+  // Órbita à mão à volta do LUS-222 (arrastar, pinçar, roda). Sem pan: o
+  // centro é sempre o avião; actualizarCamara move-o com o voo.
+  const controlos = new OrbitControls(camera, renderer.domElement);
+  Object.assign(controlos, { enablePan: false, enableDamping: true, dampingFactor: 0.08, minDistance: 14, maxDistance: 420 });
+  const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const mundo = {
     renderer,
     scene,
     camera,
@@ -425,8 +436,24 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     tAmeaca: 0,
     leve,
     cenario,
-    apresentacaoS: apresentacao === false || matchMedia('(prefers-reduced-motion: reduce)').matches ? APRESENTACAO_S : 0,
+    controlos,
+    camara: novaCamara(performance.now() / 1000, { abertura: apresentacao && !reduzido }),
+    // Foco do evento em coordenadas ABSOLUTAS: sobrevive a recentrarOrigem.
+    focoEvento: null,
+    // Desvios da câmara e da mira em relação ao avião (não precisam de recentrar).
+    desvioCamara: null,
+    desvioMira: null,
+    // Posição LOCAL do avião no frame anterior (recentrarOrigem desloca-a).
+    alvoAnterior: null,
+    arrastar: false,
   };
+  // Os 4 s de regresso contam a partir de largar o gesto: enquanto arrasta,
+  // cada 'change' renova a interacção.
+  const tocar = () => { mundo.camara = registarInteracao(mundo.camara, performance.now() / 1000); };
+  controlos.addEventListener('start', () => { mundo.arrastar = true; tocar(); });
+  controlos.addEventListener('change', () => { if (mundo.arrastar) tocar(); });
+  controlos.addEventListener('end', () => { mundo.arrastar = false; tocar(); });
+  return mundo;
 }
 
 /** Por frame, com a pose ABSOLUTA (antes de recentrarOrigem): carrega e larga mosaicos. */
@@ -442,6 +469,8 @@ export function actualizarCena(mundo, visual) {
  */
 export function largarCena(mundo) {
   if (!mundo) return;
+  // O canvas é reutilizado na missão seguinte: tira-lhe os ouvintes da órbita.
+  mundo.controlos?.dispose();
   if (mundo.terreno) largarTerreno(mundo.terreno);
   mundo.scene.traverse((o) => {
     o.geometry?.dispose();
@@ -476,6 +505,10 @@ export function recentrarOrigem(mundo, pose) {
       mundo.alvoLook.x -= x;
       mundo.alvoLook.z -= z;
     }
+    if (mundo.alvoAnterior) {
+      mundo.alvoAnterior.x -= x;
+      mundo.alvoAnterior.z -= z;
+    }
     origem.x = pose.x;
     origem.z = pose.z;
   }
@@ -498,74 +531,127 @@ export function aplicarPose(mundo, pose) {
 }
 
 /**
- * Vista chase: ligeiramente à esquerda e acima da cauda do LUS-222, a
- * olhar para a rota à frente do nariz — o comandante vê o que o piloto vê,
- * mas de fora, como num simulador de voo. O avião fica no terço inferior
- * do quadro, os obstáculos entram pelo fundo e o dodge lê-se no bank e na
- * fuga da ameaça para a borda. Só contas escalares por frame (sem alocações)
- * para aguentar o perfil leve no telemóvel.
+ * Com ameaça à frente, puxa a mira da cauda um pouco para ela (limitado a
+ * ~19°) sem virar a vista; ameaça já atrás do nariz não arrasta a câmara.
  */
-export function actualizarCamara(mundo, pose, dt) {
-  const cam = mundo.camera;
-  if (mundo.apresentacaoS < APRESENTACAO_S) {
-    // Plano de apresentação: meia órbita lenta à volta do LUS-222 antes da vista chase.
-    mundo.apresentacaoS += Math.min(dt, 0.08);
-    const u = mundo.apresentacaoS / APRESENTACAO_S;
-    const ang = pose.heading + Math.PI * (0.62 - 0.55 * u);
-    const raio = 30 + 10 * u;
-    cam.position.set(pose.x + Math.sin(ang) * raio, pose.y + 6 + 5 * u, pose.z + Math.cos(ang) * raio);
-    cam.lookAt(pose.x, pose.y + 0.6, pose.z);
-    mundo.camaraPronta = true;
-    return;
-  }
-  const look = mundo.alvoLook;
-  // Distância fixa: abrir o enquadramento a cada dodge fazia a vista saltar.
-  // Ecrã estreito (telemóvel em pé): afasta a cauda para a asa caber no quadro.
-  const fit = Math.min(1, Math.max(0.42, (cam.aspect || 1) / 1.2));
-  const back = 30 / fit;
-  const up = 7.5 / fit;
-  const ahead = 46;
+function puxarMiraParaAmeaca(mira, pose, look, fit) {
   const fx = Math.sin(pose.heading);
   const fz = Math.cos(pose.heading);
-  const lado = -4 * Math.max(0, (fit - 0.5) / 0.5);
+  const peso = 0.06 * fit;
+  const ax = mira.x + (look.x - mira.x) * peso - pose.x;
+  const az = mira.z + (look.z - mira.z) * peso - pose.z;
+  const frente = ax * fx + az * fz;
+  const fade = Math.max(0, Math.min(1, (frente - 24) / 60));
+  if (fade <= 0) return;
+  const lat = az * fx - ax * fz;
+  const latMax = frente * 0.18;
+  const latC = Math.max(-latMax, Math.min(latMax, lat)) * fade;
+  mira.x = pose.x + fx * frente - fz * latC;
+  mira.z = pose.z + fz * frente + fx * latC;
+}
 
-  const alvoX = pose.x - fx * back + fz * lado;
-  const alvoY = pose.y + up;
-  const alvoZ = pose.z - fz * back - fx * lado;
-  if (!mundo.camaraPronta) {
-    cam.position.set(alvoX, alvoY, alvoZ);
-    mundo.camaraPronta = true;
+function focoLocal(mundo) {
+  const f = mundo.focoEvento;
+  if (!f) return null;
+  return { x: f.x - mundo.origemVisual.x, y: f.y, z: f.z - mundo.origemVisual.z };
+}
+
+/**
+ * Mão livre: a câmara acompanha o avião com o desvio que o utilizador
+ * escolheu. Os eventos do OrbitControls já rodaram/afastaram a câmara entre
+ * frames à volta da posição anterior; aqui soma-se só o avanço do avião.
+ */
+function seguirLivre(mundo, pose) {
+  const cam = mundo.camera;
+  const ctl = mundo.controlos;
+  const ant = mundo.alvoAnterior;
+  cam.position.x += pose.x - ant.x;
+  cam.position.y += pose.y - ant.y;
+  cam.position.z += pose.z - ant.z;
+  ctl.target.set(pose.x, pose.y, pose.z);
+  ctl.update();
+  // Ao voltar a um modo automático, desliza a partir daqui (o livre só
+  // corre depois do primeiro enquadrar, que cria os desvios).
+  const d = mundo.desvioCamara;
+  d.x = cam.position.x - pose.x;
+  d.y = cam.position.y - pose.y;
+  d.z = cam.position.z - pose.z;
+  const m = mundo.desvioMira;
+  m.x = 0;
+  m.y = 0;
+  m.z = 0;
+}
+
+/**
+ * Modos automáticos: suaviza o DESVIO em relação ao avião, não a posição
+ * absoluta. A 1:1 e a 8× (~700 m/s) a suavização absoluta deixava a câmara
+ * ~200 m atrás; assim a distância não depende da velocidade.
+ */
+function enquadrar(mundo, modo, pose, dt) {
+  const cam = mundo.camera;
+  // Ecrã estreito (telemóvel em pé): afasta a câmara para a asa caber no quadro.
+  const fit = Math.min(1, Math.max(0.42, (cam.aspect || 1) / 1.2));
+  const alvo = alvoCamara(modo, pose, { fit, foco: modo === 'evento' ? focoLocal(mundo) : null });
+  if (modo === 'cauda' && mundo.alvoLook) puxarMiraParaAmeaca(alvo.mira, pose, mundo.alvoLook, fit);
+  const cx = alvo.pos.x - pose.x;
+  const cy = alvo.pos.y - pose.y;
+  const cz = alvo.pos.z - pose.z;
+  const mx = alvo.mira.x - pose.x;
+  const my = alvo.mira.y - pose.y;
+  const mz = alvo.mira.z - pose.z;
+  const dc = mundo.desvioCamara;
+  const dm = mundo.desvioMira;
+  if (!dc || !dm) {
+    mundo.desvioCamara = { x: cx, y: cy, z: cz };
+    mundo.desvioMira = { x: mx, y: my, z: mz };
   } else {
     const t = Math.min(dt, 0.08);
-    const k = 1 - Math.exp(-3.4 * t);
-    const ky = 1 - Math.exp(-7 * t); // vertical quase rígido: não larga a cauda na subida/descida do dodge
-    cam.position.x += (alvoX - cam.position.x) * k;
-    cam.position.y += (alvoY - cam.position.y) * ky;
-    cam.position.z += (alvoZ - cam.position.z) * k;
+    const k = 1 - Math.exp(-K_CAMARA * t);
+    const ky = 1 - Math.exp(-K_VERTICAL * t);
+    dc.x += (cx - dc.x) * k;
+    dc.y += (cy - dc.y) * ky;
+    dc.z += (cz - dc.z) * k;
+    dm.x += (mx - dm.x) * k;
+    dm.y += (my - dm.y) * ky;
+    dm.z += (mz - dm.z) * k;
   }
+  const d = mundo.desvioCamara;
+  const m = mundo.desvioMira;
+  cam.position.set(pose.x + d.x, pose.y + d.y, pose.z + d.z);
+  cam.lookAt(pose.x + m.x, pose.y + m.y, pose.z + m.z);
+  // Um arrasto a meio de um modo automático roda à volta do avião.
+  mundo.controlos.target.set(pose.x, pose.y, pose.z);
+}
 
-  // Mira à frente do nariz, ao nível do avião — a rota fica no centro e a
-  // subida/descida lê-se contra o horizonte. Com ameaça à frente, puxa a
-  // mira um pouco para ela (limitado a ~19°) sem virar a vista; ameaça já
-  // atrás do nariz não arrasta a câmara.
-  let miraX = pose.x + fx * ahead;
-  const miraY = pose.y + 2.2;
-  let miraZ = pose.z + fz * ahead;
-  if (look) {
-    const peso = 0.06 * fit;
-    const ax = miraX + (look.x - miraX) * peso - pose.x;
-    const az = miraZ + (look.z - miraZ) * peso - pose.z;
-    const frente = ax * fx + az * fz;
-    const fade = Math.max(0, Math.min(1, (frente - 24) / 60));
-    if (fade > 0) {
-      const lat = az * fx - ax * fz;
-      const latMax = frente * 0.18;
-      const latC = Math.max(-latMax, Math.min(latMax, lat)) * fade;
-      miraX = pose.x + fx * frente - fz * latC;
-      miraZ = pose.z + fz * frente + fx * latC;
-    }
-  }
-  cam.lookAt(miraX, miraY, miraZ);
+/**
+ * Câmara por frame, com a pose LOCAL. Modos (camara-modos.js): abertura de
+ * lado com a pintura legível, cauda, lado, evento (avião e ameaça no mesmo
+ * quadro) e livre (órbita à mão, volta ao modo preferido 4 s depois de largar).
+ * Devolve o modo aplicado.
+ */
+export function actualizarCamara(mundo, pose, dt) {
+  const modo = modoCamara(mundo.camara, performance.now() / 1000);
+  if (modo === 'livre' && mundo.alvoAnterior) seguirLivre(mundo, pose);
+  else enquadrar(mundo, modo === 'livre' ? 'cauda' : modo, pose, dt);
+  const ant = mundo.alvoAnterior ?? (mundo.alvoAnterior = { x: 0, y: 0, z: 0 });
+  ant.x = pose.x;
+  ant.y = pose.y;
+  ant.z = pose.z;
+  return modo;
+}
+
+/** Enquadra avião e ameaça durante DURACAO_EVENTO_S; foco em coordenadas locais (ou null: cauda). */
+export function focarEvento(mundo, foco) {
+  if (!mundo?.camara) return;
+  const o = mundo.origemVisual;
+  mundo.focoEvento = foco ? { x: foco.x + o.x, y: foco.y, z: foco.z + o.z } : null;
+  mundo.camara = registarEvento(mundo.camara, performance.now() / 1000);
+}
+
+/** Botão do dock: cauda → lado → livre. Devolve o novo modo preferido. */
+export function alternarCamara(mundo) {
+  mundo.camara = alternarPreferido(mundo.camara);
+  return mundo.camara.preferido;
 }
 
 export function redimensionar(mundo, largura, altura) {

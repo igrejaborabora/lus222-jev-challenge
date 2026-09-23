@@ -5,6 +5,7 @@ import { decisaoGeometrica, etiquetarAcao, etiquetarDestino, etiquetarManobraV, 
 import { novoAutomato, passoAutomato, poseAviao } from './automato.js';
 import { poseMissao } from './escala.js';
 import { pistasDaMissao } from './relevo.js';
+import { posicaoVisualBaloes } from './ameaca-visual.js';
 import {
   actualizarSeparacoes,
   actualizarOrdemPiloto,
@@ -32,7 +33,7 @@ const $ = (id) => document.getElementById(id);
 const FALHAS_ATE_PARAR = 5;
 const LABEL_DESTINO = { planeado: 'Destino planeado', origem: 'Origem', hospital_alternativo: 'Hospital alternativo', aeroporto_alternativo: 'Aeroporto alternativo', stol_proximo: 'Pista STOL próxima' };
 const QUESTOES = { configuracaoCabine: 'Cabine', prioridadeOperacional: 'Prioridade', pistaAdequada: 'Pista adequada', combustivelSuficiente: 'Combustível suficiente', acaoMissao: 'Ação de missão', manobraVertical: 'Vertical', manobraLateral: 'Lateral', destinoPreferido: 'Destino se mudar rota', urgencia: 'Urgência', riscoMeteorologico: 'Risco meteorológico', precisaRevisaoPIC: 'Revisão PIC', continuarVoo: 'Continuar voo' };
-const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0 };
+const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, poseLocal: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0 };
 
 function mostrar(nome) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === `screen-${nome}`));
@@ -171,6 +172,8 @@ async function criarMundo() {
     $('flight-canvas').style.background = 'linear-gradient(155deg,#090b0e,#20262c 55%,#454d55)';
     $('flight-status').textContent = 'Visualização 2D. A missão e o JEV continuam.';
   }
+  // Sem mundo 3D não há câmara para alternar.
+  $('btn-camera').hidden = !estado.mundo;
 }
 function ajustarMundo() {
   if (!estado.mundo) return;
@@ -179,7 +182,7 @@ function ajustarMundo() {
 }
 function largarMundo() {
   try { if (estado.mundo) estado.mundoApi?.largarCena(estado.mundo); } catch { /* libertar a GPU nunca impede sair da missão */ }
-  estado.mundo = null; estado.mundoApi = null;
+  estado.mundo = null; estado.mundoApi = null; estado.poseLocal = null;
 }
 function desenharMundo(dt) {
   if (!estado.mundo) return;
@@ -189,6 +192,7 @@ function desenharMundo(dt) {
     const absoluta = parametrosVoo();
     api.actualizarCena(estado.mundo, { pose: absoluta });
     const pose = api.recentrarOrigem(estado.mundo, absoluta);
+    estado.poseLocal = pose;
     api.aplicarPose(estado.mundo, pose);
     if (emModoPiloto() && estado.piloto) {
       api.mostrarAmeacas(
@@ -496,7 +500,7 @@ async function iniciarPiloto() {
   estado.pausa = false; estado.espera = false; estado.falha = false; estado.velocidade = 1;
   $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true;
   $('btn-real-map').hidden = true; $('btn-pic').hidden = true; $('pilot-proof').hidden = false;
-  $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '1× velocidade';
+  $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '1× velocidade'; $('btn-camera').textContent = 'Câmara: cauda';
   $('flight-name').textContent = 'Corredor autónomo LUS-222';
   $('flight-source').textContent = modo === 'pilot-replay' ? 'REPLAY JEV GRAVADO · CENÁRIOS EQUIVALENTES' : 'JEV AO VIVO · PASSOS DE 400 MS';
   $('decision-origin').textContent = modo === 'pilot-replay' ? 'JEV / REPLAY GRAVADO EQUIVALENTE' : 'JEV / AO VIVO · PIPELINE 2';
@@ -536,7 +540,12 @@ async function processarEvento(evento, gen) {
   const linha = { id: evento.id, cenario: estado.cenario, resumo: evento.resumo, entrada, jev, baseline: decisaoGeometrica(entrada), supervisor, antes, depois: null, estadoAntes, estadoDepois: safeClone(missao), pic: { interveio: false } };
   estado.log.linhas.push(linha);
   atualizarDecisao(evento, entrada, jev, supervisor);
-  if (estado.mundo) estado.mundoApi.mostrarAmeacas(estado.mundo, entrada.geometria.obstaculos, parametrosVoo(), { escalaDistancia: 1 });
+  if (estado.mundo) {
+    estado.mundoApi.mostrarAmeacas(estado.mundo, entrada.geometria.obstaculos, parametrosVoo(), { escalaDistancia: 1 });
+    // Enquadra avião e balões no momento da decisão; sem ameaça visível, cauda.
+    const ameaca = estado.missao.ameacaAtiva;
+    estado.mundoApi.focarEvento(estado.mundo, ameaca && estado.poseLocal ? posicaoVisualBaloes(estado.missao.voo, ameaca, estado.poseLocal) : null);
+  }
   estado.incidentePendente = null; estado.espera = false;
 }
 async function processarBriefing(gen) {
@@ -606,7 +615,7 @@ async function iniciar(modo) {
   estado.missao = criarMissao(estado.cenario, seed, restricoes);
   estado.log = { versao: 4, fonte: modo === 'replay' ? 'jev-replay-gravado' : 'jev-ao-vivo', modelo: 'typesafe-ai/jev', perfil: PERFIL.versao, cenario: estado.cenario, semente: seed, restricoes, briefing: null, linhas: [], intervencoes: [], incompleta: false, motivo: null, resultado: null };
   estado.pausa = false; estado.espera = false; estado.falha = false; estado.incidentePendente = null; estado.briefingPendente = false; estado.revelarAte = 0; estado.velocidade = 8;
-  $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true; $('pilot-proof').hidden = true; $('btn-pic').hidden = false; $('btn-real-map').hidden = estado.cenario !== 'porto'; $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade';
+  $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true; $('pilot-proof').hidden = true; $('btn-pic').hidden = false; $('btn-real-map').hidden = estado.cenario !== 'porto'; $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade'; $('btn-camera').textContent = 'Câmara: cauda';
   $('flight-name').textContent = nomeCenario(); $('flight-source').textContent = modo === 'replay' ? 'REPLAY GRAVADO · SEM NOVA AVALIAÇÃO' : 'JEV AO VIVO · AI GATEWAY';
   $('decision-origin').textContent = modo === 'replay' ? 'JEV / REPLAY GRAVADO' : 'JEV / AO VIVO';
   selo(origemSelo(), 'A ler o briefing…', null, true);
@@ -791,6 +800,11 @@ function ligarUI() {
   $('btn-exit').addEventListener('click', () => terminarIncompleta('O comandante terminou a missão antes do desfecho.'));
   $('btn-pause').addEventListener('click', () => { definirPausa(!estado.pausa); atualizarTelemetria(); });
   $('btn-speed').addEventListener('click', () => { estado.velocidade = estado.velocidade === 8 ? 1 : estado.velocidade === 1 ? 4 : 8; $('btn-speed').textContent = `${estado.velocidade}× velocidade`; });
+  $('btn-camera').addEventListener('click', () => {
+    if (!estado.mundo) return;
+    const modo = estado.mundoApi.alternarCamara(estado.mundo);
+    $('btn-camera').textContent = `Câmara: ${modo}`;
+  });
   $('btn-pic').addEventListener('click', () => { estado.pausa = true; $('btn-pause').textContent = 'Continuar'; $('pic-overlay').hidden = false; });
   const abrirMapa = (origem) => {
     estado.mapaOrigem = origem;
