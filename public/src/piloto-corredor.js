@@ -1,4 +1,5 @@
 import { mulberry32 } from './decisao.js';
+import { aplicarEvasao } from './automato.js';
 
 export const INTERVALO_DECISAO_MS = 400;
 export const MAX_PEDIDOS_EM_VOO = 2;
@@ -6,6 +7,7 @@ export const JANELA_OBSTACULOS_M = 760;
 
 const ORIGEM = Object.freeze({ x: -80, z: 40, heading: 0.7 });
 const VISUAIS = ['canyon', 'aves', 'guerra', 'canyon', 'aves', 'guerra', 'canyon', 'guerra'];
+const RAIO_PROTECAO = Object.freeze({ canyon: 52, aves: 20, guerra: 28 });
 
 function arredondar(valor, casas = 0) {
   const escala = 10 ** casas;
@@ -42,6 +44,8 @@ function geometriaDoObstaculo(item, aviao, posicao) {
     folga_pela_direita_m: abreDireita ? 64 : abreEsquerda ? -16 : 24,
     altura_m: item.visual === 'canyon' ? 120 : item.visual === 'guerra' ? 14 : 8,
     offset_lateral_m: arredondar(lateral),
+    _offset_vertical_m: arredondar(item.altitude_m - (Number(aviao?.y) || 42)),
+    _raio_protecao_m: item.raio_protecao_m,
   };
 }
 
@@ -61,6 +65,7 @@ export function criarPercursoPiloto(semente = 222) {
       ao_longo_m: aoLongo,
       lateral_m: lateral,
       altitude_m: visual === 'canyon' ? 58 : 46 + (indice % 2) * 8,
+      raio_protecao_m: RAIO_PROTECAO[visual],
       folga,
     };
   });
@@ -69,7 +74,8 @@ export function criarPercursoPiloto(semente = 222) {
     origem: ORIGEM,
     obstaculos,
     separacoes: new Map(),
-    distancia_total_m: obstaculos.at(-1).ao_longo_m + 180,
+    // Os dois últimos obstáculos são buffer: garantem 3–5 itens até à saída.
+    distancia_total_m: obstaculos.at(-3).ao_longo_m + 40,
   };
 }
 
@@ -87,19 +93,27 @@ export function obstaculosVisiveis(percurso, aviao) {
 export function folgasCandidatas(obstaculos) {
   const lista = Array.isArray(obstaculos) ? obstaculos : [];
   const candidatos = [
-    ['esquerda-alta', 'subir', 'esquerda', 'folga_pela_esquerda_m', 'folga_por_cima_m'],
-    ['centro-alta', 'subir', 'manter', 'folga_por_cima_m', 'folga_por_cima_m'],
-    ['direita-alta', 'subir', 'direita', 'folga_pela_direita_m', 'folga_por_cima_m'],
-    ['esquerda-nivel', 'manter', 'esquerda', 'folga_pela_esquerda_m', 'folga_pela_esquerda_m'],
-    ['direita-nivel', 'manter', 'direita', 'folga_pela_direita_m', 'folga_pela_direita_m'],
+    ['esquerda-alta', 'subir', 'esquerda', -42, 34],
+    ['centro-alta', 'subir', 'manter', 0, 42],
+    ['direita-alta', 'subir', 'direita', 42, 34],
+    ['esquerda-nivel', 'manter', 'esquerda', -52, 0],
+    ['direita-nivel', 'manter', 'direita', 52, 0],
   ];
   return candidatos
-    .map(([id, vertical, lateral, eixoA, eixoB]) => ({
+    .map(([id, vertical, lateral, deslocamentoLateral, deslocamentoVertical]) => ({
       id,
       vertical,
       lateral,
       folga_min_m: lista.length
-        ? Math.round(Math.min(...lista.map((o) => Math.max(-500, Math.min(Number(o[eixoA]) || 0, Number(o[eixoB]) || 0)))))
+        ? Math.round(Math.min(...lista.map((o) => {
+          const lateralRelativo = Number(o.offset_lateral_m) || 0;
+          const verticalRelativo = Number(o._offset_vertical_m) || 0;
+          const raio = Number(o._raio_protecao_m) || 20;
+          return Math.max(-500, Math.min(500, Math.hypot(
+            deslocamentoLateral - lateralRelativo,
+            deslocamentoVertical - verticalRelativo,
+          ) - raio));
+        })))
         : 80,
     }))
     .sort((a, b) => b.folga_min_m - a.folga_min_m);
@@ -119,7 +133,14 @@ export function selecionarRespostaReplay(replays, visual) {
   }[visual] ?? ['medevac', 'relevo'];
   const resposta = replays?.[origem[0]]?.eventos?.[origem[1]];
   if (resposta?.fonte !== 'jev' || !resposta?.answers) throw new Error('replay_jev_invalido');
-  return resposta;
+  return {
+    ...structuredClone(resposta),
+    replay_source: {
+      cenario: origem[0],
+      evento: origem[1],
+      gravado_em: replays?.[origem[0]]?.gravadoEm ?? null,
+    },
+  };
 }
 
 export function estadoPassoPiloto(percurso, aviao, base = {}) {
@@ -192,15 +213,62 @@ export function actualizarSeparacoes(percurso, aviao) {
   for (const item of percurso.obstaculos) {
     const aoLongo = item.ao_longo_m - posicao.aoLongo;
     if (aoLongo < -120 || aoLongo > JANELA_OBSTACULOS_M) continue;
-    const distancia = Math.hypot(aoLongo, item.lateral_m - posicao.lateral, item.altitude_m - altitude);
+    const distancia = Math.max(0, Math.hypot(
+      aoLongo,
+      item.lateral_m - posicao.lateral,
+      item.altitude_m - altitude,
+    ) - item.raio_protecao_m);
     const anterior = percurso.separacoes.get(item.id);
     if (!Number.isFinite(anterior) || distancia < anterior) percurso.separacoes.set(item.id, arredondar(distancia, 1));
   }
   return percurso.separacoes;
 }
 
+export function separacaoInstantanea(percurso, aviao) {
+  const posicao = coordenadasCurso(aviao);
+  const altitude = Number(aviao?.y) || 42;
+  const proximos = percurso.obstaculos
+    .map((item) => Math.max(0, Math.hypot(
+      item.ao_longo_m - posicao.aoLongo,
+      item.lateral_m - posicao.lateral,
+      item.altitude_m - altitude,
+    ) - item.raio_protecao_m))
+    .filter(Number.isFinite);
+  return proximos.length ? arredondar(Math.min(...proximos), 1) : null;
+}
+
 export function percursoConcluido(percurso, aviao) {
   return coordenadasCurso(aviao).aoLongo >= percurso.distancia_total_m;
+}
+
+export function novoControloPiloto({ duracaoManobraMs = 900 } = {}) {
+  return {
+    duracaoManobraMs,
+    chave: null,
+    iniciadaEm: null,
+    neutralizada: true,
+  };
+}
+
+export function aplicarOrdemPiloto(controlo, aviao, evasao, agoraMs, assinatura = '') {
+  const chave = `${assinatura}|${evasao?.acao}|${evasao?.vertical}|${evasao?.lateral}`;
+  if (chave === controlo.chave) return false;
+  controlo.chave = chave;
+  controlo.iniciadaEm = agoraMs;
+  controlo.neutralizada = false;
+  aplicarEvasao(aviao, evasao);
+  return true;
+}
+
+export function actualizarOrdemPiloto(controlo, aviao, agoraMs) {
+  if (controlo.neutralizada || controlo.iniciadaEm == null) return false;
+  if (agoraMs - controlo.iniciadaEm < controlo.duracaoManobraMs) return false;
+  aviao.acao = 'prosseguir';
+  aviao.vertical = 'manter';
+  aviao.lateral = 'manter';
+  aviao.dodgeT = 0;
+  controlo.neutralizada = true;
+  return true;
 }
 
 export function novoPipelinePiloto({
@@ -222,8 +290,8 @@ export function novoPipelinePiloto({
 
 export function deveDespacharPasso(pipeline, agoraMs, assinatura = '') {
   if (pipeline.emVoo.size >= pipeline.maxEmVoo) return false;
-  const novoObstaculo = assinatura && assinatura !== pipeline.ultimaAssinatura;
-  return novoObstaculo || agoraMs >= pipeline.proximoEm;
+  void assinatura;
+  return agoraMs >= pipeline.proximoEm;
 }
 
 export function reservarPasso(pipeline, entrada, agoraMs, assinatura = '') {
@@ -285,6 +353,15 @@ function percentil(valores, percentagem) {
   return ordenados[Math.max(0, Math.min(ordenados.length - 1, indice))];
 }
 
+function mediana(valores) {
+  const ordenados = valores.filter(Number.isFinite).sort((a, b) => a - b);
+  if (!ordenados.length) return null;
+  const meio = Math.floor(ordenados.length / 2);
+  return ordenados.length % 2
+    ? ordenados[meio]
+    : Math.round((ordenados[meio - 1] + ordenados[meio]) / 2);
+}
+
 export function metricasPiloto(pipeline, agoraMs) {
   const validos = pipeline.historico.filter((item) => !item.erro);
   const latencias = validos.map((item) => Number(item.latencia_ms)).filter(Number.isFinite);
@@ -293,7 +370,7 @@ export function metricasPiloto(pipeline, agoraMs) {
   return {
     decisoes: validos.length,
     decisoes_por_minuto: Math.round((validos.length * 60_000) / duracaoMs),
-    latencia_mediana_ms: percentil(latencias, 50),
+    latencia_mediana_ms: mediana(latencias),
     latencia_p95_ms: percentil(latencias, 95),
     separacao_min_m: separacoes.length ? Math.min(...separacoes) : null,
   };

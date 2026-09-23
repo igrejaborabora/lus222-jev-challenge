@@ -77,7 +77,7 @@ export async function POST(request) {
 
   const momento = momentoDe(body);
   const estado = estadoParaJev(body?.estado ?? body);
-  const questions = perguntasPara(momento);
+  const questions = perguntasPara(momento, estado);
   const inicio = Date.now();
 
   try {

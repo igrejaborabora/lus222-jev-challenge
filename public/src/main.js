@@ -2,9 +2,11 @@ import { CENARIOS_SIM, PERFIL, criarMissao, avancarMissao, aplicarDecisao, proxi
 import { validarRespostas } from './contrato-jev.js';
 import { avaliarLinha, resumirLinhas } from './avaliacao-sim.js';
 import { decisaoGeometrica, etiquetarAcao, etiquetarDestino, etiquetarManobraV, etiquetarManobraL, evasaoDeAnswers } from './decisao.js';
-import { aplicarEvasao, novoAutomato, passoAutomato, poseAviao } from './automato.js';
+import { novoAutomato, passoAutomato, poseAviao } from './automato.js';
 import {
   actualizarSeparacoes,
+  actualizarOrdemPiloto,
+  aplicarOrdemPiloto,
   assinaturaObstaculos,
   concluirPasso,
   criarPercursoPiloto,
@@ -12,10 +14,12 @@ import {
   estadoPassoPiloto,
   falharPasso,
   metricasPiloto,
+  novoControloPiloto,
   novoPipelinePiloto,
   obstaculosVisiveis,
   percursoConcluido,
   reservarPasso,
+  separacaoInstantanea,
   selecionarRespostaReplay,
 } from './piloto-corredor.js';
 
@@ -255,6 +259,13 @@ function separacaoMinimaPiloto() {
   return valores.length ? Math.min(...valores) : null;
 }
 
+function fecharOrdemActivaPiloto() {
+  const activa = estado.piloto?.ordemActiva;
+  if (!activa) return;
+  activa.registo.separacao_min_m = Number.isFinite(activa.separacaoMinM) ? Math.round(activa.separacaoMinM * 10) / 10 : null;
+  estado.piloto.ordemActiva = null;
+}
+
 function atualizarProvaPiloto() {
   if (!estado.piloto) return;
   const metricas = metricasPiloto(estado.piloto.pipeline, performance.now());
@@ -309,8 +320,10 @@ function mostrarPassoPiloto(registo) {
   $('flow-input').textContent = obstaculo ? `${entrada.geometria.obstaculos.length} ameaças · primeira a ${obstaculo.distancia_m} m` : 'Saída do corredor';
   $('flow-choice').textContent = `${etiquetarManobraL(answers.manobraLateral.choice)} + ${etiquetarManobraV(answers.manobraVertical.choice)}`;
   $('flow-detail').textContent = `Folga calculada: ${melhorFolga?.id ?? '—'} · ${melhorFolga?.folga_min_m ?? '—'} m`;
-  $('flow-effect').textContent = `O controlador local executa os eixos; o JEV volta a ler o corredor em 400 ms. Separação mínima ${registo.separacao_min_m ?? '—'} m.`;
-  $('decision-origin').textContent = emReplay() ? 'JEV / REPLAY GRAVADO EQUIVALENTE' : 'JEV / AO VIVO · PIPELINE 2';
+  $('flow-effect').textContent = 'O controlador local executa uma manobra finita; o JEV volta a ler o corredor em 400 ms. A separação deste intervalo está em medição.';
+  $('decision-origin').textContent = jev.replay_source
+    ? `REPLAY ${jev.replay_source.cenario.toUpperCase()} / ${jev.replay_source.evento.toUpperCase()}`
+    : 'JEV / AO VIVO · PIPELINE 2';
   $('decision-pic').textContent = Number(answers.precisaRevisaoPIC?.probability) >= .55 ? 'JEV SUGERE REVISÃO PIC' : 'SEM REVISÃO SUGERIDA';
   mostrarRespostas(answers);
   selo(origemSelo(), `${manobraCurta(answers.manobraVertical.choice, answers.manobraLateral.choice)} · folga ${melhorFolga?.id ?? 'livre'}`, jev.latencia_ms);
@@ -323,6 +336,7 @@ async function processarPassoPiloto(ticket, gen) {
     if (estado.modo === 'pilot-replay') {
       const visual = ticket.entrada.geometria.obstaculos[0]?.visual ?? 'canyon';
       resposta = safeClone(selecionarRespostaReplay(estado.piloto.replays, visual));
+      await new Promise((resolve) => setTimeout(resolve, Math.max(80, Number(resposta.latencia_ms) || 400)));
     } else {
       resposta = await avaliarPassoPiloto(ticket, ticket.entrada);
     }
@@ -339,10 +353,21 @@ async function processarPassoPiloto(ticket, gen) {
     ticket.id,
     resposta,
     performance.now(),
-    { separacao_min_m: separacaoMinimaPiloto() },
+    { separacao_min_m: null },
   );
   if (!resultado.aplicar) return;
-  aplicarEvasao(estado.piloto.automato, evasaoDeAnswers(resposta.answers));
+  fecharOrdemActivaPiloto();
+  aplicarOrdemPiloto(
+    estado.piloto.controlo,
+    estado.piloto.automato,
+    evasaoDeAnswers(resposta.answers),
+    performance.now(),
+    ticket.assinatura,
+  );
+  estado.piloto.ordemActiva = {
+    registo: resultado.registo,
+    separacaoMinM: separacaoInstantanea(estado.piloto.percurso, estado.piloto.automato),
+  };
   estado.log.linhas.push(resultado.registo);
   mostrarPassoPiloto(resultado.registo);
   if (estado.mundo) estado.mundoApi.mostrarAmeacas(
@@ -358,8 +383,13 @@ function quadroPiloto(t, dt) {
   const piloto = estado.piloto;
   if (!piloto || estado.pausa || estado.falha) return;
   const factor = estado.velocidade === 8 ? 1.6 : estado.velocidade === 4 ? 1.25 : 1;
+  actualizarOrdemPiloto(piloto.controlo, piloto.automato, t);
   passoAutomato(piloto.automato, dt * factor);
   actualizarSeparacoes(piloto.percurso, piloto.automato);
+  const separacaoAgora = separacaoInstantanea(piloto.percurso, piloto.automato);
+  if (piloto.ordemActiva && Number.isFinite(separacaoAgora)) {
+    piloto.ordemActiva.separacaoMinM = Math.min(piloto.ordemActiva.separacaoMinM ?? Infinity, separacaoAgora);
+  }
   const entrada = estadoPassoPiloto(piloto.percurso, piloto.automato, piloto.base);
   const obstaculos = obstaculosVisiveis(piloto.percurso, piloto.automato);
   const assinatura = assinaturaObstaculos(obstaculos);
@@ -368,6 +398,7 @@ function quadroPiloto(t, dt) {
     void processarPassoPiloto(ticket, estado.geracao);
   }
   if (percursoConcluido(piloto.percurso, piloto.automato) && piloto.pipeline.emVoo.size === 0) {
+    fecharOrdemActivaPiloto();
     estado.log.resultado = 'corredor_concluido';
     estado.missao.resultado = 'corredor_concluido';
   }
@@ -394,7 +425,8 @@ async function iniciarPiloto() {
   const percurso = criarPercursoPiloto(seed);
   const pipeline = novoPipelinePiloto();
   const automato = novoAutomato();
-  estado.piloto = { percurso, pipeline, automato, replays, base: { restricoes: configuracao() } };
+  const controlo = novoControloPiloto();
+  estado.piloto = { percurso, pipeline, automato, controlo, ordemActiva: null, replays, base: { restricoes: configuracao() } };
   estado.missao = { resultado: null };
   estado.log = { versao: 5, fonte: modo === 'pilot-replay' ? 'jev-replay-gravado-equivalente' : 'jev-ao-vivo', modelo: 'typesafe-ai/jev', perfil: PERFIL.versao, cenario: 'corredor-piloto', semente: seed, restricoes: configuracao(), linhas: [], incompleta: false, motivo: null, resultado: null };
   estado.pausa = false; estado.espera = false; estado.falha = false; estado.velocidade = 8;
@@ -402,7 +434,7 @@ async function iniciarPiloto() {
   $('btn-real-map').hidden = true; $('btn-pic').hidden = true; $('pilot-proof').hidden = false;
   $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade';
   $('flight-name').textContent = 'Corredor autónomo LUS-222';
-  $('flight-source').textContent = modo === 'pilot-replay' ? 'REPLAY JEV GRAVADO · SEM NOVA AVALIAÇÃO' : 'JEV AO VIVO · PASSOS DE 400 MS';
+  $('flight-source').textContent = modo === 'pilot-replay' ? 'REPLAY JEV GRAVADO · CENÁRIOS EQUIVALENTES' : 'JEV AO VIVO · PASSOS DE 400 MS';
   $('decision-origin').textContent = modo === 'pilot-replay' ? 'JEV / REPLAY GRAVADO EQUIVALENTE' : 'JEV / AO VIVO · PIPELINE 2';
   $('event-title').textContent = 'O piloto JEV entrou no corredor.';
   $('event-desc').textContent = 'Três a cinco obstáculos, folgas candidatas e um novo passo tipado a cada 400 ms.';
@@ -534,7 +566,9 @@ function renderDebriefPiloto() {
   const metricasPilotoFinal = metricasPiloto(estado.piloto.pipeline, performance.now());
   const separacao = separacaoMinimaPiloto();
   $('result-title').textContent = log.incompleta ? 'Prova interrompida.' : 'Corredor concluído.';
-  $('result-summary').textContent = `${log.linhas.length} decisões tipadas. O JEV escolheu os eixos e o controlador local executou-os; o avião manteve a última ordem enquanto o pedido seguinte estava em voo.`;
+  $('result-summary').textContent = log.fonte === 'jev-ao-vivo'
+    ? `${log.linhas.length} decisões tipadas. O JEV escolheu os eixos e o controlador local executou manobras finitas; cada resposta ao vivo ficou ligada ao snapshot que a originou.`
+    : `${log.linhas.length} decisões tipadas reproduzidas. As respostas foram gravadas nos cenários equivalentes indicados em cada linha e reaplicadas aos snapshots do corredor; não são novas avaliações destes estados.`;
   $('result-mode').textContent = log.fonte === 'jev-ao-vivo' ? '● JEV AO VIVO / PIPELINE DE 2' : '○ REPLAY JEV GRAVADO / SEM NOVAS RESPOSTAS';
   const metrics = $('result-metrics'); metrics.replaceChildren();
   const itens = [
@@ -569,7 +603,9 @@ function renderDebriefPiloto() {
     const right = elemento('div'); right.append(
       elemento('h3', '', 'DECISÃO E EXECUÇÃO'),
       elemento('p', '', `${etiquetarAcao(a.acaoMissao.choice)} · ${etiquetarManobraL(a.manobraLateral.choice)} / ${etiquetarManobraV(a.manobraVertical.choice)} · ${row.latencia_ms} ms.`),
-      elemento('p', '', 'Eixos aplicados pelo controlador local; resposta ligada ao estado que a originou.'),
+      elemento('p', '', row.resposta.replay_source
+        ? `Replay de ${row.resposta.replay_source.cenario}/${row.resposta.replay_source.evento}, gravado em ${row.resposta.replay_source.gravado_em ?? 'data não registada'}; reaplicado a este snapshot.`
+        : 'Eixos aplicados pelo controlador local; resposta ao vivo ligada ao estado que a originou.'),
     );
     body.append(left, right); card.append(summary, body); list.append(card);
   });
@@ -615,7 +651,8 @@ function renderDebrief() {
 }
 function abrirDebrief() {
   if (estado.ecra !== 'live') return;
-  if (!emModoPiloto()) atualizarResultadoLinha();
+  if (emModoPiloto()) fecharOrdemActivaPiloto();
+  else atualizarResultadoLinha();
   estado.log.resultado = estado.missao.resultado;
   cancelAnimationFrame(estado.raf); largarMundo(); $('map-overlay').hidden = true;
   renderDebrief(); mostrar('debrief');

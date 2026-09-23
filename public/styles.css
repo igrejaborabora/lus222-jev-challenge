@@ -288,6 +288,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
   .map-card{top:calc(112px + var(--safe-t));bottom:auto;right:10px;width:132px;padding:5px 8px}
   .map-card svg{height:32px;margin:0}.map-card strong{font-size:9px}.map-card small,.map-label{font-size:7px}
   .pilot-proof{top:calc(112px + var(--safe-t));bottom:auto;right:10px;width:188px;max-height:142px;padding:8px 9px}
+  .decision-panel.is-open~.pilot-proof{opacity:0;pointer-events:none}
   .pilot-proof-head{padding-bottom:6px}.pilot-proof-head span{font-size:7px}.pilot-proof-head strong{font-size:8px}
   .pilot-tape{max-height:96px}.pilot-tape-row{grid-template-columns:34px 1fr auto;gap:5px;padding:5px 0;font-size:7px}
   .flight-seal{bottom:calc(76px + var(--safe-b));min-width:0;width:calc(100vw - 24px);padding:9px 14px 10px}
