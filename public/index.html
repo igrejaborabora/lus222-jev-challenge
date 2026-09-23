@@ -69,7 +69,6 @@
   <section class="screen" id="screen-live">
     <canvas id="flight-canvas" aria-hidden="true"></canvas><div class="flight-tint"></div>
     <header class="flight-header"><div class="flight-identity"><span class="brand-mark small">J<span>·</span>EV</span><img class="identity-thumb" src="./img/lus-222-hero.webp" alt="" aria-hidden="true"><div><b id="flight-name">—</b><small id="flight-source">—</small></div></div><div class="flight-phase"><span class="pulse"></span><span id="flight-phase">Em voo</span></div><button type="button" class="flight-exit" id="btn-exit">Terminar</button></header>
-    <div class="flight-label">SIMULAÇÃO ILUSTRATIVA / PERFIL ASSUMIDO</div>
     <aside class="decision-panel drawer" id="decision-panel" aria-label="Decisão actual">
       <p class="kicker light">SITUAÇÃO ACTUAL <span id="event-number">01</span></p><h2 id="event-title">A preparar briefing</h2><p class="event-desc" id="event-desc">O JEV vai receber o estado da missão.</p>
       <div class="decision-flow"><div class="flow-step"><span class="flow-index">01</span><div><small>ENTRADA</small><strong id="flow-input">—</strong></div></div><div class="flow-step"><span class="flow-index">02</span><div><small>DECISÃO</small><strong id="flow-choice">À espera do JEV</strong><span id="flow-detail">—</span></div></div><div class="flow-step"><span class="flow-index">03</span><div><small>EFEITO NA MISSÃO</small><strong id="flow-effect">—</strong></div></div></div>
@@ -78,6 +77,7 @@
     </aside>
     <aside class="telemetry" aria-label="Telemetria"><p class="kicker light">VOO / TEMPO SIMULADO</p><div><span>VELOCIDADE</span><strong><b id="tel-speed">—</b><small>kt</small></strong></div><div><span>ALTITUDE</span><strong><b id="tel-alt">—</b><small>ft</small></strong></div><div><span>COMBUSTÍVEL</span><strong><b id="tel-fuel">—</b><small>kg</small></strong></div><div><span>ETA</span><strong><b id="tel-eta">—</b><small>min</small></strong></div><div><span>RELÓGIO</span><strong><b id="tel-time">—</b><small>min</small></strong></div></aside>
     <div class="map-card"><span class="map-label">ROTA ACTIVA</span><svg id="route-map" viewBox="0 0 270 112" role="img" aria-label="Esquema da rota da missão"><path id="map-planned" d="" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-dasharray="4 6"/><path id="map-path" d="" fill="none" stroke="#f4f6f8" stroke-width="3"/><circle id="map-plane" cx="20" cy="82" r="6" fill="#f4f6f8"/><circle id="map-target" cx="248" cy="82" r="5" fill="#f4f6f8"/></svg><strong id="map-destination">—</strong><small id="map-caption">Traçado esquemático</small></div>
+    <div class="flight-label">SIMULAÇÃO ILUSTRATIVA / PERFIL ASSUMIDO</div>
     <div class="flight-seal" id="flight-seal" aria-live="polite"><small id="seal-source">JEV</small><strong id="seal-choice">À espera do JEV</strong><span id="seal-ms">— ms</span></div>
     <div class="flight-footer">
       <div class="flight-controls">

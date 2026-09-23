@@ -3,6 +3,8 @@ import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
 import { offsetLateral, pontoAmeaca } from './decisao.js';
 import { posicaoVisualBaloes } from './ameaca-visual.js';
 
+const APRESENTACAO_S = 2;
+
 export function perfilGraficoLeve() {
   if (typeof window === 'undefined') return true;
   return (
@@ -801,6 +803,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac' } = {}) {
     tAmeaca: 0,
     leve,
     cenario,
+    apresentacaoS: matchMedia('(prefers-reduced-motion: reduce)').matches ? APRESENTACAO_S : 0,
   };
 }
 
@@ -849,6 +852,17 @@ export function aplicarPose(mundo, pose) {
  */
 export function actualizarCamara(mundo, pose, dt) {
   const cam = mundo.camera;
+  if (mundo.apresentacaoS < APRESENTACAO_S) {
+    // Plano de apresentação: meia órbita lenta à volta do LUS-222 antes da vista chase.
+    mundo.apresentacaoS += Math.min(dt, 0.08);
+    const u = mundo.apresentacaoS / APRESENTACAO_S;
+    const ang = pose.heading + Math.PI * (0.62 - 0.55 * u);
+    const raio = 30 + 10 * u;
+    cam.position.set(pose.x + Math.sin(ang) * raio, pose.y + 6 + 5 * u, pose.z + Math.cos(ang) * raio);
+    cam.lookAt(pose.x, pose.y + 0.6, pose.z);
+    mundo.camaraPronta = true;
+    return;
+  }
   const look = mundo.alvoLook;
   const dodge = Boolean(pose.dodge || look);
   // Ecrã estreito (telemóvel em pé): afasta a cauda para a asa caber no quadro.
