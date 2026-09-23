@@ -36,16 +36,17 @@ export function aplicarEvasao(aviao, { acao, vertical, lateral, urgencia } = {})
 export function passoAutomato(aviao, dt) {
   const t = Math.min(dt, 0.08);
   const u = 0.62 + aviao.urgencia * 0.28;
-  // O último eixo continua em força enquanto o pedido seguinte não chega.
+  // O eixo pedido mantém-se até o controlador o neutralizar. dodgeT já
+  // não força curva nem zoom de câmara depois de «manter».
   const eixo = aviao.lateral !== 'manter' || aviao.vertical !== 'manter';
-  const dodge = eixo || aviao.dodgeT > 0 ? 1 : 0.32;
+  const dodge = eixo ? 1 : 0.32;
   aviao.dodgeT = Math.max(0, aviao.dodgeT - t);
 
   let alvoBank = 0;
   let alvoPitch = 0;
   let alvoSpeed = CRUZEIRO;
   let alvoAlt = 46;
-  let turn = 0.03;
+  let turn = 0;
 
   // Na câmara atrás da cauda, heading a subir vira para a esquerda do ecrã
   // e bank negativo baixa essa asa. Pitch negativo levanta o nariz.
@@ -87,8 +88,15 @@ export function passoAutomato(aviao, dt) {
 
   switch (aviao.acao) {
     case 'prosseguir':
-      if (aviao.lateral === 'manter') turn = 0.03;
       if (aviao.vertical === 'manter') alvoAlt = 46;
+      if (aviao.lateral === 'manter' && Number.isFinite(aviao.rumoAlvo)) {
+        const delta = Math.atan2(
+          Math.sin(aviao.rumoAlvo - aviao.heading),
+          Math.cos(aviao.rumoAlvo - aviao.heading),
+        );
+        turn = Math.max(-0.42, Math.min(0.42, delta * 1.1));
+        alvoBank = Math.max(-0.38, Math.min(0.38, -turn * 0.9));
+      }
       break;
     case 'desviar_alternativo':
       if (aviao.lateral === 'manter') {
@@ -124,11 +132,17 @@ export function passoAutomato(aviao, dt) {
     }
   }
 
+  if (aviao.vertical === 'manter' && aviao.acao !== 'abortar_emergencia') {
+    const erroAlt = alvoAlt - aviao.y;
+    alvoPitch = Math.max(-0.18, Math.min(0.16, -erroAlt * 0.012));
+  }
+
   aviao.heading += turn * t;
   aviao.bank += (alvoBank - aviao.bank) * 2.4 * t;
   aviao.pitch += (alvoPitch - aviao.pitch) * 2.0 * t;
   aviao.speed += (alvoSpeed - aviao.speed) * 1.4 * t;
-  aviao.y += (alvoAlt - aviao.y) * 0.85 * t;
+  const taxaVertical = Math.max(-7, Math.min(7, (alvoAlt - aviao.y) * 0.6));
+  aviao.y += taxaVertical * t;
   aviao.x += Math.sin(aviao.heading) * aviao.speed * t;
   aviao.z += Math.cos(aviao.heading) * aviao.speed * t;
   // ~2,5 voltas/s. O ritmo antigo (velocidade × 18) caía perto da simetria
@@ -146,6 +160,6 @@ export function poseAviao(aviao) {
     bank: aviao.bank,
     pitch: aviao.pitch,
     hélice: aviao.hélice,
-    dodge: aviao.lateral !== 'manter' || aviao.vertical !== 'manter' || aviao.dodgeT > 0,
+    dodge: aviao.lateral !== 'manter' || aviao.vertical !== 'manter',
   };
 }
