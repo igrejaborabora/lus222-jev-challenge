@@ -108,35 +108,55 @@ export function criarTerreno({ perfil, pistas = [], leve = false }) {
     segmentos: leve ? 24 : 48,
     material: new THREE.MeshLambertMaterial({ vertexColors: true }),
     mosaicos: new Map(),
+    // Célula (mosaico) onde o avião estava no último plano; NaN obriga a planear.
+    celulaI: NaN,
+    celulaJ: NaN,
+    // Mosaicos do último plano ainda por criar (do mais próximo ao mais longe).
+    porCriar: [],
+    proximo: 0,
   };
 }
 
 /**
  * Posição ABSOLUTA do avião (metros do mundo): os mosaicos vivem no grupo da
- * geografia, que recentrarOrigem desloca como um todo. Cria até `orcamento`
- * mosaicos por chamada, do mais próximo ao mais longe, e liberta os que saíram
- * do anel de histerese.
+ * geografia, que recentrarOrigem desloca como um todo. Só volta a planear
+ * quando o avião muda de célula (o plano só depende dela); entretanto cria até
+ * `orcamento` mosaicos por chamada da lista pendente, do mais próximo ao mais
+ * longe. Ao replanear, liberta os que saíram do anel de histerese.
  */
 export function actualizarTerreno(t, x, z, orcamento = 1) {
   t.mar.position.set(x, 0, z);
-  const plano = planearMosaicos(
-    t.mosaicos,
-    mosaicosNecessarios(x, z, { raio: t.raio }),
-    mosaicosAManter(x, z, { raio: t.raio }),
-  );
-  for (const chave of plano.remover) {
-    const mesh = t.mosaicos.get(chave);
-    t.grupo.remove(mesh);
-    mesh.geometry.dispose();
-    t.mosaicos.delete(chave);
+  const ci = Math.floor(x / TAMANHO_MOSAICO_M);
+  const cj = Math.floor(z / TAMANHO_MOSAICO_M);
+  if (ci !== t.celulaI || cj !== t.celulaJ) {
+    t.celulaI = ci;
+    t.celulaJ = cj;
+    const plano = planearMosaicos(
+      t.mosaicos,
+      mosaicosNecessarios(x, z, { raio: t.raio }),
+      mosaicosAManter(x, z, { raio: t.raio }),
+    );
+    for (const chave of plano.remover) {
+      const mesh = t.mosaicos.get(chave);
+      t.grupo.remove(mesh);
+      mesh.geometry.dispose();
+      t.mosaicos.delete(chave);
+    }
+    t.porCriar = plano.criar;
+    t.proximo = 0;
   }
-  for (const m of plano.criar.slice(0, orcamento)) {
+  // Sem célula nova e sem pendentes, isto não aloca nada.
+  let criados = 0;
+  while (criados < orcamento && t.proximo < t.porCriar.length) {
+    const m = t.porCriar[t.proximo++];
+    if (t.mosaicos.has(m.chave)) continue;
     const { geo, cx, cz } = geometriaMosaico(t, m.i, m.j);
     const mesh = new THREE.Mesh(geo, t.material);
     mesh.name = `mosaico ${m.chave}`;
     mesh.position.set(cx, 0, cz);
     t.grupo.add(mesh);
     t.mosaicos.set(m.chave, mesh);
+    criados++;
   }
 }
 
@@ -146,6 +166,10 @@ export function largarTerreno(t) {
     mesh.geometry.dispose();
   }
   t.mosaicos.clear();
+  t.porCriar = [];
+  t.proximo = 0;
+  t.celulaI = NaN;
+  t.celulaJ = NaN;
   t.material.dispose();
   t.mar.geometry.dispose();
   t.mar.material.dispose();
