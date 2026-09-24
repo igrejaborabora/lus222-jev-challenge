@@ -17,11 +17,11 @@ import { pontoMundo } from './escala.js';
 // Portais: presos ao destino, um a cada ESPACO_PORTAIS_M; o avião passa por
 // eles. A 1500 m só se via um quadrado debaixo da etiqueta; a 600 m lê-se o túnel.
 const ESPACO_PORTAIS_M = 600;
-// O mais próximo desvanece entre estas distâncias e some antes do nariz.
+// O mais próximo encolhe entre estas distâncias e some antes do nariz.
 const PORTAL_SOME_M = 600;
 const PORTAL_PLENO_M = 1000;
 // Sem nevoeiro (o branco sobre o nevoeiro claro não se lia): o próprio portal
-// desvanece nestes últimos metros antes do far do nevoeiro, onde o mundo acaba
+// encolhe nestes últimos metros antes do far do nevoeiro, onde o mundo acaba
 // (no máximo 30 % do far, para ainda se ver algum com 3 km de visibilidade).
 const ORLA_NEVOEIRO_M = 1500;
 const ORLA_FRACCAO = 0.3;
@@ -36,6 +36,9 @@ const BARRA_M = 4;
 const CONTORNO_M = 1.5;
 const CINZA_CONTORNO = 0.04;
 const OPACIDADE_PORTAL = 0.9;
+// Esbatimento por escala (sem remendar os shaders do three): um portal ausente
+// fica com 5 % do tamanho, com barras abaixo de um píxel onde entra e onde sai.
+const ESCALA_PORTAL_MIN = 0.05;
 const COR_RESERVA = { ok: 0xf4f6f8, curta: 0xf2a23a, insuficiente: 0xd8483f };
 
 // Poste do destino activo branco e firme; os inactivos em cinza, esbatidos.
@@ -77,7 +80,7 @@ const COR_ANEL = 0xf2a23a;
 const ESPESSURA_ANEL_M = 1.2;
 
 const EIXO_Y = new THREE.Vector3(0, 1, 0);
-const UM = new THREE.Vector3(1, 1, 1);
+const _escala = new THREE.Vector3();
 const _m4 = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
 const _v = new THREE.Vector3();
@@ -130,28 +133,12 @@ function geometriaPortal() {
   return fundir([...contorno, ...nucleo], [...contorno.map(() => CINZA_CONTORNO), ...nucleo.map(() => 1)]);
 }
 
-/** Basic com opacidade por instância (atributo `opacidade`). */
-function materialPortais() {
-  const m = new THREE.MeshBasicMaterial({
+function criarPortais() {
+  // Opacidade fixa: cada portal entra e sai pela escala (actualizarPortais).
+  const material = new THREE.MeshBasicMaterial({
     color: COR_RESERVA.ok, vertexColors: true, transparent: true, opacity: OPACIDADE_PORTAL, depthWrite: false, fog: false,
   });
-  m.onBeforeCompile = (s) => {
-    s.vertexShader = s.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float opacidade;\nvarying float vOpacidade;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvOpacidade = opacidade;');
-    s.fragmentShader = s.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying float vOpacidade;')
-      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.a *= vOpacidade;');
-  };
-  return m;
-}
-
-function criarPortais() {
-  const geo = geometriaPortal();
-  const opacidade = new THREE.InstancedBufferAttribute(new Float32Array(MAX_PORTAIS), 1);
-  opacidade.setUsage(THREE.DynamicDrawUsage);
-  geo.setAttribute('opacidade', opacidade);
-  const portais = new THREE.InstancedMesh(geo, materialPortais(), MAX_PORTAIS);
+  const portais = new THREE.InstancedMesh(geometriaPortal(), material, MAX_PORTAIS);
   portais.name = 'portais-rota';
   portais.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   // As instâncias mudam a cada frame: a esfera envolvente calculada uma vez ficava errada.
@@ -249,8 +236,8 @@ function pintarPortais(marcas, reserva) {
   marcas.portais.material.color.setHex(COR_RESERVA[reserva] ?? COR_RESERVA.ok);
 }
 
-/** Opacidade de um portal a `s` m do avião: entra no far do nevoeiro, sai antes do nariz. */
-function opacidadePortal(s, far) {
+/** Presença (0–1) de um portal a `s` m do avião: entra no far do nevoeiro, sai antes do nariz. */
+function presencaPortal(s, far) {
   const perto = (s - PORTAL_SOME_M) / (PORTAL_PLENO_M - PORTAL_SOME_M);
   const longe = (far - s) / Math.min(ORLA_NEVOEIRO_M, far * ORLA_FRACCAO);
   return limitar01(Math.min(perto, longe));
@@ -274,19 +261,17 @@ function actualizarPortais(marcas, pontos) {
   const primeiro = Math.max(1, Math.ceil((total - far) / ESPACO_PORTAIS_M));
   const ultimo = Math.floor((total - PORTAL_SOME_M) / ESPACO_PORTAIS_M);
   _q.setFromAxisAngle(EIXO_Y, Math.atan2(dx, dz));
-  const opacidade = portais.geometry.attributes.opacidade;
   let k = 0;
   for (let j = ultimo; j >= primeiro && k < MAX_PORTAIS; j--) {
     const s = total - j * ESPACO_PORTAIS_M;
     const t = s / total;
     _v.set(a.x + dx * t, alturaNaRota(pontos, t), a.z + dz * t);
-    portais.setMatrixAt(k, _m4.compose(_v, _q, UM));
-    opacidade.array[k] = opacidadePortal(s, far);
+    _escala.setScalar(ESCALA_PORTAL_MIN + (1 - ESCALA_PORTAL_MIN) * presencaPortal(s, far));
+    portais.setMatrixAt(k, _m4.compose(_v, _q, _escala));
     k++;
   }
   portais.count = k;
   portais.instanceMatrix.needsUpdate = true;
-  opacidade.needsUpdate = true;
 }
 
 /**
