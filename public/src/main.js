@@ -7,6 +7,7 @@ import { poseMissao } from './escala.js';
 import { alcanceM, pontosFitaRota, setaManobra } from './rota-visual.js';
 import { pistasDaMissao } from './relevo.js';
 import { emLeitura, leituraAmeaca, posicaoVisualBaloes } from './ameaca-visual.js';
+import { ameacaIminente, fatorTempo, TECTO_LEITURA } from './fator-tempo.js';
 import {
   actualizarSeparacoes,
   actualizarOrdemPiloto,
@@ -287,7 +288,7 @@ function entradaBreve(entrada) {
 /** Como se lê a passagem da ameaça deste evento; null sem balões nem leitura. */
 function textoLeitura(evento) {
   // O tecto de 2× só existe quando a velocidade escolhida é maior.
-  const ritmo = estado.velocidade > 2 ? 'Passagem apresentada a 2×' : `Passagem a ${estado.velocidade}×`;
+  const ritmo = estado.velocidade > TECTO_LEITURA ? `Passagem apresentada a ${TECTO_LEITURA}×` : `Passagem a ${estado.velocidade}×`;
   if (evento.tipo === 'baloes') return `${ritmo}; balões à escala, com etiqueta e anel de leitura; separação calculada em metros.`;
   return estado.leitura ? `${ritmo}; ${estado.leitura.tipo} com etiqueta de distância.` : null;
 }
@@ -330,7 +331,7 @@ function atualizarTelemetria() {
   }
   const m = estado.missao, v = m.voo, d = m.destinos.find((x) => x.id === m.destinoId);
   const restante = Math.hypot(v.xM - d.xM, v.zM - d.zM);
-  $('flight-phase').textContent = m.fase.replaceAll('_', ' ') + (estado.pausa ? ' · pausa' : m.ameacaAtiva && estado.velocidade > 2 ? ' · 2× balões' : estado.leitura && estado.velocidade > 2 ? ` · 2× ${estado.leitura.tipo}` : '');
+  $('flight-phase').textContent = m.fase.replaceAll('_', ' ') + (estado.pausa ? ' · pausa' : m.ameacaAtiva && estado.velocidade > TECTO_LEITURA ? ` · ${TECTO_LEITURA}× balões` : estado.leitura && estado.velocidade > TECTO_LEITURA ? ` · ${TECTO_LEITURA}× ${estado.leitura.tipo}` : '');
   $('tel-speed').textContent = Math.round(v.velocidadeMs * 1.94384);
   $('tel-alt').textContent = Math.round(v.altitudeM * 3.28084).toLocaleString('pt-PT');
   $('tel-fuel').textContent = Math.round(v.combustivelKg);
@@ -594,7 +595,7 @@ async function processarEvento(evento, gen) {
   $('flow-input').textContent = entradaBreve(entrada);
   $('flow-choice').textContent = 'A avaliar…'; $('flow-detail').textContent = '—'; $('flow-effect').textContent = '—';
   selo(origemSelo(), 'A avaliar…', null, true);
-  $('flight-status').textContent = evento.obstaculos?.some((o) => o.segundos_ate_ao_contacto <= 15) ? 'Ameaça iminente: relógio simulado suspenso enquanto o JEV avalia.' : 'Voo a 1× sob a intenção anterior enquanto chega a resposta.';
+  $('flight-status').textContent = ameacaIminente(evento) ? 'Ameaça iminente: relógio simulado suspenso enquanto o JEV avalia.' : 'Voo a 1× sob a intenção anterior enquanto chega a resposta.';
   let jev;
   try {
     if (estado.modo === 'replay') {
@@ -659,7 +660,7 @@ function terminarLeitura() {
   const { tipo } = estado.leitura;
   estado.leitura = null;
   if (estado.espera) return;
-  $('flight-status').textContent = estado.velocidade > 2 ? `Leitura concluída (${tipo}); a missão volta a ${estado.velocidade}×.` : `Leitura concluída (${tipo}).`;
+  $('flight-status').textContent = estado.velocidade > TECTO_LEITURA ? `Leitura concluída (${tipo}); a missão volta a ${estado.velocidade}×.` : `Leitura concluída (${tipo}).`;
 }
 
 function quadro(t) {
@@ -674,8 +675,12 @@ function quadro(t) {
     return;
   }
   if (!estado.pausa && !estado.falha && !estado.missao.resultado) {
-    const leitura = estado.missao.ameacaAtiva || estado.leitura;
-    const fator = estado.espera && estado.incidentePendente?.obstaculos?.some((o) => o.segundos_ate_ao_contacto <= 15) ? 0 : estado.espera ? 1 : leitura && estado.velocidade > 2 ? 2 : estado.velocidade;
+    const fator = fatorTempo({
+      espera: estado.espera,
+      ameacaIminente: ameacaIminente(estado.incidentePendente),
+      leitura: Boolean(estado.missao.ameacaAtiva || estado.leitura),
+      velocidade: estado.velocidade,
+    });
     if (!estado.briefingPendente) estado.missao = avancarMissao(estado.missao, dt * fator);
     if (estado.leitura && !emLeitura(estado.leitura, estado.missao.voo)) terminarLeitura();
     if (!estado.espera && t > estado.revelarAte) {
