@@ -517,7 +517,8 @@ function mostrarPassoPiloto(registo) {
     ? `REPLAY ${jev.replay_source.cenario.toUpperCase()} / ${jev.replay_source.evento.toUpperCase()}`
     : 'JEV / AO VIVO · PIPELINE 2';
   // Na prova contínua não há pausa para o PIC: a confiança da lateral é só informativa.
-  mostrarEncaminhamento(encaminhar(jev, 'manobraLateral'));
+  $('decision-pic').textContent = `CONFIANÇA LATERAL ${decimal(jev.confidence?.manobraLateral)}`;
+  delete $('decision-pic').dataset.nivel;
   mostrarRespostas(jev);
   selo(origemSelo(), `${manobraCurta(answers.manobraVertical.choice, answers.manobraLateral.choice)} · folga ${melhorFolga?.id ?? 'livre'}`, jev.latencia_ms, false, jev.confidence?.manobraLateral);
   $('flight-status').textContent = 'O JEV escolhe; o controlador local executa. Não é Detect-and-Avoid certificável.';
@@ -748,7 +749,7 @@ function reporOverlayPIC() {
 function pedirDecisaoPIC(jev, rota) {
   const acaoJev = jev.answers.acaoMissao.choice;
   return new Promise((resolve) => {
-    estado.escalada = { resolve, acaoJev, fimMs: performance.now() + ESCALADA_S * 1000 };
+    estado.escalada = { resolve, acaoJev, fimMs: performance.now() + ESCALADA_S * 1000, contagem: ESCALADA_S, focoAnterior: document.activeElement };
     $('pic-kicker').textContent = 'O JEV PEDE O PIC';
     $('pic-title').textContent = `Confiança ${decimal(rota.confianca)} na acção de missão`;
     $('pic-text').textContent = `O JEV hesita e pede-te a decisão. Sem escolha em ${ESCALADA_S} s fica a dele (${etiquetarAcao(acaoJev)}), validada pelo supervisor.`;
@@ -766,6 +767,9 @@ function fecharEscalada(acao, origem) {
   estado.escalada = null;
   $('pic-overlay').hidden = true;
   reporOverlayPIC();
+  // O foco volta a onde estava; se esse elemento já não se vê, aos controlos do voo.
+  const foco = e.focoAnterior?.isConnected && e.focoAnterior.offsetParent !== null ? e.focoAnterior : $('btn-pause');
+  foco?.focus?.();
   e.resolve({ acao: acao ?? e.acaoJev, origem });
 }
 async function processarBriefing(gen) {
@@ -819,7 +823,8 @@ function quadro(t) {
   }
   if (estado.escalada) {
     const falta = Math.max(0, Math.ceil((estado.escalada.fimMs - t) / 1000));
-    $('pic-countdown').textContent = `${falta} s`;
+    // Região aria-live: só se escreve quando o segundo muda.
+    if (falta !== estado.escalada.contagem) { estado.escalada.contagem = falta; $('pic-countdown').textContent = `${falta} s`; }
     if (falta <= 0) fecharEscalada(null, 'tempo_esgotado');
   }
   if (!estado.pausa && !estado.falha && !estado.escalada && !estado.missao.resultado) {
@@ -961,7 +966,7 @@ function renderDebrief() {
     const summary = elemento('summary'); const name = elemento('span', 'record-name', l.resumo); name.append(elemento('small', '', a.alertas.length ? a.alertas.join(' ') : 'Sem intervenção do supervisor'));
     summary.append(elemento('span', 'record-index', String(i + 1).padStart(2, '0')), name, elemento('span', 'record-choice', resumoDecisao(l)));
     const body = elemento('div', 'record-body');
-    const left = elemento('div'); left.append(elemento('h3', '', 'ENTRADA E JEV'), elemento('p', '', entradaBreve(l.entrada)), elemento('p', '', `Ação: ${etiquetarAcao(l.jev.answers.acaoMissao.choice)} · confiança ${decimal(l.jev.confidence?.acaoMissao)} (${ROTULO_NIVEL[encaminhar(l.jev).nivel]}) · destino se mudar rota: ${etiquetarDestino(l.jev.answers.destinoPreferido.choice)}`), elemento('p', '', `Eixos: ${etiquetarManobraV(l.jev.answers.manobraVertical.choice)} / ${etiquetarManobraL(l.jev.answers.manobraLateral.choice)} · PIC P(true): ${numero(l.jev.answers.precisaRevisaoPIC.probability, 2)}`));
+    const left = elemento('div'); left.append(elemento('h3', '', 'ENTRADA E JEV'), elemento('p', '', entradaBreve(l.entrada)), elemento('p', '', `Ação: ${etiquetarAcao(l.jev.answers.acaoMissao.choice)} · confiança ${decimal(l.jev.confidence?.acaoMissao)} (${ROTULO_NIVEL[encaminhar(l.jev).nivel]}) · destino se mudar rota: ${etiquetarDestino(l.jev.answers.destinoPreferido.choice)}`), elemento('p', '', `Eixos: ${etiquetarManobraV(l.jev.answers.manobraVertical.choice)} / ${etiquetarManobraL(l.jev.answers.manobraLateral.choice)} · fora do envelope P(sim): ${numero(l.jev.answers.precisaRevisaoPIC.probability, 2)}`));
     const right = elemento('div'); right.append(elemento('h3', '', 'AVALIAÇÃO E CONSEQUÊNCIA'), elemento('p', '', `Ação ${a.acao}; destino ${a.destino}; manobra ${a.manobra}.`), elemento('p', '', `Regra geométrica limitada: ${etiquetarAcao(l.baseline.acaoMissao.choice)}. Supervisor: ${a.limites}.`), elemento('p', '', `Combustível ${l.antes.fuelKg} → ${l.depois?.fuelKg ?? '—'} kg. Rota ${nomeDestino(l.antes.destino)} → ${nomeDestino(l.depois?.destino) ?? '—'}.`));
     const separacao = l.depois?.separacoes?.find((s) => s.id === l.id);
     if (separacao) right.append(elemento('p', '', `Separação mínima medida: ${separacao.minimaM} m; perímetro de proteção ilustrativo: ${separacao.limiteM} m.`));
@@ -1027,9 +1032,9 @@ async function reavaliar() {
     const host = $('lab-result'); host.replaceChildren();
     const box = elemento('div', 'lab-compare');
     const antigo = elemento('div', 'lab-side');
-    antigo.append(elemento('small', '', `ORIGINAL · ${anterior}`), elemento('strong', '', resumoDecisao(linha)), elemento('p', '', `Manobra ${linha.jev.answers.manobraVertical.choice} / ${linha.jev.answers.manobraLateral.choice} · PIC ${numero(linha.jev.answers.precisaRevisaoPIC.probability, 2)}`));
+    antigo.append(elemento('small', '', `ORIGINAL · ${anterior}`), elemento('strong', '', resumoDecisao(linha)), elemento('p', '', `Manobra ${linha.jev.answers.manobraVertical.choice} / ${linha.jev.answers.manobraLateral.choice} · confiança ${decimal(linha.jev.confidence?.acaoMissao)} (${ROTULO_NIVEL[encaminhar(linha.jev).nivel]})`));
     const novo = elemento('div', 'lab-side');
-    novo.append(elemento('small', '', `ALTERADO · ${valor}`), elemento('strong', '', `${etiquetarAcao(nova.answers.acaoMissao.choice)} · rota ${nomeDestino(aplicada.supervisor.aplicada.destino)}`), elemento('p', '', `Alternativa se mudar rota: ${etiquetarDestino(nova.answers.destinoPreferido.choice)}. Manobra ${nova.answers.manobraVertical.choice} / ${nova.answers.manobraLateral.choice} · PIC ${numero(nova.answers.precisaRevisaoPIC.probability, 2)}`));
+    novo.append(elemento('small', '', `ALTERADO · ${valor}`), elemento('strong', '', `${etiquetarAcao(nova.answers.acaoMissao.choice)} · rota ${nomeDestino(aplicada.supervisor.aplicada.destino)}`), elemento('p', '', `Alternativa se mudar rota: ${etiquetarDestino(nova.answers.destinoPreferido.choice)}. Manobra ${nova.answers.manobraVertical.choice} / ${nova.answers.manobraLateral.choice} · confiança ${decimal(nova.confidence?.acaoMissao)} (${ROTULO_NIVEL[encaminhar(nova).nivel]})`));
     if (avaliacao.alertas.length) novo.append(elemento('p', 'record-alert', avaliacao.alertas.join(' ')));
     box.append(elemento('p', 'lab-delta', `Variável: ${campo}`), antigo, novo);
     host.append(box);

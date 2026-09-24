@@ -136,7 +136,7 @@ function montarVeredicto(cenario, incidentes) {
 
 export function registarIncidente({ estado, incidente, jev, baseline, pic }) {
   const answers = jev?.answers ?? {};
-  const escalouModelo = deveEscalarPIC(answers);
+  const escalouModelo = deveEscalarPIC(jev);
   const escalou = Boolean(pic?.forcado || pic?.oferecido || escalouModelo);
   const tese = incidente.tese ?? null;
   return {

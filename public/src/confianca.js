@@ -10,8 +10,6 @@
  */
 export const LIMIAR_AGIR = 0.9;
 export const LIMIAR_PIC = 0.5;
-/** P(true) a partir da qual a pergunta booleana «fora do envelope» conta como sim. */
-export const LIMIAR_FORA_ENVELOPE = 0.55;
 
 export const ROTULO_NIVEL = Object.freeze({ agir: 'age', assinalar: 'age e assinala', pic: 'pede o PIC' });
 
