@@ -624,7 +624,7 @@ async function processarEvento(evento, gen) {
     const ameaca = estado.missao.ameacaAtiva;
     const foco = evento.tipo === 'baloes'
       ? ameaca && posicaoVisualBaloes(estado.missao.voo, ameaca, estado.mundoApi.poseLocalAgora(estado.mundo, parametrosVoo()))
-      : estado.leitura ? estado.mundoApi.focoAmeaca(estado.mundo) : null;
+      : estado.leitura ? estado.mundoApi.focoAmeaca(estado.mundo, estado.leitura.tipo) : null;
     if (foco) estado.mundoApi.focarEvento(estado.mundo, foco);
   }
   estado.incidentePendente = null; estado.espera = false;

@@ -38,6 +38,27 @@ export function emLeitura(leitura, voo) {
   return avancoM < leitura.distanciaM + PASSADA_M;
 }
 
+/**
+ * Índice da ameaça a enquadrar em `ameacas` ([{ tipo, x, z }]): das do tipo da
+ * leitura (de todas, se nenhuma for desse tipo), a mais próxima de `aviao` na
+ * horizontal. −1 sem ameaças.
+ */
+export function indiceAmeacaAEnquadrar(ameacas, tipo, aviao) {
+  const lista = Array.isArray(ameacas) ? ameacas : [];
+  const temTipo = lista.some((a) => a?.tipo === tipo);
+  let indice = -1;
+  let melhor = Infinity;
+  lista.forEach((a, i) => {
+    if (!a || (temTipo && a.tipo !== tipo)) return;
+    const d = Math.hypot(a.x - aviao.x, a.z - aviao.z);
+    if (d < melhor) {
+      melhor = d;
+      indice = i;
+    }
+  });
+  return indice;
+}
+
 // Obstáculo no chão: nunca abaixo disto (continua a ver-se) nem acima disto.
 const ALTURA_CHAO_MIN_M = 4;
 const ALTURA_CHAO_MAX_M = 2000;

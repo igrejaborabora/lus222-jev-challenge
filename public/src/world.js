@@ -5,7 +5,7 @@ import { alternarPreferido, alvoCamara, modoCamara, novaCamara, registarEvento, 
 import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
 import { actualizarHelices, criarLus222 } from './lus222.js';
 import { offsetLateral, pontoAmeaca } from './decisao.js';
-import { alturaAteFolga, posicaoVisualBaloes } from './ameaca-visual.js';
+import { alturaAteFolga, indiceAmeacaAEnquadrar, posicaoVisualBaloes } from './ameaca-visual.js';
 import { actualizarTerreno, criarTerreno, largarTerreno } from './terreno.js';
 import { alturaTerreno, perfilTerreno } from './relevo.js';
 import { TAMANHO_MOSAICO_M } from './mosaicos.js';
@@ -48,9 +48,9 @@ function limparGrupo(grupo) {
   }
 }
 
-function anelChao(cor) {
+function anelChao(cor, interior = 10, exterior = 16) {
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(10, 16, 28),
+    new THREE.RingGeometry(interior, exterior, 28),
     new THREE.MeshBasicMaterial({ color: cor, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
   );
   ring.rotation.x = -Math.PI / 2;
@@ -146,9 +146,11 @@ function meshAmeaca(o, pose, leve, mundo) {
       // Topo exactamente em h; a base entra 2 m no chão. A base alarga com a
       // altura, para um cume de centenas de metros não ser uma agulha.
       const h = p.altura;
-      const hill = new THREE.Mesh(new THREE.ConeGeometry(Math.max(24, h * 0.4), h + 2, 7), mat(0x5a5e58));
+      const raioBase = Math.max(24, h * 0.4);
+      const hill = new THREE.Mesh(new THREE.ConeGeometry(raioBase, h + 2, 7), mat(0x5a5e58));
       hill.position.y = h / 2 - 1;
-      g.add(hill, anelChao(0xc4a574));
+      // O anel acompanha a base: com os 16 m fixos ficava dentro do cone.
+      g.add(hill, anelChao(0xc4a574, raioBase + 2, raioBase * 1.15 + 6));
       break;
     }
     case 'trafego': {
@@ -316,15 +318,19 @@ export function ancorarVisuais(mundo, pose) {
 }
 
 /**
- * Ponto (coordenadas locais) a enquadrar na primeira ameaça: a posição da
- * malha (o pontoAmeaca do evento) à altura do seu topo — o voo do tráfego e
- * das aves, o cume do relevo. Uma vez por evento, não por frame.
+ * Ponto (coordenadas locais) a enquadrar na ameaça da leitura: a do `tipo`
+ * lido, ou a mais próxima do avião. A posição da malha (o pontoAmeaca do
+ * evento) à altura do seu topo — o voo do tráfego e das aves, o cume do
+ * relevo. Uma vez por evento, não por frame.
  */
-export function focoAmeaca(mundo) {
-  const primeira = mundo?.ameaças?.children[0];
-  if (!primeira) return null;
-  const topo = new THREE.Box3().setFromObject(primeira).max.y;
-  return { x: primeira.position.x, y: topo, z: primeira.position.z };
+export function focoAmeaca(mundo, tipo) {
+  const filhos = mundo?.ameaças?.children ?? [];
+  const aviao = mundo?.aviao?.position ?? { x: 0, z: 0 };
+  const i = indiceAmeacaAEnquadrar(filhos.map((c) => ({ tipo: c.userData.tipo, x: c.position.x, z: c.position.z })), tipo, aviao);
+  const alvo = filhos[i];
+  if (!alvo) return null;
+  const topo = new THREE.Box3().setFromObject(alvo).max.y;
+  return { x: alvo.position.x, y: topo, z: alvo.position.z };
 }
 
 export function definirAlvoLook(mundo, ponto) {
