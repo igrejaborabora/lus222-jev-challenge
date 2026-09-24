@@ -286,8 +286,10 @@ function entradaBreve(entrada) {
 }
 /** Como se lê a passagem da ameaça deste evento; null sem balões nem leitura. */
 function textoLeitura(evento) {
-  if (evento.tipo === 'baloes') return 'Passagem apresentada a 2×; balões à escala, com etiqueta e anel de leitura; separação calculada em metros.';
-  return estado.leitura ? `Passagem apresentada a 2×; ${estado.leitura.tipo} à escala, com etiqueta de distância.` : null;
+  // O tecto de 2× só existe quando a velocidade escolhida é maior.
+  const ritmo = estado.velocidade > 2 ? 'Passagem apresentada a 2×' : `Passagem a ${estado.velocidade}×`;
+  if (evento.tipo === 'baloes') return `${ritmo}; balões à escala, com etiqueta e anel de leitura; separação calculada em metros.`;
+  return estado.leitura ? `${ritmo}; ${estado.leitura.tipo} com etiqueta de distância.` : null;
 }
 /** A intervenção do supervisor aparece sempre; a leitura da ameaça junta-se-lhe. */
 function textoEstadoVoo(evento, supervisor) {
@@ -610,8 +612,8 @@ async function processarEvento(evento, gen) {
   estado.autorManobra = supervisor.interveio ? 'supervisor' : 'jev';
   const linha = { id: evento.id, cenario: estado.cenario, resumo: evento.resumo, entrada, jev, baseline: decisaoGeometrica(entrada), supervisor, antes, depois: null, estadoAntes, estadoDepois: safeClone(missao), pic: { interveio: false } };
   estado.log.linhas.push(linha);
-  // Aves, tráfego e relevo lêem-se como os balões: 2× até a ameaça mais
-  // próxima ficar para trás (os balões seguem a ameacaAtiva da simulação).
+  // Aves, tráfego e relevo lêem-se como os balões: no máximo a 2× até a
+  // ameaça mais próxima ficar para trás (os balões seguem a ameacaAtiva da simulação).
   estado.leitura = evento.tipo === 'baloes' ? null : leituraAmeaca(missao.voo, entrada.geometria.obstaculos);
   atualizarDecisao(evento, entrada, jev, supervisor);
   if (estado.mundo) {
@@ -656,7 +658,8 @@ async function processarBriefing(gen) {
 function terminarLeitura() {
   const { tipo } = estado.leitura;
   estado.leitura = null;
-  if (!estado.espera) $('flight-status').textContent = `Leitura concluída (${tipo}); a missão volta a ${estado.velocidade}×.`;
+  if (estado.espera) return;
+  $('flight-status').textContent = estado.velocidade > 2 ? `Leitura concluída (${tipo}); a missão volta a ${estado.velocidade}×.` : `Leitura concluída (${tipo}).`;
 }
 
 function quadro(t) {
