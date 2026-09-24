@@ -6,7 +6,7 @@
  * na frequência, no ganho e no filtro. Valores ilustrativos, não medidos.
  */
 export const PAS = 4;
-export const RPM_MIN = 1500;
+export const RPM_MIN = 1650;
 export const RPM_MAX = 2000;
 const TAU_S = 0.12;
 
