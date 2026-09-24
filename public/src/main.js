@@ -38,10 +38,12 @@ const $ = (id) => document.getElementById(id);
 const FALHAS_ATE_PARAR = 5;
 // Quando o JEV pede o PIC, o visitante tem este tempo antes de ficar a escolha do JEV.
 const ESCALADA_S = 10;
+// Tecto de pedidos ao Gateway por missão ou prova: uma rede de segurança, não o orçamento.
+const MAX_PEDIDOS_MISSAO = 300;
 const LABEL_DESTINO = { planeado: 'Destino planeado', origem: 'Origem', hospital_alternativo: 'Hospital alternativo', aeroporto_alternativo: 'Aeroporto alternativo', stol_proximo: 'Pista STOL próxima' };
 // O corredor do piloto não tem meteorologia própria: tecto alto, bom tempo, sem vento.
 const AMBIENTE_PILOTO = Object.freeze({ tetoFt: 3000, visKm: 12, luzDia: true, ventoMs: Object.freeze({ x: 0, z: 0 }) });
-const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, escalada: null, geracao: 0, autorManobra: 'jev', marcasCache: null, leitura: null };
+const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, escalada: null, pedidosFeitos: 0, pausaAutomatica: false, escondidoEm: null, geracao: 0, autorManobra: 'jev', marcasCache: null, leitura: null };
 
 // Um só contexto de áudio por página; criado no primeiro clique que inicia um voo.
 const som = criarSomMotor();
@@ -169,17 +171,32 @@ function mostrarEncaminhamento(rota) {
 function configuracao() { return { payload_kg: Number($('input-payload').value), risco_maximo: $('select-risk').value, preferir_stol: $('check-stol').checked, nunca_desviar: $('check-no-divert').checked }; }
 function semente() { return Math.min(999999999, Math.max(1, Number($('input-seed').value) || 222)); }
 
+function erroLimite(mensagem) {
+  const e = new Error(mensagem);
+  e.codigo = 'limite';
+  return e;
+}
+/** Conta um pedido ao Gateway; acima do tecto da missão, falha como limite. */
+function contarPedido() {
+  estado.pedidosFeitos += 1;
+  if (estado.pedidosFeitos > MAX_PEDIDOS_MISSAO) throw erroLimite(`Tecto de ${MAX_PEDIDOS_MISSAO} pedidos desta missão atingido.`);
+}
 async function avaliarJev(momento, entrada) {
+  contarPedido();
   const ctrl = new AbortController(); estado.pedido = ctrl;
   const timeout = setTimeout(() => ctrl.abort(), 13000);
   try {
     const r = await fetch('/api/jev', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ momento, estado: entrada }), signal: ctrl.signal });
     const d = await lerJson(r);
+    if (d.erro === 'limite') throw erroLimite(d.mensagem || 'Limite da demonstração ao vivo atingido.');
     if (!r.ok || d.fonte !== 'jev') throw new Error(d.mensagem || 'O JEV não respondeu.');
     const c = validarRespostas(momento, d.answers);
     if (!c.ok) throw new Error(`Contrato JEV inválido: ${c.erro}`);
     return d;
-  } catch (e) { throw new Error(e.name === 'AbortError' ? 'O pedido excedeu o tempo disponível.' : e.message, { cause: e }); }
+  } catch (e) {
+    if (e.codigo) throw e;
+    throw new Error(e.name === 'AbortError' ? 'O pedido excedeu o tempo disponível.' : e.message, { cause: e });
+  }
   finally { clearTimeout(timeout); if (estado.pedido === ctrl) estado.pedido = null; }
 }
 
@@ -394,6 +411,23 @@ function atualizarResultadoLinha() {
   const ultima = estado.log?.linhas.at(-1);
   if (ultima) ultima.depois = { tempoS: Math.round(estado.missao.voo.tempoS), fuelKg: Math.round(estado.missao.voo.combustivelKg), destino: estado.missao.destinoId, distanciaM: Math.round(estado.missao.voo.distanciaPercorridaM), separacoes: safeClone(estado.missao.separacoes) };
 }
+/**
+ * Limite do Gateway ou tecto da missão: o resto da sessão segue em replay
+ * gravado, identificado no cabeçalho. Nunca se finge uma decisão ao vivo.
+ */
+function passarAoReplay(motivo) {
+  estado.gateway = false;
+  $('gateway-status').textContent = '○ Limite ao vivo atingido · replay disponível';
+  $('btn-launch').disabled = true;
+  $('btn-lab').disabled = true;
+  $('btn-pilot').textContent = 'Ver prova contínua gravada ↗';
+  const piloto = emModoPiloto();
+  cancelarPedidos();
+  void (piloto ? iniciarPiloto() : iniciar('replay')).then(() => {
+    $('flight-source').textContent = piloto ? 'REPLAY JEV GRAVADO · LIMITE AO VIVO ATINGIDO' : 'REPLAY GRAVADO · LIMITE AO VIVO ATINGIDO';
+    $('flight-status').textContent = `${motivo} A mostrar o voo gravado.`;
+  });
+}
 function mostrarFalha(mensagem) {
   estado.falha = true; estado.espera = false;
   $('failure-reason').textContent = mensagem;
@@ -437,6 +471,7 @@ async function lerJson(r) {
 }
 
 async function avaliarPassoPiloto(ticket, entrada) {
+  contarPedido();
   const ctrl = new AbortController();
   estado.pedidosPiloto.set(ticket.id, ctrl);
   const timeout = setTimeout(() => ctrl.abort(), 13_000);
@@ -448,11 +483,13 @@ async function avaliarPassoPiloto(ticket, entrada) {
       signal: ctrl.signal,
     });
     const d = await lerJson(r);
+    if (d.erro === 'limite') throw erroLimite(d.mensagem || 'Limite da demonstração ao vivo atingido.');
     if (!r.ok || d.fonte !== 'jev') throw new Error(d.mensagem || 'O JEV não respondeu.');
     const contrato = validarRespostas('incidente', d.answers);
     if (!contrato.ok) throw new Error(`Contrato JEV inválido: ${contrato.erro}`);
     return d;
   } catch (e) {
+    if (e.codigo) throw e;
     throw new Error(e.name === 'AbortError' ? 'O passo do piloto excedeu 13 s.' : e.message, { cause: e });
   } finally {
     clearTimeout(timeout);
@@ -499,6 +536,7 @@ async function processarPassoPiloto(ticket, gen) {
     }
   } catch (erro) {
     if (gen !== estado.geracao || estado.piloto !== piloto) return;
+    if (erro.codigo === 'limite') { passarAoReplay(erro.message); return; }
     const agora = performance.now();
     falharPasso(piloto.pipeline, ticket.id, erro, agora);
     // Sem backoff, um Gateway em baixo ou em 429 recebia dois pedidos a cada 400 ms.
@@ -606,7 +644,7 @@ async function iniciarPiloto() {
   estado.piloto = { percurso, pipeline, automato, controlo, ordemActiva: null, pausaIniciadaEm: null, falhasSeguidas: 0, replays, base: { restricoes: configuracao() } };
   estado.missao = { resultado: null };
   estado.log = { versao: 5, fonte: modo === 'pilot-replay' ? 'jev-replay-gravado-equivalente' : 'jev-ao-vivo', modelo: 'typesafe-ai/jev', perfil: PERFIL.versao, cenario: 'corredor-piloto', semente: seed, restricoes: configuracao(), linhas: [], incompleta: false, motivo: null, resultado: null };
-  estado.pausa = false; estado.espera = false; estado.falha = false; estado.velocidade = 1;
+  estado.pausa = false; estado.espera = false; estado.falha = false; estado.velocidade = 1; estado.pedidosFeitos = 0; estado.pausaAutomatica = false;
   $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true;
   $('btn-real-map').hidden = true; $('btn-pic').hidden = true; $('pilot-proof').hidden = false;
   $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '1× velocidade'; $('btn-camera').textContent = 'Câmara: cauda';
@@ -640,7 +678,11 @@ async function processarEvento(evento, gen) {
       if (!jev) throw new Error(`O replay não inclui o evento ${evento.id}.`);
       if (!validarRespostas('incidente', jev.answers).ok) throw new Error('Resposta gravada inválida.');
     } else jev = await avaliarJev('incidente', entrada);
-  } catch (e) { if (gen === estado.geracao) mostrarFalha(e.message); return; }
+  } catch (e) {
+    if (gen !== estado.geracao) return;
+    if (e.codigo === 'limite') passarAoReplay(e.message); else mostrarFalha(e.message);
+    return;
+  }
   if (gen !== estado.geracao || estado.ecra !== 'live') return;
   // Confiança < 0,5 na acção de missão: ao vivo, o relógio pára e o visitante decide.
   const rota = encaminhar(jev);
@@ -733,7 +775,11 @@ async function processarBriefing(gen) {
   $('flow-input').textContent = entradaBreve(entrada);
   let resposta;
   try { resposta = estado.modo === 'replay' ? estado.replay.briefing : await avaliarJev('briefing', entrada); }
-  catch (e) { if (gen === estado.geracao) mostrarFalha(e.message); return; }
+  catch (e) {
+    if (gen !== estado.geracao) return;
+    if (e.codigo === 'limite') passarAoReplay(e.message); else mostrarFalha(e.message);
+    return;
+  }
   if (gen !== estado.geracao || estado.ecra !== 'live') return;
   estado.log.briefing = { entrada, resposta };
   $('event-title').textContent = 'Briefing lido.';
@@ -811,7 +857,7 @@ async function iniciar(modo) {
   const restricoes = modo === 'replay' ? estado.replay.restricoes : configuracao();
   estado.missao = criarMissao(estado.cenario, seed, restricoes);
   estado.log = { versao: 4, fonte: modo === 'replay' ? 'jev-replay-gravado' : 'jev-ao-vivo', modelo: 'typesafe-ai/jev', perfil: PERFIL.versao, cenario: estado.cenario, semente: seed, restricoes, briefing: null, linhas: [], intervencoes: [], incompleta: false, motivo: null, resultado: null };
-  estado.pausa = false; estado.espera = false; estado.falha = false; estado.incidentePendente = null; estado.briefingPendente = false; estado.revelarAte = 0; estado.velocidade = 8;
+  estado.pausa = false; estado.espera = false; estado.falha = false; estado.incidentePendente = null; estado.briefingPendente = false; estado.revelarAte = 0; estado.velocidade = 8; estado.pedidosFeitos = 0; estado.pausaAutomatica = false;
   estado.autorManobra = 'jev'; estado.marcasCache = null; estado.leitura = null;
   $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true; $('pilot-proof').hidden = true; $('btn-pic').hidden = false; $('btn-real-map').hidden = estado.cenario !== 'porto'; $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade'; $('btn-camera').textContent = 'Câmara: cauda';
   $('flight-name').textContent = nomeCenario(); $('flight-source').textContent = modo === 'replay' ? 'REPLAY GRAVADO · SEM NOVA AVALIAÇÃO' : 'JEV AO VIVO · AI GATEWAY';
@@ -1012,8 +1058,20 @@ function ligarUI() {
     definirSom(ligar);
     if (ligar && estado.ecra === 'live') som.ligar();
   });
-  // Separador escondido: o rAF pára e o motor também.
-  document.addEventListener('visibilitychange', () => { if (document.hidden) som.suspender(); });
+  // Separador escondido: o rAF pára, o motor cala-se e o voo entra em pausa
+  // (nada de pedidos ao Gateway em segundo plano); ao voltar, retoma sozinho.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      som.suspender();
+      estado.escondidoEm = performance.now();
+      if (estado.ecra === 'live' && !estado.pausa) { definirPausa(true); estado.pausaAutomatica = true; }
+      return;
+    }
+    // O tempo do PIC não corre com o separador escondido.
+    if (estado.escalada && estado.escondidoEm != null) estado.escalada.fimMs += performance.now() - estado.escondidoEm;
+    estado.escondidoEm = null;
+    if (estado.pausaAutomatica) { estado.pausaAutomatica = false; definirPausa(false); }
+  });
   $('btn-exit').addEventListener('click', () => terminarIncompleta('O comandante terminou a missão antes do desfecho.'));
   $('btn-pause').addEventListener('click', () => { definirPausa(!estado.pausa); atualizarTelemetria(); });
   $('btn-speed').addEventListener('click', () => { estado.velocidade = estado.velocidade === 8 ? 1 : estado.velocidade === 1 ? 4 : 8; $('btn-speed').textContent = `${estado.velocidade}× velocidade`; });
