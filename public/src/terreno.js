@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { alturaTerreno, prepararPistas } from './relevo.js';
+import { alturaTerreno, perfilComAgua, prepararPistas } from './relevo.js';
 import { mosaicosAManter, mosaicosNecessarios, planearMosaicos, TAMANHO_MOSAICO_M } from './mosaicos.js';
 
 // Paleta dessaturada (identidade preto e branco): o relevo lê-se pela luz.
@@ -13,6 +13,9 @@ const COR = {
 // Plano da pista: asfalto esbatido no verde baixo, para não ser um disco preto.
 const COR_PLANO = COR.pista.clone().lerp(COR.baixo, 0.55);
 const FUNDO_VISIVEL_M = -6;
+// Chão abaixo disto (acima do mar) é praia, mas só num perfil com água: no
+// Alentejo e no corredor do piloto (2 a 8 m) é campo, não deserto.
+const PRAIA_ATE_M = 8;
 
 // A cor da pista vem da distância a uma pista (dentro do raio do plano) e não
 // da altura: senão a orla, entre 0 e o plano da pista (2 m), pintava-se de asfalto.
@@ -26,9 +29,9 @@ function noPlanoDaPista(pistas, x, z) {
   return false;
 }
 
-function corDe(h, x, z, pistas, alvo) {
-  if (noPlanoDaPista(pistas, x, z)) return alvo.copy(COR_PLANO);
-  if (h < 8) return alvo.copy(COR.praia);
+function corDe(h, x, z, t, alvo) {
+  if (noPlanoDaPista(t.pistas, x, z)) return alvo.copy(COR_PLANO);
+  if (t.praia && h < PRAIA_ATE_M) return alvo.copy(COR.praia);
   if (h < 160) return alvo.copy(COR.baixo).lerp(COR.medio, h / 160);
   return alvo.copy(COR.medio).lerp(COR.alto, Math.min(1, (h - 160) / 500));
 }
@@ -79,7 +82,7 @@ function geometriaMosaico(t, i, j) {
       const nz = (alturas[g - n] - alturas[g + n]) / (2 * passo);
       const inv = 1 / Math.hypot(nx, 1, nz);
       nor.setXYZ(k, nx * inv, inv, nz * inv);
-      corDe(y, x0 + ix * passo, z0 + iy * passo, t.pistas, c);
+      corDe(y, x0 + ix * passo, z0 + iy * passo, t, c);
       cores[k * 3] = c.r;
       cores[k * 3 + 1] = c.g;
       cores[k * 3 + 2] = c.b;
@@ -104,6 +107,7 @@ export function criarTerreno({ perfil, pistas = [], leve = false }) {
     perfil,
     // Uma vez aqui (baseM, ilhéu), nunca por vértice.
     pistas: prepararPistas(perfil, pistas),
+    praia: perfilComAgua(perfil),
     raio,
     segmentos: leve ? 24 : 48,
     material: new THREE.MeshLambertMaterial({ vertexColors: true }),

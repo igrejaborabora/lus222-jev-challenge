@@ -69,6 +69,11 @@ export function perfilTerreno(cenario) {
   return PERFIS[cenario] ?? PERFIS.corredor;
 }
 
+/** Há mar neste perfil (costa, ilhas)? Só aí o chão rente à água é praia. */
+export function perfilComAgua(perfil) {
+  return perfil?.agua === 'costa' || perfil?.agua === 'ilhas';
+}
+
 function alturaBase(perfil, x, z) {
   const relevo = fbm(x * perfil.escala, z * perfil.escala, perfil.seed);
   if (perfil.agua === 'costa') {
