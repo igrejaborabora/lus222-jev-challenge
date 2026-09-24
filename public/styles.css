@@ -108,7 +108,8 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .flight-exit{margin-left:auto;flex:none;border:1px solid rgba(255,255,255,.28);background:transparent;color:var(--ink);padding:10px 12px;font:11px var(--mono)}
 .flight-label{position:absolute;z-index:2;top:calc(74px + var(--safe-t));left:50%;transform:translateX(-50%);font:9px var(--mono);letter-spacing:.12em;color:rgba(255,255,255,.7);pointer-events:none;white-space:nowrap}
 .decision-panel{position:absolute;z-index:3;top:calc(74px + var(--safe-t));bottom:calc(86px + var(--safe-b));left:calc(16px + var(--safe-l));width:min(320px,27vw);display:flex;flex-direction:column;min-height:0;overflow:auto;overscroll-behavior:contain;background:rgba(8,11,14,.94);border:1px solid rgba(255,255,255,.18);padding:20px;transition:transform .28s ease,opacity .28s ease}
-.decision-panel:not(.is-open){transform:translateX(calc(-100% - 24px));opacity:0;pointer-events:none}
+/* Fechada: fora do Tab e do leitor de ecrã, mas só depois do deslize (a abertura mostra logo). */
+.decision-panel:not(.is-open){transform:translateX(calc(-100% - 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .28s ease,opacity .28s ease,visibility 0s linear .28s}
 .decision-panel .kicker{display:flex;justify-content:space-between}
 .decision-panel h2{font-size:clamp(28px,2.6vw,42px);line-height:1.03;letter-spacing:-.02em;margin:18px 0 10px}
 .event-desc{font-size:13px;line-height:1.55;color:#b6c0c8;margin-bottom:16px}
