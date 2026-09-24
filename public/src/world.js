@@ -330,7 +330,8 @@ export function actualizarAmeacas(mundo, dt) {
  * Luzes de navegação em coordenadas do modelo (antes da escala 1,35 do
  * grupo; nariz em +Z, esquerda do piloto em +X): vermelha na ponta da asa
  * esquerda, verde na direita (pontas em x = ±7,9, corda da ponta de z 0,77 a
- * −0,34) e branca no fim do cone de cauda (z −6,72, y 0,58).
+ * −0,34) e branca em (0; 0,6; −6,84), logo atrás do fim do cone de cauda
+ * (z −6,72).
  */
 const LUZES_NAV = [
   { nome: 'luz-nav-vermelha', cor: 0xff2a2a, pos: [7.96, 1.24, 0.5] },
