@@ -6,7 +6,7 @@ import { novoAutomato, passoAutomato, poseAviao } from './automato.js';
 import { poseMissao } from './escala.js';
 import { alcanceM, pontosFitaRota, setaManobra } from './rota-visual.js';
 import { pistasDaMissao } from './relevo.js';
-import { posicaoVisualBaloes } from './ameaca-visual.js';
+import { emLeitura, leituraAmeaca, posicaoVisualBaloes } from './ameaca-visual.js';
 import {
   actualizarSeparacoes,
   actualizarOrdemPiloto,
@@ -36,7 +36,7 @@ const LABEL_DESTINO = { planeado: 'Destino planeado', origem: 'Origem', hospital
 const QUESTOES = { configuracaoCabine: 'Cabine', prioridadeOperacional: 'Prioridade', pistaAdequada: 'Pista adequada', combustivelSuficiente: 'Combustível suficiente', acaoMissao: 'Ação de missão', manobraVertical: 'Vertical', manobraLateral: 'Lateral', destinoPreferido: 'Destino se mudar rota', urgencia: 'Urgência', riscoMeteorologico: 'Risco meteorológico', precisaRevisaoPIC: 'Revisão PIC', continuarVoo: 'Continuar voo' };
 // O corredor do piloto não tem meteorologia própria: tecto alto, bom tempo, sem vento.
 const AMBIENTE_PILOTO = Object.freeze({ tetoFt: 3000, visKm: 12, luzDia: true, ventoMs: Object.freeze({ x: 0, z: 0 }) });
-const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0, autorManobra: 'jev', marcasCache: null };
+const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0, autorManobra: 'jev', marcasCache: null, leitura: null };
 
 function mostrar(nome) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === `screen-${nome}`));
@@ -299,7 +299,7 @@ function atualizarDecisao(evento, entrada, jev, supervisor) {
   $('decision-pic').textContent = Number(jev.answers.precisaRevisaoPIC.probability) >= .55 ? 'JEV SUGERE REVISÃO PIC' : 'SEM REVISÃO SUGERIDA';
   mostrarRespostas(jev.answers);
   selo(supervisor.interveio ? 'SUPERVISOR INTERVEIO' : origemSelo(), `${etiquetarAcao(supervisor.aplicada.acao ?? jev.answers.acaoMissao.choice)} · ${manobraCurta(supervisor.aplicada.vertical, supervisor.aplicada.lateral)}`, jev.latencia_ms);
-  $('flight-status').textContent = evento.tipo === 'baloes' ? 'Passagem apresentada a 2×; balões ampliados para leitura, separação calculada em metros.' : supervisor.interveio ? 'A escolha do JEV foi bloqueada; o supervisor protege a trajetória.' : 'Decisão aplicada à missão e ao voo.';
+  $('flight-status').textContent = evento.tipo === 'baloes' ? 'Passagem apresentada a 2×; balões ampliados para leitura, separação calculada em metros.' : estado.leitura ? `Passagem apresentada a 2×; ${estado.leitura.tipo} à escala, com etiqueta de distância.` : supervisor.interveio ? 'A escolha do JEV foi bloqueada; o supervisor protege a trajetória.' : 'Decisão aplicada à missão e ao voo.';
 }
 function atualizarTelemetria() {
   if (!estado.missao) return;
@@ -318,7 +318,7 @@ function atualizarTelemetria() {
   }
   const m = estado.missao, v = m.voo, d = m.destinos.find((x) => x.id === m.destinoId);
   const restante = Math.hypot(v.xM - d.xM, v.zM - d.zM);
-  $('flight-phase').textContent = m.fase.replaceAll('_', ' ') + (estado.pausa ? ' · pausa' : m.ameacaAtiva && estado.velocidade > 2 ? ' · 2× balões' : '');
+  $('flight-phase').textContent = m.fase.replaceAll('_', ' ') + (estado.pausa ? ' · pausa' : m.ameacaAtiva && estado.velocidade > 2 ? ' · 2× balões' : estado.leitura && estado.velocidade > 2 ? ` · 2× ${estado.leitura.tipo}` : '');
   $('tel-speed').textContent = Math.round(v.velocidadeMs * 1.94384);
   $('tel-alt').textContent = Math.round(v.altitudeM * 3.28084).toLocaleString('pt-PT');
   $('tel-fuel').textContent = Math.round(v.combustivelKg);
@@ -600,12 +600,18 @@ async function processarEvento(evento, gen) {
   estado.autorManobra = supervisor.interveio ? 'supervisor' : 'jev';
   const linha = { id: evento.id, cenario: estado.cenario, resumo: evento.resumo, entrada, jev, baseline: decisaoGeometrica(entrada), supervisor, antes, depois: null, estadoAntes, estadoDepois: safeClone(missao), pic: { interveio: false } };
   estado.log.linhas.push(linha);
+  // Aves, tráfego e relevo lêem-se como os balões: 2× até a ameaça mais
+  // próxima ficar para trás (os balões seguem a ameacaAtiva da simulação).
+  estado.leitura = evento.tipo === 'baloes' ? null : leituraAmeaca(missao.voo, entrada.geometria.obstaculos);
   atualizarDecisao(evento, entrada, jev, supervisor);
   if (estado.mundo) {
     estado.mundoApi.mostrarAmeacas(estado.mundo, entrada.geometria.obstaculos, parametrosVoo(), { escalaDistancia: 1 });
-    // Enquadra avião e balões no momento da decisão, com a pose deste instante.
+    // Enquadra avião e ameaça no momento da decisão, com a pose deste instante.
     const ameaca = estado.missao.ameacaAtiva;
-    if (ameaca) estado.mundoApi.focarEvento(estado.mundo, posicaoVisualBaloes(estado.missao.voo, ameaca, estado.mundoApi.poseLocalAgora(estado.mundo, parametrosVoo())));
+    const foco = ameaca
+      ? posicaoVisualBaloes(estado.missao.voo, ameaca, estado.mundoApi.poseLocalAgora(estado.mundo, parametrosVoo()))
+      : estado.leitura ? estado.mundoApi.focoAmeaca(estado.mundo) : null;
+    if (foco) estado.mundoApi.focarEvento(estado.mundo, foco);
   }
   estado.incidentePendente = null; estado.espera = false;
 }
@@ -634,6 +640,13 @@ async function processarBriefing(gen) {
   estado.briefingPendente = false; estado.espera = false;
 }
 
+/** A ameaça da leitura ficou para trás (ou acabou o tempo previsto): volta à velocidade escolhida. */
+function terminarLeitura() {
+  const { tipo } = estado.leitura;
+  estado.leitura = null;
+  if (!estado.espera) $('flight-status').textContent = `Leitura concluída (${tipo}); a missão volta a ${estado.velocidade}×.`;
+}
+
 function quadro(t) {
   if (estado.ecra !== 'live' || !estado.missao) return;
   estado.raf = requestAnimationFrame(quadro);
@@ -646,8 +659,10 @@ function quadro(t) {
     return;
   }
   if (!estado.pausa && !estado.falha && !estado.missao.resultado) {
-    const fator = estado.espera && estado.incidentePendente?.obstaculos?.some((o) => o.segundos_ate_ao_contacto <= 15) ? 0 : estado.espera ? 1 : estado.missao.ameacaAtiva && estado.velocidade > 2 ? 2 : estado.velocidade;
+    const leitura = estado.missao.ameacaAtiva || estado.leitura;
+    const fator = estado.espera && estado.incidentePendente?.obstaculos?.some((o) => o.segundos_ate_ao_contacto <= 15) ? 0 : estado.espera ? 1 : leitura && estado.velocidade > 2 ? 2 : estado.velocidade;
     if (!estado.briefingPendente) estado.missao = avancarMissao(estado.missao, dt * fator);
+    if (estado.leitura && !emLeitura(estado.leitura, estado.missao.voo)) terminarLeitura();
     if (!estado.espera && t > estado.revelarAte) {
       const evento = proximoEvento(estado.missao);
       if (evento) void processarEvento(evento, estado.geracao);
@@ -676,7 +691,7 @@ async function iniciar(modo) {
   estado.missao = criarMissao(estado.cenario, seed, restricoes);
   estado.log = { versao: 4, fonte: modo === 'replay' ? 'jev-replay-gravado' : 'jev-ao-vivo', modelo: 'typesafe-ai/jev', perfil: PERFIL.versao, cenario: estado.cenario, semente: seed, restricoes, briefing: null, linhas: [], intervencoes: [], incompleta: false, motivo: null, resultado: null };
   estado.pausa = false; estado.espera = false; estado.falha = false; estado.incidentePendente = null; estado.briefingPendente = false; estado.revelarAte = 0; estado.velocidade = 8;
-  estado.autorManobra = 'jev'; estado.marcasCache = null;
+  estado.autorManobra = 'jev'; estado.marcasCache = null; estado.leitura = null;
   $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true; $('pilot-proof').hidden = true; $('btn-pic').hidden = false; $('btn-real-map').hidden = estado.cenario !== 'porto'; $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade'; $('btn-camera').textContent = 'Câmara: cauda';
   $('flight-name').textContent = nomeCenario(); $('flight-source').textContent = modo === 'replay' ? 'REPLAY GRAVADO · SEM NOVA AVALIAÇÃO' : 'JEV AO VIVO · AI GATEWAY';
   $('decision-origin').textContent = modo === 'replay' ? 'JEV / REPLAY GRAVADO' : 'JEV / AO VIVO';

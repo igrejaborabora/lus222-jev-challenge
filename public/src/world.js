@@ -291,6 +291,18 @@ export function ancorarVisuais(mundo, pose) {
   }
 }
 
+/**
+ * Ponto (coordenadas locais) a enquadrar na primeira ameaça: a posição da
+ * malha (o pontoAmeaca do evento) à altura do seu topo — o voo do tráfego e
+ * das aves, o cume do relevo. Uma vez por evento, não por frame.
+ */
+export function focoAmeaca(mundo) {
+  const primeira = mundo?.ameaças?.children[0];
+  if (!primeira) return null;
+  const topo = new THREE.Box3().setFromObject(primeira).max.y;
+  return { x: primeira.position.x, y: topo, z: primeira.position.z };
+}
+
 export function definirAlvoLook(mundo, ponto) {
   if (mundo) mundo.alvoLook = ponto ?? null;
 }
