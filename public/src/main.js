@@ -10,6 +10,7 @@ import { emLeitura, leituraAmeaca, posicaoVisualBaloes } from './ameaca-visual.j
 import { ameacaIminente, fatorTempo, TECTO_LEITURA } from './fator-tempo.js';
 import { decimal, pintarPainel, pintarPergunta } from './painel-jev.js';
 import { encaminhar, ROTULO_NIVEL } from './confianca.js';
+import { criarSomMotor } from './som-motor.js';
 import {
   actualizarSeparacoes,
   actualizarOrdemPiloto,
@@ -41,6 +42,39 @@ const LABEL_DESTINO = { planeado: 'Destino planeado', origem: 'Origem', hospital
 // O corredor do piloto não tem meteorologia própria: tecto alto, bom tempo, sem vento.
 const AMBIENTE_PILOTO = Object.freeze({ tetoFt: 3000, visKm: 12, luzDia: true, ventoMs: Object.freeze({ x: 0, z: 0 }) });
 const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, escalada: null, geracao: 0, autorManobra: 'jev', marcasCache: null, leitura: null };
+
+// Um só contexto de áudio por página; criado no primeiro clique que inicia um voo.
+const som = criarSomMotor();
+const CHAVE_SOM = 'lus222-som';
+function preferenciaSom() {
+  try { return localStorage.getItem(CHAVE_SOM) !== 'desligado'; } catch { return true; }
+}
+function definirSom(ligado) {
+  $('btn-som').setAttribute('aria-pressed', String(ligado));
+  som.silenciar(!ligado);
+  try { localStorage.setItem(CHAVE_SOM, ligado ? 'ligado' : 'desligado'); } catch { /* sem armazenamento: vale só nesta página */ }
+}
+/** Tem de correr dentro do clique: os browsers só deixam começar áudio depois de um gesto. */
+function ligarSom() {
+  som.silenciar(!preferenciaSom());
+  som.ligar();
+}
+function distanciaCamaraM() {
+  const m = estado.mundo;
+  return m?.camera && m?.aviao ? m.camera.position.distanceTo(m.aviao.position) : 25;
+}
+/** Potência e velocidade do voo; na prova contínua, derivadas do autómato (mundo à escala do corredor). */
+function atualizarSom() {
+  if (estado.pausa || estado.falha || document.hidden) { som.suspender(); return; }
+  som.retomar();
+  if (emModoPiloto()) {
+    const a = estado.piloto?.automato;
+    som.actualizar({ potencia: 0.55 + 3 * (Number(a?.pitch) || 0), velocidadeMs: ((Number(a?.speed) || 38) / 38) * 88, distanciaCamaraM: distanciaCamaraM() });
+    return;
+  }
+  const v = estado.missao?.voo;
+  som.actualizar({ potencia: v?.potencia ?? 0.5, velocidadeMs: v?.velocidadeMs ?? 88, distanciaCamaraM: distanciaCamaraM() });
+}
 
 function mostrar(nome) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === `screen-${nome}`));
@@ -731,7 +765,7 @@ function quadro(t) {
   const dt = Math.min(.1, Math.max(0, (t - estado.ultimoFrame) / 1000)); estado.ultimoFrame = t;
   if (emModoPiloto()) {
     quadroPiloto(t, dt);
-    if (t - estado.ultimoUI > 100) { atualizarTelemetria(); estado.ultimoUI = t; }
+    if (t - estado.ultimoUI > 100) { atualizarTelemetria(); atualizarSom(); estado.ultimoUI = t; }
     desenharMundo(dt);
     if (estado.missao.resultado && estado.piloto.pipeline.emVoo.size === 0) abrirDebrief();
     return;
@@ -755,7 +789,7 @@ function quadro(t) {
       if (evento) void processarEvento(evento, estado.geracao);
     }
   }
-  if (t - estado.ultimoUI > 100) { atualizarTelemetria(); estado.ultimoUI = t; }
+  if (t - estado.ultimoUI > 100) { atualizarTelemetria(); atualizarSom(); estado.ultimoUI = t; }
   desenharMundo(dt);
   if (estado.missao.resultado && !estado.espera && !estado.falha) abrirDebrief();
 }
@@ -910,6 +944,7 @@ function abrirDebrief() {
   else atualizarResultadoLinha();
   estado.log.resultado = estado.missao.resultado;
   cancelAnimationFrame(estado.raf); largarMundo(); $('map-overlay').hidden = true;
+  som.suspender();
   renderDebrief(); mostrar('debrief');
 }
 function terminarIncompleta(motivo) {
@@ -961,16 +996,24 @@ function descarregar() {
 }
 function sair() {
   cancelarPedidos();
-  ++estado.geracao; cancelAnimationFrame(estado.raf); largarMundo(); estado.missao = null; estado.log = null; mostrar('commander');
+  ++estado.geracao; cancelAnimationFrame(estado.raf); largarMundo(); som.suspender(); estado.missao = null; estado.log = null; mostrar('commander');
   estado.piloto = null; document.documentElement.classList.remove('pilot-active'); $('pilot-proof').hidden = true; $('btn-pic').hidden = false;
 }
 function ligarUI() {
   criarCartoes(); void sondarGateway();
   $('btn-open').addEventListener('click', () => mostrar('commander'));
   $('btn-home').addEventListener('click', () => mostrar('splash'));
-  $('btn-launch').addEventListener('click', () => { if (estado.gateway) void iniciar('live'); });
-  $('btn-replay').addEventListener('click', () => void iniciar('replay'));
-  $('btn-pilot').addEventListener('click', () => void iniciarPiloto());
+  $('btn-launch').addEventListener('click', () => { if (!estado.gateway) return; ligarSom(); void iniciar('live'); });
+  $('btn-replay').addEventListener('click', () => { ligarSom(); void iniciar('replay'); });
+  $('btn-pilot').addEventListener('click', () => { ligarSom(); void iniciarPiloto(); });
+  $('btn-som').setAttribute('aria-pressed', String(preferenciaSom()));
+  $('btn-som').addEventListener('click', () => {
+    const ligar = $('btn-som').getAttribute('aria-pressed') !== 'true';
+    definirSom(ligar);
+    if (ligar && estado.ecra === 'live') som.ligar();
+  });
+  // Separador escondido: o rAF pára e o motor também.
+  document.addEventListener('visibilitychange', () => { if (document.hidden) som.suspender(); });
   $('btn-exit').addEventListener('click', () => terminarIncompleta('O comandante terminou a missão antes do desfecho.'));
   $('btn-pause').addEventListener('click', () => { definirPausa(!estado.pausa); atualizarTelemetria(); });
   $('btn-speed').addEventListener('click', () => { estado.velocidade = estado.velocidade === 8 ? 1 : estado.velocidade === 1 ? 4 : 8; $('btn-speed').textContent = `${estado.velocidade}× velocidade`; });
