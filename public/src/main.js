@@ -101,7 +101,7 @@ function criarCartoes() {
   $('btn-setup-map').hidden = estado.cenario !== 'porto';
 }
 
-function ecraLargo() { return matchMedia('(min-width: 761px)').matches; }
+function ecraLargo() { return matchMedia('(min-width: 1280px)').matches; }
 function abrirGaveta(aberta) {
   $('decision-panel').classList.toggle('is-open', aberta);
   $('btn-drawer').setAttribute('aria-expanded', String(aberta));

@@ -107,7 +107,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .pulse{width:6px;height:6px;border-radius:50%;background:#f4f6f8;box-shadow:0 0 0 4px rgba(255,255,255,.16)}
 .flight-exit{margin-left:auto;flex:none;border:1px solid rgba(255,255,255,.28);background:transparent;color:var(--ink);padding:10px 12px;font:11px var(--mono)}
 .flight-label{position:absolute;z-index:2;top:calc(74px + var(--safe-t));left:50%;transform:translateX(-50%);font:9px var(--mono);letter-spacing:.12em;color:rgba(255,255,255,.7);pointer-events:none;white-space:nowrap}
-.decision-panel{position:absolute;z-index:3;top:calc(74px + var(--safe-t));bottom:calc(86px + var(--safe-b));left:calc(16px + var(--safe-l));width:min(350px,34vw);display:flex;flex-direction:column;min-height:0;overflow:auto;overscroll-behavior:contain;background:rgba(8,11,14,.94);border:1px solid rgba(255,255,255,.18);padding:20px;transition:transform .28s ease,opacity .28s ease}
+.decision-panel{position:absolute;z-index:3;top:calc(74px + var(--safe-t));bottom:calc(86px + var(--safe-b));left:calc(16px + var(--safe-l));width:min(320px,27vw);display:flex;flex-direction:column;min-height:0;overflow:auto;overscroll-behavior:contain;background:rgba(8,11,14,.94);border:1px solid rgba(255,255,255,.18);padding:20px;transition:transform .28s ease,opacity .28s ease}
 .decision-panel:not(.is-open){transform:translateX(calc(-100% - 24px));opacity:0;pointer-events:none}
 .decision-panel .kicker{display:flex;justify-content:space-between}
 .decision-panel h2{font-size:clamp(28px,2.6vw,42px);line-height:1.03;letter-spacing:-.02em;margin:18px 0 10px}
@@ -148,8 +148,8 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .flight-seal{position:absolute;z-index:3;left:50%;bottom:calc(92px + var(--safe-b));transform:translateX(-50%);display:grid;justify-items:center;gap:4px;min-width:min(420px,70vw);max-width:calc(100vw - 32px);padding:12px 22px 14px;background:rgba(6,8,10,.82);border:1px solid rgba(255,255,255,.3);text-align:center;pointer-events:none;backdrop-filter:blur(6px)}
 @media(min-width:761px){.flight-seal{bottom:auto;top:calc(96px + var(--safe-t))}}
 @media(min-width:761px) and (max-width:1100px){
-  .flight-seal{min-width:0;max-width:calc(100vw - min(350px,34vw) - 210px)}
-  .decision-panel.is-open~.flight-seal,.decision-panel.is-open~.flight-label{left:calc(min(350px,34vw) + 16px + (100vw - min(350px,34vw) - 188px) / 2)}
+  .flight-seal{min-width:0;max-width:calc(100vw - min(320px,27vw) - 210px)}
+  .decision-panel.is-open~.flight-seal,.decision-panel.is-open~.flight-label{left:calc(min(320px,27vw) + 16px + (100vw - min(320px,27vw) - 188px) / 2)}
 }
 .flight-seal small{font:600 9px var(--mono);letter-spacing:.16em;color:#cbd2d8}
 .flight-seal strong{font:600 clamp(20px,2.4vw,32px)/1.05 var(--display);letter-spacing:-.03em}
