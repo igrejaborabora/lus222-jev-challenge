@@ -94,8 +94,9 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .pilot-button::after{content:"400 MS · 2 PEDIDOS";font:500 8px var(--mono);letter-spacing:.1em;opacity:.58}
 .mode-info{font:11px/1.5 var(--mono);color:#d6dde3}
 
-/* Voo: canvas a ecrã inteiro; tudo o resto flutua por cima. */
-#screen-live{background:var(--bg);min-height:0}
+/* Voo: canvas a ecrã inteiro; tudo o resto flutua por cima. A largura da gaveta
+   de decisão vive aqui: a gaveta, o selo e a etiqueta (irmãos) contam com ela. */
+#screen-live{background:var(--bg);min-height:0;--largura-gaveta:min(320px,27vw)}
 #flight-canvas,.flight-tint{position:absolute;inset:0;width:100%;height:100%}
 .flight-tint{pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.4),transparent 34%,transparent 76%,rgba(0,0,0,.34)),linear-gradient(0deg,rgba(0,0,0,.42),transparent 30%)}
 .flight-header{position:absolute;z-index:3;left:0;right:0;top:0;height:calc(62px + var(--safe-t));padding:var(--safe-t) calc(20px + var(--safe-r)) 0 calc(20px + var(--safe-l));display:flex;align-items:center;gap:20px;background:rgba(6,8,10,.9);border-bottom:1px solid rgba(255,255,255,.14)}
@@ -107,7 +108,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .pulse{width:6px;height:6px;border-radius:50%;background:#f4f6f8;box-shadow:0 0 0 4px rgba(255,255,255,.16)}
 .flight-exit{margin-left:auto;flex:none;border:1px solid rgba(255,255,255,.28);background:transparent;color:var(--ink);padding:10px 12px;font:11px var(--mono)}
 .flight-label{position:absolute;z-index:2;top:calc(74px + var(--safe-t));left:50%;transform:translateX(-50%);font:9px var(--mono);letter-spacing:.12em;color:rgba(255,255,255,.7);pointer-events:none;white-space:nowrap}
-.decision-panel{position:absolute;z-index:3;top:calc(74px + var(--safe-t));bottom:calc(86px + var(--safe-b));left:calc(16px + var(--safe-l));width:min(320px,27vw);display:flex;flex-direction:column;min-height:0;overflow:auto;overscroll-behavior:contain;background:rgba(8,11,14,.94);border:1px solid rgba(255,255,255,.18);padding:20px;transition:transform .28s ease,opacity .28s ease}
+.decision-panel{position:absolute;z-index:3;top:calc(74px + var(--safe-t));bottom:calc(86px + var(--safe-b));left:calc(16px + var(--safe-l));width:var(--largura-gaveta);display:flex;flex-direction:column;min-height:0;overflow:auto;overscroll-behavior:contain;background:rgba(8,11,14,.94);border:1px solid rgba(255,255,255,.18);padding:20px;transition:transform .28s ease,opacity .28s ease}
 /* Fechada: fora do Tab e do leitor de ecrã, mas só depois do deslize (a abertura mostra logo). */
 .decision-panel:not(.is-open){transform:translateX(calc(-100% - 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .28s ease,opacity .28s ease,visibility 0s linear .28s}
 .decision-panel .kicker{display:flex;justify-content:space-between}
@@ -149,8 +150,8 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .flight-seal{position:absolute;z-index:3;left:50%;bottom:calc(92px + var(--safe-b));transform:translateX(-50%);display:grid;justify-items:center;gap:4px;min-width:min(420px,70vw);max-width:calc(100vw - 32px);padding:12px 22px 14px;background:rgba(6,8,10,.82);border:1px solid rgba(255,255,255,.3);text-align:center;pointer-events:none;backdrop-filter:blur(6px)}
 @media(min-width:761px){.flight-seal{bottom:auto;top:calc(96px + var(--safe-t))}}
 @media(min-width:761px) and (max-width:1100px){
-  .flight-seal{min-width:0;max-width:calc(100vw - min(320px,27vw) - 210px)}
-  .decision-panel.is-open~.flight-seal,.decision-panel.is-open~.flight-label{left:calc(min(320px,27vw) + 16px + (100vw - min(320px,27vw) - 188px) / 2)}
+  .flight-seal{min-width:0;max-width:calc(100vw - var(--largura-gaveta) - 210px)}
+  .decision-panel.is-open~.flight-seal,.decision-panel.is-open~.flight-label{left:calc(var(--largura-gaveta) + 16px + (100vw - var(--largura-gaveta) - 188px) / 2)}
 }
 .flight-seal small{font:600 9px var(--mono);letter-spacing:.16em;color:#cbd2d8}
 .flight-seal strong{font:600 clamp(20px,2.4vw,32px)/1.05 var(--display);letter-spacing:-.03em}
