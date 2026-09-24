@@ -101,6 +101,10 @@ function criarCartoes() {
   $('btn-setup-map').hidden = estado.cenario !== 'porto';
 }
 
+// A partir de 1280 px a gaveta de decisão abre por omissão; abaixo começa
+// fechada, para dar espaço ao 3D. Anda a par da regra de styles.css para
+// 761–1100 px, que estreita o selo e o desvia (com a etiqueta) para o lado da
+// gaveta aberta: se mudares um dos limiares, revê o outro.
 function ecraLargo() { return matchMedia('(min-width: 1280px)').matches; }
 function abrirGaveta(aberta) {
   $('decision-panel').classList.toggle('is-open', aberta);
