@@ -13,6 +13,29 @@ export function alturaNuvensM(tetoFt) {
   return Math.max(60, Number(tetoFt) * 0.3048);
 }
 
+/**
+ * Distância de (dx, dy, dz) — do centro do tufo ao ponto, em eixos do mundo —
+ * em raios do elipsóide do tufo (1 = à superfície). `tufo` traz os raios
+ * (sx, sy, sz) e o cos/sin do seu ângulo em Y; abaixo do centro o raio
+ * vertical é achatado a `base` (a base plana do cúmulo). Sem alocações.
+ */
+export function distanciaNoTufo(dx, dy, dz, tufo, base = 1) {
+  const x = (tufo.cos * dx - tufo.sin * dz) / tufo.sx;
+  const y = dy / (dy < 0 ? tufo.sy * base : tufo.sy);
+  const z = (tufo.sin * dx + tufo.cos * dz) / tufo.sz;
+  return Math.hypot(x, y, z);
+}
+
+// Bolha à volta do avião e da câmara: dentro de 1,15 raios o tufo some; a
+// partir de 1,9 fica inteiro. Encolhe para o centro sem nunca os alcançar.
+const BOLHA_DENTRO = 1.15;
+const BOLHA_FORA = 1.9;
+
+/** Factor de escala de um tufo à distância `dNorm` (distanciaNoTufo) do ponto mais perto. */
+export function escalaBolha(dNorm) {
+  return suave(BOLHA_DENTRO, BOLHA_FORA, dNorm);
+}
+
 /** Nevoeiro pela visibilidade, limitado ao terreno carregado para não mostrar a borda. */
 export function nevoeiroDe(visKm, alcanceTerrenoM) {
   const far = Math.round(Math.min(clamp(visKm * 1000, 800, 14000), alcanceTerrenoM * 0.95));

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32 } from './decisao.js';
-import { alturaNuvensM, nevoeiroDe, noiteAlvo, paletaCeu, ventoNoMundo } from './ambiente-visual.js';
+import { alturaNuvensM, distanciaNoTufo, escalaBolha, nevoeiroDe, noiteAlvo, paletaCeu, ventoNoMundo } from './ambiente-visual.js';
 
 /**
  * Céu desenhado a partir do ambiente que o JEV recebe (ambiente-visual.js):
@@ -112,15 +112,22 @@ function camadaNuvens(n, detalhe) {
     const nTufos = 3 + Math.floor(rnd() * (MAX_TUFOS - 2));
     c.tufos = Array.from({ length: nTufos }, () => {
       const f = 0.5 + rnd() * 0.5;
+      const dx = (rnd() * 2 - 1) * 0.35 * c.sx;
+      const dz = (rnd() * 2 - 1) * 0.35 * c.sz;
+      // Centro acima da base o bastante para o fundo achatado ficar no tecto.
+      const dy = rnd() * 0.4 * c.sy + BASE_TUFO * f * c.sy;
+      const angulo = rnd() * Math.PI;
       return {
-        dx: (rnd() * 2 - 1) * 0.35 * c.sx,
-        dz: (rnd() * 2 - 1) * 0.35 * c.sz,
-        // Centro acima da base o bastante para o fundo achatado ficar no tecto.
-        dy: rnd() * 0.4 * c.sy + BASE_TUFO * f * c.sy,
+        dx,
+        dz,
+        dy,
         sx: f * c.sx,
         sy: f * c.sy,
         sz: f * c.sz,
-        q: new THREE.Quaternion().setFromAxisAngle(EIXO_Y, rnd() * Math.PI),
+        q: new THREE.Quaternion().setFromAxisAngle(EIXO_Y, angulo),
+        // Para a bolha (distanciaNoTufo): o ângulo do tufo em Y.
+        cos: Math.cos(angulo),
+        sin: Math.sin(angulo),
       };
     });
     return c;
@@ -200,10 +207,23 @@ function aplicarLuz(ceu, { scene, sol, camera, ambiente, pose }, pal) {
 }
 
 /**
- * Nuvens ancoradas no mundo ABSOLUTO (pose local + origem visual): recentrar
- * a origem não as arrasta com o avião. A base dos cachos fica no tecto.
+ * Quanto fica de um tufo (centro `p`, já encolhido `f` pela orla) com a
+ * câmara e o avião por perto: conta o mais próximo dos dois, no espaço do
+ * elipsóide do tufo. Sem alocações (corre por tufo, por frame).
  */
-function aplicarNuvens(ceu, ambiente, pose, origem) {
+function bolha(t, p, f, cam, pose) {
+  const dCam = distanciaNoTufo((cam.x - p.x) / f, (cam.y - p.y) / f, (cam.z - p.z) / f, t, BASE_TUFO);
+  const dAviao = distanciaNoTufo((pose.x - p.x) / f, (pose.y - p.y) / f, (pose.z - p.z) / f, t, BASE_TUFO);
+  return Math.max(0.001, escalaBolha(Math.min(dCam, dAviao)));
+}
+
+/**
+ * Nuvens ancoradas no mundo ABSOLUTO (pose local + origem visual): recentrar
+ * a origem não as arrasta com o avião. A base dos cachos fica no tecto. Com o
+ * tecto à altura do voo, abre-se uma bolha: o tufo onde a câmara ou o avião
+ * entrariam encolhe para o centro, e a camada continua à volta.
+ */
+function aplicarNuvens(ceu, ambiente, pose, origem, camera) {
   const { mesh, nuvens, m, s, p } = ceu.nuvens;
   const alt = alturaNuvensM(ambiente.tetoFt ?? 3000);
   mesh.visible = alt < NUVENS_ATE_M;
@@ -226,7 +246,8 @@ function aplicarNuvens(ceu, ambiente, pose, origem) {
         alt + t.dy * f,
         pose.z + dz + (t.dz * cos - t.dx * sin) * f,
       );
-      s.set(t.sx * f, t.sy * f, t.sz * f);
+      const e = f * bolha(t, p, f, camera.position, pose);
+      s.set(t.sx * e, t.sy * e, t.sz * e);
       m.compose(p, t.q, s);
       mesh.setMatrixAt(i++, m);
     }
@@ -280,7 +301,7 @@ export function actualizarCeu(ceu, { scene, sol, camera, ambiente, pose, origem 
   ceu.noite += (alvo - ceu.noite) * Math.min(1, dt / RAMPA_NOITE_S);
   const pal = paletaCeu(ceu.noite);
   aplicarLuz(ceu, { scene, sol, camera, ambiente, pose }, pal);
-  aplicarNuvens(ceu, ambiente, pose, origem);
+  aplicarNuvens(ceu, ambiente, pose, origem, camera);
   aplicarRastos(ceu, ambiente, pose, dt);
   return pal;
 }
