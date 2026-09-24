@@ -36,11 +36,18 @@ function unitario(v) {
   return { x: v.x / l, y: v.y / l, z: v.z / l };
 }
 
+// Evento: a mira fica este ângulo abaixo da ameaça, que assim se projecta
+// pouco acima do centro (NDC y ≈ +0,06 com o fov vertical de 48° de world.js).
+// Mais acima, o selo de decisão (topo, ao centro) tapava-lhe a etiqueta.
+const MIRA_ABAIXO_AMEACA_RAD = 1.5 * (Math.PI / 180);
+
 /**
  * Evento: câmara atrás e acima, do lado oposto à ameaça (vista quase em fila,
- * avião e ameaça ficam próximos no quadro), a mirar a bissectriz das direcções
- * câmara→avião e câmara→ameaça. O ponto médio no mundo puxava a mira para a
- * ameaça distante e deixava o avião fora do quadro no telemóvel.
+ * avião e ameaça ficam próximos no quadro). Na horizontal, a mira segue a
+ * bissectriz das direcções câmara→avião e câmara→ameaça (o ponto médio no
+ * mundo puxava-a para a ameaça distante e deixava o avião fora do quadro no
+ * telemóvel); na vertical, fica logo abaixo da ameaça, e o avião, mais perto
+ * e abaixo da câmara, ocupa a metade de baixo.
  */
 function enquadrarEvento(pose, foco, fit, frente, esquerda) {
   const lateral = (foco.x - pose.x) * esquerda.x + (foco.z - pose.z) * esquerda.z;
@@ -55,13 +62,15 @@ function enquadrarEvento(pose, foco, fit, frente, esquerda) {
   const distancia = Math.hypot(paraAviao.x, paraAviao.y, paraAviao.z);
   const a = unitario(paraAviao);
   const b = unitario(subtrair(foco, pos));
-  const bissectriz = unitario({ x: a.x + b.x, y: a.y + b.y, z: a.z + b.z });
+  const horizontal = unitario({ x: a.x + b.x, y: 0, z: a.z + b.z });
+  const inclinacao = Math.asin(b.y) - MIRA_ABAIXO_AMEACA_RAD;
+  const h = Math.cos(inclinacao) * distancia;
   return {
     pos,
     mira: {
-      x: pos.x + bissectriz.x * distancia,
-      y: pos.y + bissectriz.y * distancia,
-      z: pos.z + bissectriz.z * distancia,
+      x: pos.x + horizontal.x * h,
+      y: pos.y + Math.sin(inclinacao) * distancia,
+      z: pos.z + horizontal.z * h,
     },
   };
 }
