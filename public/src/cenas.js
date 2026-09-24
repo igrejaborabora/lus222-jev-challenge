@@ -35,27 +35,6 @@ function texturaJanelas() {
   return tex;
 }
 
-function letreiro(texto, w, h) {
-  const c = document.createElement('canvas');
-  c.width = 512;
-  c.height = 128;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#1c2430';
-  ctx.fillRect(0, 0, 512, 128);
-  ctx.fillStyle = '#f4f1ea';
-  ctx.font = '600 64px "IBM Plex Sans", system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(texto, 256, 64);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(w, h),
-    new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }),
-  );
-  return mesh;
-}
-
 function torre({ x, z, w, d, h, pedra, vidro }) {
   const g = new THREE.Group();
   const h1 = h * 0.58;
@@ -181,44 +160,6 @@ function criarAve(cor) {
 
 const CORES_AVE = [0x14171b, 0x1c1814, 0x2a241c, 0x101418, 0x3a332c, 0x1a1e24];
 
-function aerodromo() {
-  const g = new THREE.Group();
-  const relva = new THREE.Mesh(new THREE.BoxGeometry(150, 0.4, 260), mat(0x6a7544));
-  relva.position.set(0, 0.1, 10);
-  const pista = new THREE.Mesh(new THREE.BoxGeometry(16, 0.25, 220), mat(0x3a3e42));
-  pista.position.set(0, 0.4, 16);
-  g.add(relva, pista);
-  for (let i = 0; i < 10; i++) {
-    const marca = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 8), mat(0xe6e2d6));
-    marca.position.set(0, 0.58, -70 + i * 18);
-    g.add(marca);
-  }
-  const numero = letreiro('01', 6, 1.6);
-  numero.rotation.x = -Math.PI / 2;
-  numero.position.set(0, 0.62, -88);
-  g.add(numero);
-  for (const side of [-1, 1]) {
-    const hangar = new THREE.Group();
-    const corpo = new THREE.Mesh(new THREE.BoxGeometry(22, 8, 16), mat(0x8a7358));
-    corpo.position.y = 4;
-    const tecto = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 22, 10, 1, false, 0, Math.PI), mat(0x5c4e40));
-    tecto.rotation.z = Math.PI / 2;
-    tecto.position.y = 8;
-    hangar.add(corpo, tecto);
-    hangar.position.set(side * 28, 0, side < 0 ? -20 : 24);
-    g.add(hangar);
-  }
-  const mastro = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 10, 6), mat(0x2a2e32));
-  mastro.position.set(22, 5, -55);
-  const manga = new THREE.Mesh(new THREE.ConeGeometry(0.7, 3.2, 6), mat(0xc4553a));
-  manga.rotation.z = -Math.PI / 2;
-  manga.position.set(24.2, 9.2, -55);
-  const placa = letreiro('PONTE DE SOR', 16, 3.2);
-  placa.position.set(-34, 6, -6);
-  g.add(mastro, manga, placa);
-  return g;
-}
-
 /** +1 = esquerda do ecrã. O ladoTapado das torres fica no referencial antigo dos dados. */
 function ladoEcra(o) {
   const esq = Number(o?.folga_pela_esquerda_m ?? 0);
@@ -228,15 +169,13 @@ function ladoEcra(o) {
   return 0;
 }
 
-/** Bando em Ponte de Sor — aves soltas à altitude de voo, pista da FAL por baixo. */
+/**
+ * Bando — aves soltas à altitude de voo. Sem chão próprio: no mundo 1:1 o
+ * terreno já está por baixo, e um aeródromo preso ao bando flutuava no ar.
+ */
 export function criarAves(p, o, leve, opcoes = {}) {
   const g = new THREE.Group();
   g.rotation.y = p.rumo ?? 0;
-  if (opcoes.solo !== false) {
-    const solo = aerodromo();
-    solo.position.set(0, -18, -24);
-    g.add(solo);
-  }
   const plano = planoBando({
     n: leve ? 12 : 16,
     ladoEcra: ladoEcra(o),
