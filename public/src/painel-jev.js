@@ -76,11 +76,13 @@ export function linhasPainel(answers, confidence = null) {
     }
     if (Number.isFinite(Number(a?.probability))) {
       const p = Number(a.probability);
+      const sim = p >= 0.5;
+      // A probabilidade ao lado da escolha é a da resposta escolhida: «Não 0,59», nunca «Não 0,41».
       return {
-        chave, rotulo, tipo: 'boolean', escolha: p >= 0.5 ? 'Sim' : 'Não', p, confianca: null,
+        chave, rotulo, tipo: 'boolean', escolha: sim ? 'Sim' : 'Não', p: sim ? p : 1 - p, confianca: null,
         distribuicao: [
-          { opcao: 'true', rotulo: 'Sim', p, escolhida: p >= 0.5 },
-          { opcao: 'false', rotulo: 'Não', p: 1 - p, escolhida: p < 0.5 },
+          { opcao: 'true', rotulo: 'Sim', p, escolhida: sim },
+          { opcao: 'false', rotulo: 'Não', p: 1 - p, escolhida: !sim },
         ],
       };
     }
