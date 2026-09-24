@@ -10,6 +10,7 @@ import { actualizarTerreno, criarTerreno, largarTerreno } from './terreno.js';
 import { alturaTerreno, perfilTerreno } from './relevo.js';
 import { TAMANHO_MOSAICO_M } from './mosaicos.js';
 import { actualizarCeu, criarCeu } from './ceu.js';
+import { actualizarMarcas, criarMarcas } from './marcas-missao.js';
 
 // Suavização do desvio da câmara em relação ao avião (por segundo); a vertical
 // é quase rígida para não largar a cauda na subida/descida do dodge.
@@ -349,7 +350,7 @@ function luzesNavegacao(aviao) {
   });
 }
 
-export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null, pistas = [], apresentacao = true } = {}) {
+export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null, pistas = [], apresentacao = true, destinos = [], nomesDestinos = {} } = {}) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: !leve,
@@ -421,6 +422,8 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
 
   const ameaças = new THREE.Group();
   scene.add(ameaças);
+  // Rota, destinos e seta da manobra (só nas missões; o piloto não tem destinos).
+  const marcas = destinos.length ? criarMarcas(scene, destinos, nomesDestinos) : null;
 
   // Órbita à mão à volta do LUS-222 (arrastar, pinçar, roda). Sem pan: o
   // centro é sempre o avião; actualizarCamara move-o com o voo. Deixa ver o
@@ -437,6 +440,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     ameaças,
     geografia,
     terreno,
+    marcas,
     ambienteRT,
     sol: sun,
     fill,
@@ -471,15 +475,29 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
 
 /**
  * Por frame, DEPOIS de recentrarOrigem e de actualizarCamara, com
- * `visual = { pose, poseLocal, ambiente }`: o terreno carrega e larga
+ * `visual = { pose, poseLocal, ambiente, marcas? }`: o terreno carrega e larga
  * mosaicos com a pose ABSOLUTA (vivem em coordenadas absolutas dentro de
  * `geografia`, por isso a ordem face ao recentrar não importa); o céu usa a
- * pose LOCAL e a câmara já deste frame (a cúpula segue-a).
+ * pose LOCAL e a câmara já deste frame (a cúpula segue-a); as marcas da
+ * missão (marcas-missao.js) usam a pose absoluta e a origem visual.
  */
 export function actualizarCena(mundo, visual, dt = 0) {
   if (!mundo?.terreno) return;
   actualizarTerreno(mundo.terreno, visual.pose.x, visual.pose.z, 1);
-  if (!mundo.ceu || !visual.poseLocal || !visual.ambiente) return;
+  if (mundo.ceu && visual.poseLocal && visual.ambiente) actualizarCeuEAviao(mundo, visual, dt);
+  // Depois do céu: os portais param no far do nevoeiro deste frame.
+  if (mundo.marcas && visual.marcas) {
+    actualizarMarcas(mundo.marcas, {
+      ...visual.marcas,
+      pose: visual.pose,
+      poseLocal: visual.poseLocal,
+      origem: mundo.origemVisual,
+      ecra: { camera: mundo.camera, larguraPx: mundo.mundoLargura, alturaPx: mundo.mundoAltura },
+    });
+  }
+}
+
+function actualizarCeuEAviao(mundo, visual, dt) {
   const pal = actualizarCeu(mundo.ceu, {
     scene: mundo.scene,
     sol: mundo.sol,

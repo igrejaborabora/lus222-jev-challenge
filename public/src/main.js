@@ -4,6 +4,7 @@ import { avaliarLinha, resumirLinhas } from './avaliacao-sim.js';
 import { decisaoGeometrica, etiquetarAcao, etiquetarDestino, etiquetarManobraV, etiquetarManobraL, evasaoDeAnswers } from './decisao.js';
 import { novoAutomato, passoAutomato, poseAviao } from './automato.js';
 import { poseMissao } from './escala.js';
+import { alcanceM, pontosFitaRota, setaManobra } from './rota-visual.js';
 import { pistasDaMissao } from './relevo.js';
 import { posicaoVisualBaloes } from './ameaca-visual.js';
 import {
@@ -35,7 +36,7 @@ const LABEL_DESTINO = { planeado: 'Destino planeado', origem: 'Origem', hospital
 const QUESTOES = { configuracaoCabine: 'Cabine', prioridadeOperacional: 'Prioridade', pistaAdequada: 'Pista adequada', combustivelSuficiente: 'Combustível suficiente', acaoMissao: 'Ação de missão', manobraVertical: 'Vertical', manobraLateral: 'Lateral', destinoPreferido: 'Destino se mudar rota', urgencia: 'Urgência', riscoMeteorologico: 'Risco meteorológico', precisaRevisaoPIC: 'Revisão PIC', continuarVoo: 'Continuar voo' };
 // O corredor do piloto não tem meteorologia própria: tecto alto, bom tempo, sem vento.
 const AMBIENTE_PILOTO = Object.freeze({ tetoFt: 3000, visKm: 12, luzDia: true, ventoMs: Object.freeze({ x: 0, z: 0 }) });
-const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0 };
+const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0, autorManobra: 'jev', marcasCache: null };
 
 function mostrar(nome) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === `screen-${nome}`));
@@ -166,6 +167,9 @@ async function criarMundo() {
       pose: parametrosVoo(),
       pistas: emModoPiloto() ? [] : pistasDaMissao(estado.missao.destinos),
       apresentacao: !emModoPiloto(),
+      // O piloto contínuo não tem destinos: sem marcas da missão.
+      destinos: emModoPiloto() ? [] : estado.missao.destinos,
+      nomesDestinos: emModoPiloto() ? {} : Object.fromEntries(estado.missao.destinos.map((d) => [d.id, nomeDestino(d.id)])),
     });
     ajustarMundo();
   } catch {
@@ -196,6 +200,41 @@ function ambienteVisivel() {
   const m = estado.missao;
   return estado.incidentePendente ? ambienteAposEvento(m, estado.incidentePendente) : m.ambiente;
 }
+const RESERVA_FOLGADA = 1.15;
+const REFRESCAR_MARCAS_MS = 500;
+function classeReserva(alcance, distancia) {
+  if (alcance >= RESERVA_FOLGADA * distancia) return 'ok';
+  return alcance >= distancia ? 'curta' : 'insuficiente';
+}
+/**
+ * Alcance (bissecção), reserva e distâncias no máximo a cada 500 ms, e já ao
+ * mudar de destino. A fita e a seta são deste frame: com a fita de há 500 ms,
+ * a 8× os portais saltavam ~120 m de lado durante uma evasão.
+ */
+function dadosMarcas() {
+  const m = estado.missao;
+  const agora = performance.now();
+  let c = estado.marcasCache;
+  if (!c || c.destinoId !== m.destinoId || agora - c.em >= REFRESCAR_MARCAS_MS) {
+    const distancia = (d) => Math.hypot(d.xM - m.voo.xM, d.zM - m.voo.zM);
+    const activo = m.destinos.find((d) => d.id === m.destinoId) ?? m.destinos[1];
+    c = estado.marcasCache = {
+      em: agora,
+      destinoId: m.destinoId,
+      destino: activo,
+      reserva: classeReserva(alcanceM(m), distancia(activo)),
+      distanciasKm: Object.fromEntries(m.destinos.map((d) => [d.id, distancia(d) / 1000])),
+    };
+  }
+  return {
+    pontosRota: pontosFitaRota(m.voo, c.destino),
+    destinoAtivoId: m.destinoId,
+    distanciasKm: c.distanciasKm,
+    reserva: c.reserva,
+    seta: m.voo.tempoS < m.comando.evasaoAteS ? setaManobra(m.comando) : null,
+    autor: estado.autorManobra ?? 'jev',
+  };
+}
 function desenharMundo(dt) {
   if (!estado.mundo) return;
   const api = estado.mundoApi;
@@ -216,7 +255,8 @@ function desenharMundo(dt) {
     api.actualizarAmeacas(estado.mundo, dt);
     api.actualizarCamara(estado.mundo, pose, dt);
     // Em pausa o céu congela (chuva, rastos e anoitecer); continua a desenhar.
-    api.actualizarCena(estado.mundo, { pose: absoluta, poseLocal: pose, ambiente: ambienteVisivel() }, estado.pausa ? 0 : dt);
+    const marcas = emModoPiloto() ? null : dadosMarcas();
+    api.actualizarCena(estado.mundo, { pose: absoluta, poseLocal: pose, ambiente: ambienteVisivel(), marcas }, estado.pausa ? 0 : dt);
     estado.mundo.renderer.render(estado.mundo.scene, estado.mundo.camera);
   } catch { /* falha visual não altera a decisão */ }
 }
@@ -550,6 +590,8 @@ async function processarEvento(evento, gen) {
   const antes = { tempoS: Math.round(estado.missao.voo.tempoS), fuelKg: Math.round(estado.missao.voo.combustivelKg), destino: estado.missao.destinoId };
   const { missao, supervisor } = aplicarDecisao(estado.missao, jev.answers, estado.modo === 'replay' ? 'jev-replay' : 'jev');
   estado.missao = missao;
+  // Seta branca se a manobra é do JEV, vermelha se o supervisor a corrigiu.
+  estado.autorManobra = supervisor.interveio ? 'supervisor' : 'jev';
   const linha = { id: evento.id, cenario: estado.cenario, resumo: evento.resumo, entrada, jev, baseline: decisaoGeometrica(entrada), supervisor, antes, depois: null, estadoAntes, estadoDepois: safeClone(missao), pic: { interveio: false } };
   estado.log.linhas.push(linha);
   atualizarDecisao(evento, entrada, jev, supervisor);
@@ -628,6 +670,7 @@ async function iniciar(modo) {
   estado.missao = criarMissao(estado.cenario, seed, restricoes);
   estado.log = { versao: 4, fonte: modo === 'replay' ? 'jev-replay-gravado' : 'jev-ao-vivo', modelo: 'typesafe-ai/jev', perfil: PERFIL.versao, cenario: estado.cenario, semente: seed, restricoes, briefing: null, linhas: [], intervencoes: [], incompleta: false, motivo: null, resultado: null };
   estado.pausa = false; estado.espera = false; estado.falha = false; estado.incidentePendente = null; estado.briefingPendente = false; estado.revelarAte = 0; estado.velocidade = 8;
+  estado.autorManobra = 'jev'; estado.marcasCache = null;
   $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true; $('pilot-proof').hidden = true; $('btn-pic').hidden = false; $('btn-real-map').hidden = estado.cenario !== 'porto'; $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade'; $('btn-camera').textContent = 'Câmara: cauda';
   $('flight-name').textContent = nomeCenario(); $('flight-source').textContent = modo === 'replay' ? 'REPLAY GRAVADO · SEM NOVA AVALIAÇÃO' : 'JEV AO VIVO · AI GATEWAY';
   $('decision-origin').textContent = modo === 'replay' ? 'JEV / REPLAY GRAVADO' : 'JEV / AO VIVO';
@@ -849,7 +892,7 @@ function ligarUI() {
     const acao = $('pic-action').value;
     const original = estado.log.linhas.at(-1)?.jev.answers;
     const respostas = { ...(original ?? {}), acaoMissao: { choice: acao }, destinoPreferido: { choice: acao === 'regressar_base' ? 'origem' : acao === 'desviar_alternativo' ? (estado.cenario === 'medevac' ? 'hospital_alternativo' : estado.cenario === 'porto' ? 'aeroporto_alternativo' : 'stol_proximo') : estado.missao.destinoId }, manobraVertical: { choice: 'manter' }, manobraLateral: { choice: 'manter' }, urgencia: { score: 1 } };
-    const { missao, supervisor } = aplicarDecisao(estado.missao, respostas, 'pic-humano', false); estado.missao = missao;
+    const { missao, supervisor } = aplicarDecisao(estado.missao, respostas, 'pic-humano', false); estado.missao = missao; estado.autorManobra = 'pic';
     estado.log.intervencoes.push({ tempoS: missao.voo.tempoS, acao, supervisor });
     const ultima = estado.log.linhas.at(-1); if (ultima) ultima.pic.interveio = true;
     $('flow-effect').textContent = supervisor.interveio ? `PIC pediu ${etiquetarAcao(acao)}; supervisor bloqueou: ${supervisor.motivo}.` : `PIC sobrepôs: ${etiquetarAcao(acao)}. Nova rota ${nomeDestino(missao.destinoId)}.`;
