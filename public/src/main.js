@@ -233,6 +233,8 @@ function dadosMarcas() {
     reserva: c.reserva,
     seta: m.voo.tempoS < m.comando.evasaoAteS ? setaManobra(m.comando) : null,
     autor: estado.autorManobra ?? 'jev',
+    // Anel à volta dos balões: o perímetro de protecção da simulação (36 m).
+    raioBaloesM: m.ameacaAtiva?.raioProtecaoM ?? null,
   };
 }
 function desenharMundo(dt) {

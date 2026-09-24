@@ -86,6 +86,8 @@ function meshAmeaca(o, pose, leve, mundo) {
   g.position.set(p.x, 0, p.z);
   g.userData.visual = p.visual;
   g.userData.fixa = p.fixa;
+  // Texto da etiqueta de leitura (marcas-missao.js): «relevo», «bando», …
+  g.userData.tipo = o?.tipo ?? p.visual;
 
   switch (p.visual) {
     case 'canyon':
@@ -493,6 +495,7 @@ export function actualizarCena(mundo, visual, dt = 0) {
       pose: visual.pose,
       poseLocal: visual.poseLocal,
       origem: mundo.origemVisual,
+      ameacas: mundo.ameaças,
       ecra: { camera: mundo.camera, larguraPx: mundo.mundoLargura, alturaPx: mundo.mundoAltura },
     });
   }
