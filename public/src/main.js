@@ -284,6 +284,16 @@ function entradaBreve(entrada) {
   if (obstaculo) return `${obstaculo.tipo} · ${obstaculo.distancia_m} m · ${obstaculo.segundos_ate_ao_contacto} s`;
   return `${entrada.ambiente.tecto_ft} ft teto · ${entrada.ambiente.vento_kt} kt vento · ${entrada.aeronave.fuel_kg} kg fuel`;
 }
+/** Como se lê a passagem da ameaça deste evento; null sem balões nem leitura. */
+function textoLeitura(evento) {
+  if (evento.tipo === 'baloes') return 'Passagem apresentada a 2×; balões à escala, com etiqueta e anel de leitura; separação calculada em metros.';
+  return estado.leitura ? `Passagem apresentada a 2×; ${estado.leitura.tipo} à escala, com etiqueta de distância.` : null;
+}
+/** A intervenção do supervisor aparece sempre; a leitura da ameaça junta-se-lhe. */
+function textoEstadoVoo(evento, supervisor) {
+  const bloqueio = supervisor.interveio ? 'A escolha do JEV foi bloqueada; o supervisor protege a trajetória.' : null;
+  return [bloqueio, textoLeitura(evento)].filter(Boolean).join(' ') || 'Decisão aplicada à missão e ao voo.';
+}
 function atualizarDecisao(evento, entrada, jev, supervisor) {
   $('event-number').textContent = String(estado.log.linhas.length).padStart(2, '0');
   $('event-title').textContent = evento.tipo === 'baloes' ? 'Balões na aproximação.' : evento.tipo === 'aproximacao' ? 'Pista à vista.' : evento.tipo === 'meteorologia' ? 'O tempo mudou.' : evento.tipo === 'relevo' ? 'Obstáculo na rota.' : evento.tipo === 'aves' ? 'Aves à frente.' : evento.tipo === 'trafego' ? 'Tráfego no sector.' : evento.tipo === 'combustivel' ? 'Reserva em risco.' : 'É preciso decidir.';
@@ -299,7 +309,7 @@ function atualizarDecisao(evento, entrada, jev, supervisor) {
   $('decision-pic').textContent = Number(jev.answers.precisaRevisaoPIC.probability) >= .55 ? 'JEV SUGERE REVISÃO PIC' : 'SEM REVISÃO SUGERIDA';
   mostrarRespostas(jev.answers);
   selo(supervisor.interveio ? 'SUPERVISOR INTERVEIO' : origemSelo(), `${etiquetarAcao(supervisor.aplicada.acao ?? jev.answers.acaoMissao.choice)} · ${manobraCurta(supervisor.aplicada.vertical, supervisor.aplicada.lateral)}`, jev.latencia_ms);
-  $('flight-status').textContent = evento.tipo === 'baloes' ? 'Passagem apresentada a 2×; balões à escala, com etiqueta e anel de leitura; separação calculada em metros.' : estado.leitura ? `Passagem apresentada a 2×; ${estado.leitura.tipo} à escala, com etiqueta de distância.` : supervisor.interveio ? 'A escolha do JEV foi bloqueada; o supervisor protege a trajetória.' : 'Decisão aplicada à missão e ao voo.';
+  $('flight-status').textContent = textoEstadoVoo(evento, supervisor);
 }
 function atualizarTelemetria() {
   if (!estado.missao) return;
@@ -607,9 +617,11 @@ async function processarEvento(evento, gen) {
   if (estado.mundo) {
     estado.mundoApi.mostrarAmeacas(estado.mundo, entrada.geometria.obstaculos, parametrosVoo(), { escalaDistancia: 1 });
     // Enquadra avião e ameaça no momento da decisão, com a pose deste instante.
+    // Decide pelo tipo do evento, como a leitura acima: uns balões ainda
+    // activos não roubam o enquadramento a uma ameaça nova.
     const ameaca = estado.missao.ameacaAtiva;
-    const foco = ameaca
-      ? posicaoVisualBaloes(estado.missao.voo, ameaca, estado.mundoApi.poseLocalAgora(estado.mundo, parametrosVoo()))
+    const foco = evento.tipo === 'baloes'
+      ? ameaca && posicaoVisualBaloes(estado.missao.voo, ameaca, estado.mundoApi.poseLocalAgora(estado.mundo, parametrosVoo()))
       : estado.leitura ? estado.mundoApi.focoAmeaca(estado.mundo) : null;
     if (foco) estado.mundoApi.focarEvento(estado.mundo, foco);
   }
@@ -809,6 +821,7 @@ function abrirDebrief() {
   if (estado.ecra !== 'live') return;
   // Pedidos ainda em voo continuariam a gastar o Gateway depois do fim.
   cancelarPedidos(); ++estado.geracao;
+  estado.leitura = null;
   if (emModoPiloto()) fecharOrdemActivaPiloto();
   else atualizarResultadoLinha();
   estado.log.resultado = estado.missao.resultado;
@@ -818,7 +831,7 @@ function abrirDebrief() {
 function terminarIncompleta(motivo) {
   if (!estado.missao) return;
   estado.log.incompleta = true; estado.log.motivo = motivo;
-  estado.missao = { ...estado.missao, resultado: 'interrompida' };
+  estado.missao = { ...estado.missao, resultado: 'interrompida' }; estado.leitura = null;
   abrirDebrief();
 }
 async function reavaliar() {
