@@ -188,7 +188,8 @@ async function avaliarJev(momento, entrada) {
   try {
     const r = await fetch('/api/jev', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ momento, estado: entrada }), signal: ctrl.signal });
     const d = await lerJson(r);
-    if (d.erro === 'limite') throw erroLimite(d.mensagem || 'Limite da demonstração ao vivo atingido.');
+    // O 429 da firewall da Vercel não traz o nosso JSON: qualquer 429 é limite.
+    if (d.erro === 'limite' || r.status === 429) throw erroLimite(d.erro === 'limite' ? d.mensagem : 'Limite de pedidos ao vivo atingido.');
     if (!r.ok || d.fonte !== 'jev') throw new Error(d.mensagem || 'O JEV não respondeu.');
     const c = validarRespostas(momento, d.answers);
     if (!c.ok) throw new Error(`Contrato JEV inválido: ${c.erro}`);
@@ -483,7 +484,7 @@ async function avaliarPassoPiloto(ticket, entrada) {
       signal: ctrl.signal,
     });
     const d = await lerJson(r);
-    if (d.erro === 'limite') throw erroLimite(d.mensagem || 'Limite da demonstração ao vivo atingido.');
+    if (d.erro === 'limite' || r.status === 429) throw erroLimite(d.erro === 'limite' ? d.mensagem : 'Limite de pedidos ao vivo atingido.');
     if (!r.ok || d.fonte !== 'jev') throw new Error(d.mensagem || 'O JEV não respondeu.');
     const contrato = validarRespostas('incidente', d.answers);
     if (!contrato.ok) throw new Error(`Contrato JEV inválido: ${contrato.erro}`);
