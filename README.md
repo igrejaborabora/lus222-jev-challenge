@@ -18,11 +18,21 @@ A **Prova contínua JEV** é um modo separado: o avião atravessa um slalom de t
 
 A interface usa uma paleta preta e branca e uma animação de pontos “J·EV” na abertura, inspirada na linguagem visual da Pixelgrammar. A animação fica estática quando o sistema pede movimento reduzido; a missão também funciona sem WebGL (`?sem-webgl=1` permite verificar essa apresentação).
 
-Cada ecrã cabe na altura da janela (`100dvh`) a 375, 390, 768, 1366 e 1440 px, sem scroll de página. Só os painéis secundários (linha de decisão, respostas tipadas, gavetas) fazem scroll interno; nenhum comando fica fora da vista. A render do LUS-222 é o exlibris: ocupa a abertura, aparece esbatida na mesa e no relatório, recortada nas cartas de missão e em miniatura na identidade do voo. O voo abre com dois segundos de órbita à volta do avião antes da vista atrás da cauda.
+Cada ecrã cabe na altura da janela (`100dvh`) a 375, 390, 768, 1366 e 1440 px, sem scroll de página. Só os painéis secundários (linha de decisão, respostas tipadas, gavetas) fazem scroll interno; nenhum comando fica fora da vista. A render do LUS-222 é o exlibris: ocupa a abertura, aparece esbatida na mesa e no relatório, recortada nas cartas de missão e em miniatura na identidade do voo. O voo abre com três segundos de vista lateral, do flanco iluminado, antes da vista atrás da cauda.
 
 - **Mesa de missão:** cartas numa linha (deslizam na horizontal no telemóvel), parâmetros compactos e `Iniciar JEV ao vivo` / `Ver replay gravado` fixos em baixo. A pista real abre numa sobreposição.
-- **Voo:** canvas a ecrã inteiro; topo com identidade, fase e `Terminar`; selo da decisão com a manobra e os milissegundos do JEV; dock com `Decisão`, `Pausar`, velocidade, `Intervenção PIC` e `Pista real`. O painel de decisão é uma gaveta, aberta por omissão no desktop e fechada no telemóvel.
+- **Voo:** canvas a ecrã inteiro; topo com identidade, fase e `Terminar`; selo da decisão com a manobra e os milissegundos do JEV; dock com `Decisão`, `Pausar`, velocidade, `Câmara`, `Intervenção PIC` e `Pista real` (só no Porto). O painel de decisão é uma gaveta estreita, aberta por omissão a partir de 1280 px de largura e fechada abaixo disso; fechada, sai da ordem de foco.
 - **Relatório:** métricas numa linha, linha de decisão com scroll interno e laboratório numa gaveta.
+
+## Mundo 3D
+
+O mundo 3D só desenha o estado da simulação; nada do que lá aparece é enviado ao JEV.
+
+- **Escala e lados:** a missão é desenhada em metros, à escala 1:1, sem comprimir distâncias nem altitudes. O simulador usa +x = direita do piloto; o mundo espelha o eixo x e o rumo, para que a «direita» do JEV apareça à direita do ecrã com a câmara atrás da cauda.
+- **Terreno:** relevo procedural determinístico por cenário, em mosaicos de 2 km criados e libertados à volta do avião. Porto com o mar a oeste, à esquerda na aproximação; SAR sobre o mar, com a costa à direita; Açores com ilhas afastadas do corredor; Ponte de Sor numa planície. As pistas ficam planas e, junto ao mar, assentes num ilhéu raso. O corredor da prova contínua é quase plano. O relevo é ilustrativo e não é cartografia.
+- **Céu:** vem do mesmo ambiente que o JEV recebe; com um incidente à espera de decisão, já é o ambiente depois do evento. A camada de nuvens tem a base no tecto, o nevoeiro fecha com a visibilidade, abaixo de 5 km chove e acima de 10 kt de vento aparecem rastos na direcção do vento. Quando a luz do dia acaba, o céu escurece em cerca de 60 s, acendem-se as luzes de navegação e o avião escurece. Em pausa, o céu congela.
+- **Marcas no mundo:** portais de rota até ao destino activo, com a cor da reserva: branco se o alcance passa 1,15 × a distância, âmbar se passa à justa, vermelho se não chega. Cada destino tem um alfinete com nome e distância; o activo usa uma etiqueta branca invertida e os outros ficam escuros e esbatidos. Cada ameaça tem uma etiqueta âmbar com a distância horizontal em tempo real. Os balões têm o tamanho aproximado de balões reais (poucos metros) e um anel de 36 m à volta (o perímetro de protecção da simulação). À frente do nariz, uma seta mostra a manobra em curso: branca se é do JEV, vermelha se o supervisor ou o PIC a alteraram.
+- **Câmara:** depois da abertura lateral, segue a cauda sem ficar para trás a 8×. Arrastar, pinçar ou usar a roda do rato orbita a vista à volta do avião (sem deslocar o centro); 4 s depois de largar, volta à cauda. No instante da decisão sobre os balões, enquadra avião e ameaça durante 2,6 s, com a ameaça perto do centro vertical para o selo não a tapar. O botão `Câmara` alterna entre cauda, lado e livre. A câmara nunca desce abaixo de 5 m acima do relevo ou do mar. Com movimento reduzido não há abertura. Ao sair da missão, as geometrias, texturas e sombras da cena são libertadas da GPU.
 
 ## Cenários e rubricagem
 
@@ -39,7 +49,7 @@ As condições e alternativas dos cenários são hipóteses da demonstração. O
 
 `public/src/simulacao.js` contém o perfil `ilustrativo-3`: massa, área de asa, sustentação/arrasto, empuxo, consumo, vento e limites assumidos. O integrador usa passos fixos de 0,1 s e um relógio de até 8×. As coordenadas da missão e as grandezas de voo usam unidades SI; o Three.js lê o resultado para o desenhar. A semente e as decisões permitem reproduzir o mesmo percurso. Uma aproximação completa demora cerca de 3–5 minutos a 8×; uma decisão de regresso pode encurtá-la.
 
-No incidente dos balões, o JEV recebe geometria estruturada (distância, tempo e folgas) e responde com ação, manobras e destino **condicional**. O simulador calcula a separação prevista com a mesma integração do voo; o supervisor altera uma manobra se a previsão entrar no perímetro ilustrativo de 36 m. A passagem regista a distância mínima efetiva ou termina como `separacao_perdida` se atravessar esse perímetro. O relógio simulado pára durante a avaliação de uma ameaça iminente. Os ícones 3D são ampliados para leitura, mas deslocam-se de acordo com as posições relativas em metros; não representam balões à escala real. Este cálculo não equivale a garantia operacional de separação.
+No incidente dos balões, o JEV recebe geometria estruturada (distância, tempo e folgas) e responde com ação, manobras e destino **condicional**. O simulador calcula a separação prevista com a mesma integração do voo; o supervisor altera uma manobra se a previsão entrar no perímetro ilustrativo de 36 m. A passagem regista a distância mínima efetiva ou termina como `separacao_perdida` se atravessar esse perímetro. O relógio simulado pára durante a avaliação de uma ameaça iminente e a passagem é apresentada a 2×. Os balões já não são ampliados: ficam nas posições relativas em metros, com um tamanho próximo do real, e lêem-se pela etiqueta com a distância e pelo anel de 36 m. Este cálculo não equivale a garantia operacional de separação.
 
 A referência da pista principal é a **LDA publicada de 3180 m para a pista 17** no [AIP Portugal, LPPR AD 2.13](https://ais.nav.pt/wp-content/uploads/AIS_Files/eAIP_Current/eAIP_Online/eAIP/html/eAIP/LP-AD-2.LPPR-en-PT.html). Esse valor contextual não calibra o avião. A [informação turística oficial do Porto](https://backoffice.visitporto.travel/pt-PT/sao-joao-the-porto-celebration) descreve os balões de São João; a presença no corredor de chegada nesta missão é **ficcional**.
 
@@ -55,6 +65,15 @@ public/src/avaliacao-sim.js rubricagem por dimensão
 public/src/main.js          controlador de missão, UI, replay e laboratório
 public/src/piloto-corredor.js percurso contínuo, snapshots, pipeline de 2 e métricas
 public/src/world.js         representação 3D do estado do motor
+public/src/escala.js        mundo 1:1 e espelho do eixo x (direita do JEV = direita do ecrã)
+public/src/relevo.js        relevo determinístico por cenário, pistas planas e ilhéus
+public/src/mosaicos.js      que mosaicos de terreno criar, manter e largar
+public/src/terreno.js       malhas dos mosaicos e mar (Three.js)
+public/src/ambiente-visual.js nuvens, nevoeiro, noite e vento a partir do ambiente
+public/src/ceu.js           cúpula, nuvens, chuva, rastos e sol (Three.js)
+public/src/rota-visual.js   fita de rota, alcance e sentido da seta da manobra
+public/src/marcas-missao.js portais, alfinetes, etiquetas, anel e seta (Three.js)
+public/src/camara-modos.js  modos de câmara: abertura, cauda, lado, evento e livre
 public/replays/*.json       quatro gravações reais do JEV, identificadas como replay
 scripts/record-replays.mjs  regenera gravações através do Gateway
 lib/*.test.mjs             testes de contrato, física, ramificação e replay

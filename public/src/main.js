@@ -1,8 +1,13 @@
-import { CENARIOS_SIM, PERFIL, criarMissao, avancarMissao, aplicarDecisao, proximoEvento, estadoParaAvaliacao, combustivelNecessarioKg, pistaNecessariaM } from './simulacao.js';
+import { CENARIOS_SIM, PERFIL, ambienteAposEvento, criarMissao, avancarMissao, aplicarDecisao, proximoEvento, estadoParaAvaliacao, combustivelNecessarioKg, pistaNecessariaM } from './simulacao.js';
 import { validarRespostas } from './contrato-jev.js';
 import { avaliarLinha, resumirLinhas } from './avaliacao-sim.js';
 import { decisaoGeometrica, etiquetarAcao, etiquetarDestino, etiquetarManobraV, etiquetarManobraL, evasaoDeAnswers } from './decisao.js';
 import { novoAutomato, passoAutomato, poseAviao } from './automato.js';
+import { poseMissao } from './escala.js';
+import { alcanceM, pontosFitaRota, setaManobra } from './rota-visual.js';
+import { pistasDaMissao } from './relevo.js';
+import { emLeitura, leituraAmeaca, posicaoVisualBaloes } from './ameaca-visual.js';
+import { ameacaIminente, fatorTempo, TECTO_LEITURA } from './fator-tempo.js';
 import {
   actualizarSeparacoes,
   actualizarOrdemPiloto,
@@ -30,7 +35,9 @@ const $ = (id) => document.getElementById(id);
 const FALHAS_ATE_PARAR = 5;
 const LABEL_DESTINO = { planeado: 'Destino planeado', origem: 'Origem', hospital_alternativo: 'Hospital alternativo', aeroporto_alternativo: 'Aeroporto alternativo', stol_proximo: 'Pista STOL próxima' };
 const QUESTOES = { configuracaoCabine: 'Cabine', prioridadeOperacional: 'Prioridade', pistaAdequada: 'Pista adequada', combustivelSuficiente: 'Combustível suficiente', acaoMissao: 'Ação de missão', manobraVertical: 'Vertical', manobraLateral: 'Lateral', destinoPreferido: 'Destino se mudar rota', urgencia: 'Urgência', riscoMeteorologico: 'Risco meteorológico', precisaRevisaoPIC: 'Revisão PIC', continuarVoo: 'Continuar voo' };
-const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0 };
+// O corredor do piloto não tem meteorologia própria: tecto alto, bom tempo, sem vento.
+const AMBIENTE_PILOTO = Object.freeze({ tetoFt: 3000, visKm: 12, luzDia: true, ventoMs: Object.freeze({ x: 0, z: 0 }) });
+const estado = { ecra: 'splash', gateway: false, cenario: 'porto', modo: null, missao: null, log: null, replay: null, mundo: null, mundoApi: null, raf: 0, ultimoFrame: 0, ultimoUI: 0, pausa: false, espera: false, falha: false, incidentePendente: null, briefingPendente: false, revelarAte: 0, velocidade: 8, pedido: null, pedidosPiloto: new Map(), piloto: null, geracao: 0, autorManobra: 'jev', marcasCache: null, leitura: null };
 
 function mostrar(nome) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === `screen-${nome}`));
@@ -95,7 +102,11 @@ function criarCartoes() {
   $('btn-setup-map').hidden = estado.cenario !== 'porto';
 }
 
-function ecraLargo() { return matchMedia('(min-width: 761px)').matches; }
+// A partir de 1280 px a gaveta de decisão abre por omissão; abaixo começa
+// fechada, para dar espaço ao 3D. Anda a par da regra de styles.css para
+// 761–1100 px, que estreita o selo e o desvia (com a etiqueta) para o lado da
+// gaveta aberta: se mudares um dos limiares, revê o outro.
+function ecraLargo() { return matchMedia('(min-width: 1280px)').matches; }
 function abrirGaveta(aberta) {
   $('decision-panel').classList.toggle('is-open', aberta);
   $('btn-drawer').setAttribute('aria-expanded', String(aberta));
@@ -147,8 +158,7 @@ async function carregarReplaysPiloto() {
 
 function parametrosVoo() {
   if (emModoPiloto()) return poseAviao(estado.piloto.automato);
-  const v = estado.missao.voo;
-  return { x: v.xM / 210, y: v.altitudeM / 11.5, z: (v.zM - 25000) / 210, heading: v.rumoRad, bank: -v.bankRad, pitch: -v.pitchRad, hélice: v.tempoS * 16, dodge: v.tempoS < estado.missao.comando.evasaoAteS };
+  return poseMissao(estado.missao.voo, estado.missao.comando);
 }
 async function criarMundo() {
   try {
@@ -158,9 +168,13 @@ async function criarMundo() {
     estado.mundoApi = api;
     estado.mundo = api.criarCena($('flight-canvas'), {
       leve: api.perfilGraficoLeve(),
-      cenario: estado.cenario,
+      cenario: emModoPiloto() ? 'corredor' : estado.cenario,
       pose: parametrosVoo(),
+      pistas: emModoPiloto() ? [] : pistasDaMissao(estado.missao.destinos),
       apresentacao: !emModoPiloto(),
+      // O piloto contínuo não tem destinos: sem marcas da missão.
+      destinos: emModoPiloto() ? [] : estado.missao.destinos,
+      nomesDestinos: emModoPiloto() ? {} : Object.fromEntries(estado.missao.destinos.map((d) => [d.id, nomeDestino(d.id)])),
     });
     ajustarMundo();
   } catch {
@@ -169,6 +183,8 @@ async function criarMundo() {
     $('flight-canvas').style.background = 'linear-gradient(155deg,#090b0e,#20262c 55%,#454d55)';
     $('flight-status').textContent = 'Visualização 2D. A missão e o JEV continuam.';
   }
+  // Sem mundo 3D não há câmara para alternar.
+  $('btn-camera').hidden = !estado.mundo;
 }
 function ajustarMundo() {
   if (!estado.mundo) return;
@@ -176,25 +192,78 @@ function ajustarMundo() {
   if (r.width > 1 && r.height > 1) estado.mundoApi.redimensionar(estado.mundo, Math.round(r.width), Math.round(r.height));
 }
 function largarMundo() {
-  if (estado.mundo?.renderer) estado.mundo.renderer.dispose();
+  try { if (estado.mundo) estado.mundoApi?.largarCena(estado.mundo); } catch { /* libertar a GPU nunca impede sair da missão */ }
   estado.mundo = null; estado.mundoApi = null;
+}
+/**
+ * O céu mostra o ambiente que o JEV recebe: com um incidente à espera da
+ * decisão, já é o ambiente depois do evento (estadoParaAvaliacao), embora
+ * m.ambiente só mude quando a decisão é aplicada.
+ */
+function ambienteVisivel() {
+  if (emModoPiloto()) return AMBIENTE_PILOTO;
+  const m = estado.missao;
+  return estado.incidentePendente ? ambienteAposEvento(m, estado.incidentePendente) : m.ambiente;
+}
+const RESERVA_FOLGADA = 1.15;
+const REFRESCAR_MARCAS_MS = 500;
+function classeReserva(alcance, distancia) {
+  if (alcance >= RESERVA_FOLGADA * distancia) return 'ok';
+  return alcance >= distancia ? 'curta' : 'insuficiente';
+}
+/**
+ * Alcance (bissecção), reserva e distâncias no máximo a cada 500 ms, e já ao
+ * mudar de destino. A fita e a seta são deste frame: com a fita de há 500 ms,
+ * a 8× os portais saltavam ~120 m de lado durante uma evasão.
+ */
+function dadosMarcas() {
+  const m = estado.missao;
+  const agora = performance.now();
+  let c = estado.marcasCache;
+  if (!c || c.destinoId !== m.destinoId || agora - c.em >= REFRESCAR_MARCAS_MS) {
+    const distancia = (d) => Math.hypot(d.xM - m.voo.xM, d.zM - m.voo.zM);
+    const activo = m.destinos.find((d) => d.id === m.destinoId) ?? m.destinos[1];
+    c = estado.marcasCache = {
+      em: agora,
+      destinoId: m.destinoId,
+      destino: activo,
+      reserva: classeReserva(alcanceM(m), distancia(activo)),
+      distanciasKm: Object.fromEntries(m.destinos.map((d) => [d.id, distancia(d) / 1000])),
+    };
+  }
+  return {
+    pontosRota: pontosFitaRota(m.voo, c.destino),
+    destinoAtivoId: m.destinoId,
+    distanciasKm: c.distanciasKm,
+    reserva: c.reserva,
+    seta: m.voo.tempoS < m.comando.evasaoAteS ? setaManobra(m.comando) : null,
+    autor: estado.autorManobra ?? 'jev',
+    // Anel à volta dos balões: o perímetro de protecção da simulação (36 m).
+    raioBaloesM: m.ameacaAtiva?.raioProtecaoM ?? null,
+  };
 }
 function desenharMundo(dt) {
   if (!estado.mundo) return;
   const api = estado.mundoApi;
   try {
-    const pose = api.recentrarOrigem(estado.mundo, parametrosVoo());
+    // Ordem: recentrar → pose → ameaças → câmara → cena (terreno com a pose
+    // absoluta; céu com a local e a câmara deste frame) → desenhar.
+    const absoluta = parametrosVoo();
+    const pose = api.recentrarOrigem(estado.mundo, absoluta);
     api.aplicarPose(estado.mundo, pose);
     if (emModoPiloto() && estado.piloto) {
       api.mostrarAmeacas(
         estado.mundo,
         obstaculosCenario(estado.piloto.percurso, estado.piloto.automato),
-        parametrosVoo(),
+        absoluta,
         { escalaDistancia: 1 },
       );
     } else if (!emModoPiloto()) api.posicionarBaloes(estado.mundo, estado.missao.ameacaAtiva, estado.missao.voo, pose);
     api.actualizarAmeacas(estado.mundo, dt);
     api.actualizarCamara(estado.mundo, pose, dt);
+    // Em pausa o céu congela (chuva, rastos e anoitecer); continua a desenhar.
+    const marcas = emModoPiloto() ? null : dadosMarcas();
+    api.actualizarCena(estado.mundo, { pose: absoluta, poseLocal: pose, ambiente: ambienteVisivel(), marcas }, estado.pausa ? 0 : dt);
     estado.mundo.renderer.render(estado.mundo.scene, estado.mundo.camera);
   } catch { /* falha visual não altera a decisão */ }
 }
@@ -216,6 +285,18 @@ function entradaBreve(entrada) {
   if (obstaculo) return `${obstaculo.tipo} · ${obstaculo.distancia_m} m · ${obstaculo.segundos_ate_ao_contacto} s`;
   return `${entrada.ambiente.tecto_ft} ft teto · ${entrada.ambiente.vento_kt} kt vento · ${entrada.aeronave.fuel_kg} kg fuel`;
 }
+/** Como se lê a passagem da ameaça deste evento; null sem balões nem leitura. */
+function textoLeitura(evento) {
+  // O tecto de 2× só existe quando a velocidade escolhida é maior.
+  const ritmo = estado.velocidade > TECTO_LEITURA ? `Passagem apresentada a ${TECTO_LEITURA}×` : `Passagem a ${estado.velocidade}×`;
+  if (evento.tipo === 'baloes') return `${ritmo}; balões à escala, com etiqueta e anel de leitura; separação calculada em metros.`;
+  return estado.leitura ? `${ritmo}; ${estado.leitura.tipo} com etiqueta de distância.` : null;
+}
+/** A intervenção do supervisor aparece sempre; a leitura da ameaça junta-se-lhe. */
+function textoEstadoVoo(evento, supervisor) {
+  const bloqueio = supervisor.interveio ? 'A escolha do JEV foi bloqueada; o supervisor protege a trajetória.' : null;
+  return [bloqueio, textoLeitura(evento)].filter(Boolean).join(' ') || 'Decisão aplicada à missão e ao voo.';
+}
 function atualizarDecisao(evento, entrada, jev, supervisor) {
   $('event-number').textContent = String(estado.log.linhas.length).padStart(2, '0');
   $('event-title').textContent = evento.tipo === 'baloes' ? 'Balões na aproximação.' : evento.tipo === 'aproximacao' ? 'Pista à vista.' : evento.tipo === 'meteorologia' ? 'O tempo mudou.' : evento.tipo === 'relevo' ? 'Obstáculo na rota.' : evento.tipo === 'aves' ? 'Aves à frente.' : evento.tipo === 'trafego' ? 'Tráfego no sector.' : evento.tipo === 'combustivel' ? 'Reserva em risco.' : 'É preciso decidir.';
@@ -231,7 +312,7 @@ function atualizarDecisao(evento, entrada, jev, supervisor) {
   $('decision-pic').textContent = Number(jev.answers.precisaRevisaoPIC.probability) >= .55 ? 'JEV SUGERE REVISÃO PIC' : 'SEM REVISÃO SUGERIDA';
   mostrarRespostas(jev.answers);
   selo(supervisor.interveio ? 'SUPERVISOR INTERVEIO' : origemSelo(), `${etiquetarAcao(supervisor.aplicada.acao ?? jev.answers.acaoMissao.choice)} · ${manobraCurta(supervisor.aplicada.vertical, supervisor.aplicada.lateral)}`, jev.latencia_ms);
-  $('flight-status').textContent = evento.tipo === 'baloes' ? 'Passagem apresentada a 2×; balões ampliados para leitura, separação calculada em metros.' : supervisor.interveio ? 'A escolha do JEV foi bloqueada; o supervisor protege a trajetória.' : 'Decisão aplicada à missão e ao voo.';
+  $('flight-status').textContent = textoEstadoVoo(evento, supervisor);
 }
 function atualizarTelemetria() {
   if (!estado.missao) return;
@@ -250,7 +331,7 @@ function atualizarTelemetria() {
   }
   const m = estado.missao, v = m.voo, d = m.destinos.find((x) => x.id === m.destinoId);
   const restante = Math.hypot(v.xM - d.xM, v.zM - d.zM);
-  $('flight-phase').textContent = m.fase.replaceAll('_', ' ') + (estado.pausa ? ' · pausa' : m.ameacaAtiva && estado.velocidade > 2 ? ' · 2× balões' : '');
+  $('flight-phase').textContent = m.fase.replaceAll('_', ' ') + (estado.pausa ? ' · pausa' : m.ameacaAtiva && estado.velocidade > TECTO_LEITURA ? ` · ${TECTO_LEITURA}× balões` : estado.leitura && estado.velocidade > TECTO_LEITURA ? ` · ${TECTO_LEITURA}× ${estado.leitura.tipo}` : '');
   $('tel-speed').textContent = Math.round(v.velocidadeMs * 1.94384);
   $('tel-alt').textContent = Math.round(v.altitudeM * 3.28084).toLocaleString('pt-PT');
   $('tel-fuel').textContent = Math.round(v.combustivelKg);
@@ -270,7 +351,7 @@ function atualizarTelemetria() {
   const baloes = m.separacoes.find((s) => s.id === 'baloes');
   if (baloes && estado.log?.linhas.at(-1)?.id === 'baloes') {
     $('flow-effect').textContent = `Passagem confirmada: separação mínima ${baloes.minimaM} m (mínimo ilustrativo ${baloes.limiteM} m). ${nomeDestino(m.destinoId)} permanece na rota.`;
-    $('flight-status').textContent = 'Separação calculada a partir da trajetória simulada; ícones dos balões ampliados para leitura.';
+    $('flight-status').textContent = 'Separação calculada a partir da trajetória simulada; balões à escala, com etiqueta e anel de leitura.';
   }
 }
 function atualizarResultadoLinha() {
@@ -491,7 +572,7 @@ async function iniciarPiloto() {
   estado.pausa = false; estado.espera = false; estado.falha = false; estado.velocidade = 1;
   $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true;
   $('btn-real-map').hidden = true; $('btn-pic').hidden = true; $('pilot-proof').hidden = false;
-  $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '1× velocidade';
+  $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '1× velocidade'; $('btn-camera').textContent = 'Câmara: cauda';
   $('flight-name').textContent = 'Corredor autónomo LUS-222';
   $('flight-source').textContent = modo === 'pilot-replay' ? 'REPLAY JEV GRAVADO · CENÁRIOS EQUIVALENTES' : 'JEV AO VIVO · PASSOS DE 400 MS';
   $('decision-origin').textContent = modo === 'pilot-replay' ? 'JEV / REPLAY GRAVADO EQUIVALENTE' : 'JEV / AO VIVO · PIPELINE 2';
@@ -514,7 +595,7 @@ async function processarEvento(evento, gen) {
   $('flow-input').textContent = entradaBreve(entrada);
   $('flow-choice').textContent = 'A avaliar…'; $('flow-detail').textContent = '—'; $('flow-effect').textContent = '—';
   selo(origemSelo(), 'A avaliar…', null, true);
-  $('flight-status').textContent = evento.obstaculos?.some((o) => o.segundos_ate_ao_contacto <= 15) ? 'Ameaça iminente: relógio simulado suspenso enquanto o JEV avalia.' : 'Voo a 1× sob a intenção anterior enquanto chega a resposta.';
+  $('flight-status').textContent = ameacaIminente(evento) ? 'Ameaça iminente: relógio simulado suspenso enquanto o JEV avalia.' : 'Voo a 1× sob a intenção anterior enquanto chega a resposta.';
   let jev;
   try {
     if (estado.modo === 'replay') {
@@ -528,10 +609,25 @@ async function processarEvento(evento, gen) {
   const antes = { tempoS: Math.round(estado.missao.voo.tempoS), fuelKg: Math.round(estado.missao.voo.combustivelKg), destino: estado.missao.destinoId };
   const { missao, supervisor } = aplicarDecisao(estado.missao, jev.answers, estado.modo === 'replay' ? 'jev-replay' : 'jev');
   estado.missao = missao;
+  // Seta branca se a manobra é do JEV, vermelha se o supervisor a corrigiu.
+  estado.autorManobra = supervisor.interveio ? 'supervisor' : 'jev';
   const linha = { id: evento.id, cenario: estado.cenario, resumo: evento.resumo, entrada, jev, baseline: decisaoGeometrica(entrada), supervisor, antes, depois: null, estadoAntes, estadoDepois: safeClone(missao), pic: { interveio: false } };
   estado.log.linhas.push(linha);
+  // Aves, tráfego e relevo lêem-se como os balões: no máximo a 2× até a
+  // ameaça mais próxima ficar para trás (os balões seguem a ameacaAtiva da simulação).
+  estado.leitura = evento.tipo === 'baloes' ? null : leituraAmeaca(missao.voo, entrada.geometria.obstaculos);
   atualizarDecisao(evento, entrada, jev, supervisor);
-  if (estado.mundo) estado.mundoApi.mostrarAmeacas(estado.mundo, entrada.geometria.obstaculos, parametrosVoo());
+  if (estado.mundo) {
+    estado.mundoApi.mostrarAmeacas(estado.mundo, entrada.geometria.obstaculos, parametrosVoo(), { escalaDistancia: 1 });
+    // Enquadra avião e ameaça no momento da decisão, com a pose deste instante.
+    // Decide pelo tipo do evento, como a leitura acima: uns balões ainda
+    // activos não roubam o enquadramento a uma ameaça nova.
+    const ameaca = estado.missao.ameacaAtiva;
+    const foco = evento.tipo === 'baloes'
+      ? ameaca && posicaoVisualBaloes(estado.missao.voo, ameaca, estado.mundoApi.poseLocalAgora(estado.mundo, parametrosVoo()))
+      : estado.leitura ? estado.mundoApi.focoAmeaca(estado.mundo, estado.leitura.tipo) : null;
+    if (foco) estado.mundoApi.focarEvento(estado.mundo, foco);
+  }
   estado.incidentePendente = null; estado.espera = false;
 }
 async function processarBriefing(gen) {
@@ -559,6 +655,14 @@ async function processarBriefing(gen) {
   estado.briefingPendente = false; estado.espera = false;
 }
 
+/** A ameaça da leitura ficou para trás (ou acabou o tempo previsto): volta à velocidade escolhida. */
+function terminarLeitura() {
+  const { tipo } = estado.leitura;
+  estado.leitura = null;
+  if (estado.espera) return;
+  $('flight-status').textContent = estado.velocidade > TECTO_LEITURA ? `Leitura concluída (${tipo}); a missão volta a ${estado.velocidade}×.` : `Leitura concluída (${tipo}).`;
+}
+
 function quadro(t) {
   if (estado.ecra !== 'live' || !estado.missao) return;
   estado.raf = requestAnimationFrame(quadro);
@@ -571,8 +675,14 @@ function quadro(t) {
     return;
   }
   if (!estado.pausa && !estado.falha && !estado.missao.resultado) {
-    const fator = estado.espera && estado.incidentePendente?.obstaculos?.some((o) => o.segundos_ate_ao_contacto <= 15) ? 0 : estado.espera ? 1 : estado.missao.ameacaAtiva && estado.velocidade > 2 ? 2 : estado.velocidade;
+    const fator = fatorTempo({
+      espera: estado.espera,
+      ameacaIminente: ameacaIminente(estado.incidentePendente),
+      leitura: Boolean(estado.missao.ameacaAtiva || estado.leitura),
+      velocidade: estado.velocidade,
+    });
     if (!estado.briefingPendente) estado.missao = avancarMissao(estado.missao, dt * fator);
+    if (estado.leitura && !emLeitura(estado.leitura, estado.missao.voo)) terminarLeitura();
     if (!estado.espera && t > estado.revelarAte) {
       const evento = proximoEvento(estado.missao);
       if (evento) void processarEvento(evento, estado.geracao);
@@ -601,7 +711,8 @@ async function iniciar(modo) {
   estado.missao = criarMissao(estado.cenario, seed, restricoes);
   estado.log = { versao: 4, fonte: modo === 'replay' ? 'jev-replay-gravado' : 'jev-ao-vivo', modelo: 'typesafe-ai/jev', perfil: PERFIL.versao, cenario: estado.cenario, semente: seed, restricoes, briefing: null, linhas: [], intervencoes: [], incompleta: false, motivo: null, resultado: null };
   estado.pausa = false; estado.espera = false; estado.falha = false; estado.incidentePendente = null; estado.briefingPendente = false; estado.revelarAte = 0; estado.velocidade = 8;
-  $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true; $('pilot-proof').hidden = true; $('btn-pic').hidden = false; $('btn-real-map').hidden = estado.cenario !== 'porto'; $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade';
+  estado.autorManobra = 'jev'; estado.marcasCache = null; estado.leitura = null;
+  $('failure-overlay').hidden = true; $('pic-overlay').hidden = true; $('map-overlay').hidden = true; $('pilot-proof').hidden = true; $('btn-pic').hidden = false; $('btn-real-map').hidden = estado.cenario !== 'porto'; $('btn-pause').textContent = 'Pausar'; $('btn-speed').textContent = '8× velocidade'; $('btn-camera').textContent = 'Câmara: cauda';
   $('flight-name').textContent = nomeCenario(); $('flight-source').textContent = modo === 'replay' ? 'REPLAY GRAVADO · SEM NOVA AVALIAÇÃO' : 'JEV AO VIVO · AI GATEWAY';
   $('decision-origin').textContent = modo === 'replay' ? 'JEV / REPLAY GRAVADO' : 'JEV / AO VIVO';
   selo(origemSelo(), 'A ler o briefing…', null, true);
@@ -718,6 +829,7 @@ function abrirDebrief() {
   if (estado.ecra !== 'live') return;
   // Pedidos ainda em voo continuariam a gastar o Gateway depois do fim.
   cancelarPedidos(); ++estado.geracao;
+  estado.leitura = null;
   if (emModoPiloto()) fecharOrdemActivaPiloto();
   else atualizarResultadoLinha();
   estado.log.resultado = estado.missao.resultado;
@@ -727,7 +839,7 @@ function abrirDebrief() {
 function terminarIncompleta(motivo) {
   if (!estado.missao) return;
   estado.log.incompleta = true; estado.log.motivo = motivo;
-  estado.missao = { ...estado.missao, resultado: 'interrompida' };
+  estado.missao = { ...estado.missao, resultado: 'interrompida' }; estado.leitura = null;
   abrirDebrief();
 }
 async function reavaliar() {
@@ -786,6 +898,11 @@ function ligarUI() {
   $('btn-exit').addEventListener('click', () => terminarIncompleta('O comandante terminou a missão antes do desfecho.'));
   $('btn-pause').addEventListener('click', () => { definirPausa(!estado.pausa); atualizarTelemetria(); });
   $('btn-speed').addEventListener('click', () => { estado.velocidade = estado.velocidade === 8 ? 1 : estado.velocidade === 1 ? 4 : 8; $('btn-speed').textContent = `${estado.velocidade}× velocidade`; });
+  $('btn-camera').addEventListener('click', () => {
+    if (!estado.mundo) return;
+    const modo = estado.mundoApi.alternarCamara(estado.mundo);
+    $('btn-camera').textContent = `Câmara: ${modo}`;
+  });
   $('btn-pic').addEventListener('click', () => { estado.pausa = true; $('btn-pause').textContent = 'Continuar'; $('pic-overlay').hidden = false; });
   const abrirMapa = (origem) => {
     estado.mapaOrigem = origem;
@@ -817,7 +934,7 @@ function ligarUI() {
     const acao = $('pic-action').value;
     const original = estado.log.linhas.at(-1)?.jev.answers;
     const respostas = { ...(original ?? {}), acaoMissao: { choice: acao }, destinoPreferido: { choice: acao === 'regressar_base' ? 'origem' : acao === 'desviar_alternativo' ? (estado.cenario === 'medevac' ? 'hospital_alternativo' : estado.cenario === 'porto' ? 'aeroporto_alternativo' : 'stol_proximo') : estado.missao.destinoId }, manobraVertical: { choice: 'manter' }, manobraLateral: { choice: 'manter' }, urgencia: { score: 1 } };
-    const { missao, supervisor } = aplicarDecisao(estado.missao, respostas, 'pic-humano', false); estado.missao = missao;
+    const { missao, supervisor } = aplicarDecisao(estado.missao, respostas, 'pic-humano', false); estado.missao = missao; estado.autorManobra = 'pic';
     estado.log.intervencoes.push({ tempoS: missao.voo.tempoS, acao, supervisor });
     const ultima = estado.log.linhas.at(-1); if (ultima) ultima.pic.interveio = true;
     $('flow-effect').textContent = supervisor.interveio ? `PIC pediu ${etiquetarAcao(acao)}; supervisor bloqueou: ${supervisor.motivo}.` : `PIC sobrepôs: ${etiquetarAcao(acao)}. Nova rota ${nomeDestino(missao.destinoId)}.`;
