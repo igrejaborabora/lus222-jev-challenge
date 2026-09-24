@@ -299,7 +299,7 @@ function atualizarDecisao(evento, entrada, jev, supervisor) {
   $('decision-pic').textContent = Number(jev.answers.precisaRevisaoPIC.probability) >= .55 ? 'JEV SUGERE REVISÃO PIC' : 'SEM REVISÃO SUGERIDA';
   mostrarRespostas(jev.answers);
   selo(supervisor.interveio ? 'SUPERVISOR INTERVEIO' : origemSelo(), `${etiquetarAcao(supervisor.aplicada.acao ?? jev.answers.acaoMissao.choice)} · ${manobraCurta(supervisor.aplicada.vertical, supervisor.aplicada.lateral)}`, jev.latencia_ms);
-  $('flight-status').textContent = evento.tipo === 'baloes' ? 'Passagem apresentada a 2×; balões ampliados para leitura, separação calculada em metros.' : estado.leitura ? `Passagem apresentada a 2×; ${estado.leitura.tipo} à escala, com etiqueta de distância.` : supervisor.interveio ? 'A escolha do JEV foi bloqueada; o supervisor protege a trajetória.' : 'Decisão aplicada à missão e ao voo.';
+  $('flight-status').textContent = evento.tipo === 'baloes' ? 'Passagem apresentada a 2×; balões à escala, com etiqueta e anel de leitura; separação calculada em metros.' : estado.leitura ? `Passagem apresentada a 2×; ${estado.leitura.tipo} à escala, com etiqueta de distância.` : supervisor.interveio ? 'A escolha do JEV foi bloqueada; o supervisor protege a trajetória.' : 'Decisão aplicada à missão e ao voo.';
 }
 function atualizarTelemetria() {
   if (!estado.missao) return;
@@ -338,7 +338,7 @@ function atualizarTelemetria() {
   const baloes = m.separacoes.find((s) => s.id === 'baloes');
   if (baloes && estado.log?.linhas.at(-1)?.id === 'baloes') {
     $('flow-effect').textContent = `Passagem confirmada: separação mínima ${baloes.minimaM} m (mínimo ilustrativo ${baloes.limiteM} m). ${nomeDestino(m.destinoId)} permanece na rota.`;
-    $('flight-status').textContent = 'Separação calculada a partir da trajetória simulada; ícones dos balões ampliados para leitura.';
+    $('flight-status').textContent = 'Separação calculada a partir da trajetória simulada; balões à escala, com etiqueta e anel de leitura.';
   }
 }
 function atualizarResultadoLinha() {

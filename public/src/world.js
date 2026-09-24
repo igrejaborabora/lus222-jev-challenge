@@ -165,8 +165,9 @@ function meshAmeaca(o, pose, leve, mundo) {
       break;
     }
     case 'baloes': {
-      // Ícones ampliados para leitura à distância; o centro e a passagem
-      // seguem a posição SI da ameaça calculada no motor de voo.
+      // Balões à escala (envelopes de ~2,6 m), lidos pela etiqueta e pelo anel
+      // de protecção (marcas-missao.js); o centro e a passagem seguem a
+      // posição SI da ameaça calculada no motor de voo.
       const cores = [0xffa65d, 0xf7d394, 0xdf775e, 0xe8b875];
       g.position.y = p.y;
       g.userData.baloes = true;
