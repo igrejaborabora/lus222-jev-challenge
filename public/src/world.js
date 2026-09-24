@@ -5,7 +5,7 @@ import { alternarPreferido, alvoCamara, modoCamara, novaCamara, registarEvento, 
 import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
 import { actualizarHelices, criarLus222 } from './lus222.js';
 import { offsetLateral, pontoAmeaca } from './decisao.js';
-import { posicaoVisualBaloes } from './ameaca-visual.js';
+import { alturaAteFolga, posicaoVisualBaloes } from './ameaca-visual.js';
 import { actualizarTerreno, criarTerreno, largarTerreno } from './terreno.js';
 import { alturaTerreno, perfilTerreno } from './relevo.js';
 import { TAMANHO_MOSAICO_M } from './mosaicos.js';
@@ -80,10 +80,31 @@ function pontoResolvido(o, pose, mundo) {
   };
 }
 
+/** Altura do chão (relevo, ou o mar a 0) num ponto em coordenadas LOCAIS. */
+function chaoLocal(mundo, x, z) {
+  const t = mundo?.terreno;
+  if (!t) return 0;
+  const o = mundo.origemVisual;
+  return Math.max(0, alturaTerreno(t.perfil, x + o.x, z + o.z, t.pistas));
+}
+
+const VISUAIS_CHAO = new Set(['relevo', 'torre', 'cabo']);
+
+/**
+ * Relevo, torre e cabo assentam no chão; numa missão, o topo fica à folga por
+ * cima que o JEV lê (altitude do avião − folga_por_cima_m), e não à altura_m.
+ */
+function assentarNoChao(p, o, pose, mundo) {
+  const chao = chaoLocal(mundo, p.x, p.z);
+  const altura = p.fixa ? p.altura : alturaAteFolga(o?.folga_por_cima_m, Number(pose?.y), chao, p.altura);
+  return { ...p, chao, altura };
+}
+
 function meshAmeaca(o, pose, leve, mundo) {
-  const p = pontoResolvido(o, pose, mundo);
+  const resolvido = pontoResolvido(o, pose, mundo);
+  const p = VISUAIS_CHAO.has(resolvido.visual) ? assentarNoChao(resolvido, o, pose, mundo) : resolvido;
   const g = new THREE.Group();
-  g.position.set(p.x, 0, p.z);
+  g.position.set(p.x, p.chao ?? 0, p.z);
   g.userData.visual = p.visual;
   g.userData.fixa = p.fixa;
   // Texto da etiqueta de leitura (marcas-missao.js): «relevo», «bando», …
@@ -122,9 +143,11 @@ function meshAmeaca(o, pose, leve, mundo) {
       break;
     }
     case 'relevo': {
+      // Topo exactamente em h; a base entra 2 m no chão. A base alarga com a
+      // altura, para um cume de centenas de metros não ser uma agulha.
       const h = p.altura;
-      const hill = new THREE.Mesh(new THREE.ConeGeometry(24, h, 7), mat(0x5a5e58));
-      hill.position.y = h / 2 - 2;
+      const hill = new THREE.Mesh(new THREE.ConeGeometry(Math.max(24, h * 0.4), h + 2, 7), mat(0x5a5e58));
+      hill.position.y = h / 2 - 1;
       g.add(hill, anelChao(0xc4a574));
       break;
     }

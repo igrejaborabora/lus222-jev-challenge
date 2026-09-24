@@ -37,3 +37,18 @@ export function emLeitura(leitura, voo) {
   const avancoM = (voo.xM - leitura.xM) * Math.sin(leitura.rumoRad) + (voo.zM - leitura.zM) * Math.cos(leitura.rumoRad);
   return avancoM < leitura.distanciaM + PASSADA_M;
 }
+
+// Obstáculo no chão: nunca abaixo disto (continua a ver-se) nem acima disto.
+const ALTURA_CHAO_MIN_M = 4;
+const ALTURA_CHAO_MAX_M = 2000;
+
+/**
+ * Altura, acima do chão `chaoM`, de um obstáculo no chão (relevo, torre, cabo)
+ * cujo topo fica `folgaPorCimaM` abaixo do avião a `altitudeM`: o número que o
+ * JEV lê. Sem folga dada, fica `alturaM` (a altura do evento).
+ */
+export function alturaAteFolga(folgaPorCimaM, altitudeM, chaoM, alturaM) {
+  const folga = folgaPorCimaM == null ? NaN : Number(folgaPorCimaM);
+  if (!Number.isFinite(folga) || !Number.isFinite(altitudeM)) return alturaM;
+  return Math.min(ALTURA_CHAO_MAX_M, Math.max(ALTURA_CHAO_MIN_M, altitudeM - folga - (chaoM || 0)));
+}
