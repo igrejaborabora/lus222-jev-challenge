@@ -131,6 +131,8 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .typed-dist{display:flex;gap:1px;height:6px;margin-top:5px;background:rgba(255,255,255,.06)}
 .typed-seg{height:100%;background:rgba(255,255,255,.26);transition:width .35s ease}.typed-seg:nth-child(even){background:rgba(255,255,255,.16)}.typed-seg.is-on{background:#f4f6f8}
 .typed-legend{margin-top:4px;font:9px var(--mono);color:#9fa9b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.decision-flags span[data-nivel="assinalar"]{border-color:rgba(255,255,255,.62)}.decision-flags span[data-nivel="pic"]{border-color:#f0a431;color:#ffcf85}
+.pic-dist{margin:4px 0 10px}.pic-countdown{margin:0 0 12px;font:600 12px var(--mono);letter-spacing:.12em;color:#ffcf85}
 .telemetry{position:absolute;z-index:3;top:calc(74px + var(--safe-t));right:calc(16px + var(--safe-r));width:140px;background:rgba(8,11,14,.88);border:1px solid rgba(255,255,255,.14);padding:12px 14px}
 .telemetry .kicker{font-size:8px;margin-bottom:8px}
 .telemetry>div{border-top:1px solid rgba(255,255,255,.15);padding:7px 0}

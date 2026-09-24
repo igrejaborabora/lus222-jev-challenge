@@ -19,7 +19,7 @@ export const ROTULOS_PERGUNTAS = Object.freeze({
   destinoPreferido: 'Destino se mudar rota',
   urgencia: 'Urgência',
   riscoMeteorologico: 'Risco meteorológico',
-  precisaRevisaoPIC: 'Revisão PIC',
+  precisaRevisaoPIC: 'Fora do envelope',
   continuarVoo: 'Continuar voo',
 });
 
@@ -140,4 +140,10 @@ function linhaDom(l) {
 export function pintarPainel(meta, host, resposta, opcoes = {}) {
   if (meta) meta.textContent = resumoCabecalho(resposta, opcoes);
   host.replaceChildren(...linhasPainel(resposta?.answers, resposta?.confidence).map(linhaDom));
+}
+
+/** Uma só pergunta, por exemplo a acção de missão quando o JEV pede o PIC. */
+export function pintarPergunta(host, resposta, chave) {
+  const answers = resposta?.answers?.[chave] ? { [chave]: resposta.answers[chave] } : {};
+  host.replaceChildren(...linhasPainel(answers, resposta?.confidence).map(linhaDom));
 }

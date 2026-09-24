@@ -1,3 +1,5 @@
+import { revisaoSugerida } from './confianca.js';
+
 const RUBRICA = {
   porto: {
     baloes: { acoes: ['prosseguir', 'orbitar', 'desviar_alternativo'], lateral: ['direita'], pic: false },
@@ -24,6 +26,11 @@ const RUBRICA = {
   },
 };
 
+/** A rubrica espera revisão humana neste evento? null quando o evento não tem rubrica. */
+export function picEsperado(cenario, id) {
+  return RUBRICA[cenario]?.[id]?.pic ?? null;
+}
+
 export function avaliarLinha(linha) {
   const a = linha?.jev?.answers ?? {};
   const rubrica = RUBRICA[linha?.cenario]?.[linha?.id] ?? null;
@@ -36,7 +43,8 @@ export function avaliarLinha(linha) {
   const alt = linha?.entrada?.alternativas?.find((d) => d.id === destino);
   const pistaCurta = Boolean(alt && alt.pista_m < alt.pista_necessaria_m);
   const fuelCurto = Boolean(alt && alt.combustivel_necessario_kg > (linha?.entrada?.aeronave?.fuel_kg ?? Infinity));
-  const picSugerido = Number(a.precisaRevisaoPIC?.probability ?? 0) >= 0.55;
+  // Revisão sugerida quando o JEV não age com confiança ≥ 0,9 na acção de missão (confianca.js).
+  const picSugerido = revisaoSugerida(linha?.jev);
   const picHumano = Boolean(linha?.pic?.interveio);
   const alertas = [];
   if (pistaCurta) alertas.push(`Pista insuficiente: ${alt.pista_m} m para ${alt.pista_necessaria_m} m calculados.`);
