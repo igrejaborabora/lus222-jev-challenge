@@ -1,11 +1,11 @@
 import { pontoMundo } from './escala.js';
-import { PERFIL, combustivelNecessarioKg } from './simulacao.js';
+import { CONSUMO_MIN_KG_S, PERFIL, combustivelNecessarioKg } from './simulacao.js';
 
 // Tecto da bissecção do alcance: nem com os tanques cheios, a gastar o mínimo
-// de combustivelNecessarioKg (0,09 kg/s antes da margem ×1,25) e à velocidade
-// máxima (115 m/s; vale enquanto 88 m/s + vento de cauda não a passar), o
-// avião iria mais longe. ≈ 2300 km; os 600 km antigos não chegavam aos tanques cheios.
-const CONSUMO_MIN_KG_S = 0.09;
+// de combustivelNecessarioKg (CONSUMO_MIN_KG_S, 0,09 kg/s antes da margem ×1,25)
+// e à velocidade máxima (115 m/s; vale enquanto 88 m/s + vento de cauda não a
+// passar), o avião iria mais longe. ≈ 2300 km; os 600 km antigos não chegavam
+// aos tanques cheios.
 const TECTO_ALCANCE_M = (PERFIL.combustivelMaxKg / CONSUMO_MIN_KG_S) * PERFIL.velocidadeMaxMs;
 
 /**

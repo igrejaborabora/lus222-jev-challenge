@@ -13,6 +13,10 @@ export const PERFIL = Object.freeze({
   velocidadeMaxMs: 115,
   passoS: 0.1,
 });
+// Consumo de planeamento (kg/s), o mínimo antes da margem ×1,25: dá o combustível
+// necessário por destino, o alcance restante enviado ao JEV e o tecto do
+// alcance em rota-visual.js.
+export const CONSUMO_MIN_KG_S = 0.09;
 const G = 9.80665;
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 const dist = (a, b) => Math.hypot(a.xM - b.xM, a.zM - b.zM);
@@ -88,7 +92,7 @@ export function pistaNecessariaM(missao, destino) {
 export function combustivelNecessarioKg(missao, destino) {
   const d = dist(missao.voo, destino);
   const vento = Math.max(50, 88 + missao.ambiente.ventoMs.z);
-  return Math.ceil((d / vento) * 0.09 * 1.25 + 70);
+  return Math.ceil((d / vento) * CONSUMO_MIN_KG_S * 1.25 + 70);
 }
 
 function destinos(c) { return [c.origem, c.planeado, ...c.alternativas]; }
@@ -174,7 +178,7 @@ export function estadoParaAvaliacao(m, evento = null) {
   const ambiente = ambienteAposEvento(m, e);
   const contexto = { ...m, ambiente };
   return {
-    aeronave: { tipo: 'LUS-222', fuel_kg: Math.round(m.voo.combustivelKg), payload_kg: m.voo.payloadKg, config_cabine: m.cenario === 'medevac' ? 'medevac' : m.cenario === 'porto' ? 'passageiros' : m.cenario === 'sar' ? 'mista' : 'carga', tripulantes: 2, integridade: m.voo.integridade, alcance_restante_km: Math.round(m.voo.combustivelKg / 0.09 * 88 / 1000) },
+    aeronave: { tipo: 'LUS-222', fuel_kg: Math.round(m.voo.combustivelKg), payload_kg: m.voo.payloadKg, config_cabine: m.cenario === 'medevac' ? 'medevac' : m.cenario === 'porto' ? 'passageiros' : m.cenario === 'sar' ? 'mista' : 'carga', tripulantes: 2, integridade: m.voo.integridade, alcance_restante_km: Math.round(m.voo.combustivelKg / CONSUMO_MIN_KG_S * 88 / 1000) },
     voo: { posicao_x_m: Math.round(m.voo.xM), posicao_z_m: Math.round(m.voo.zM), altitude_m: Math.round(m.voo.altitudeM), velocidade_ms: Number(m.voo.velocidadeMs.toFixed(1)), subida_ms: Number(m.voo.velocidadeVerticalMs.toFixed(1)), rumo_rad: Number(m.voo.rumoRad.toFixed(3)), tempo_s: Math.round(m.voo.tempoS), fase: m.fase },
     missao: { tipo: m.cenario, origem: c.origem.id, destino: destinoDe(m, m.destinoId).id, almas: m.missao.almas, carga: c.descricao, relogio_s: Math.max(0, Math.round(m.missao.tempoLimiteS - m.voo.tempoS)), prioridade_comandante: m.missao.prioridade },
     ambiente: { tecto_ft: ambiente.tetoFt, vis_km: ambiente.visKm, vento_kt: e.ventoKt ?? Math.round(Math.hypot(ambiente.ventoMs.x, ambiente.ventoMs.z) * 1.944), superficie_pista: destinoDe(m, m.destinoId).superficie, comprimento_pista_m: destinoDe(m, m.destinoId).pistaM, luz_dia: ambiente.luzDia },
