@@ -12,6 +12,10 @@ const CAMPO_NUVENS_M = 9000;
 // encolhe até zero: reaparece do outro lado sem saltar à vista.
 const ORLA_NUVENS_M = 900;
 const NUVENS_ATE_M = 1600;
+const MAX_TUFOS = 5;
+// Metade de baixo de cada tufo achatada a este factor: base de cúmulo.
+const BASE_TUFO = 0.25;
+const EIXO_Y = new THREE.Vector3(0, 1, 0);
 const CAIXA_RASTOS_M = 420;
 const RAMPA_NOITE_S = 60;
 // Direcção horizontal do sol fixa no MUNDO (não segue o rumo): o flanco
@@ -67,28 +71,67 @@ function cupula() {
   return mesh;
 }
 
-function camadaNuvens(n) {
-  // Detalhe 2 (320 triângulos): de perto a silhueta não parece uma pedra;
-  // 60 nuvens ≈ 19 mil triângulos numa só chamada de desenho.
-  const geo = new THREE.IcosahedronGeometry(1, 2);
-  // Normais radiais (esfera unitária): sombreado suave em vez de facetas.
-  geo.setAttribute('normal', geo.getAttribute('position').clone());
+/**
+ * Tufo de cúmulo: icosaedro (detalhe 2 = 180 triângulos; 1 = 80 no perfil
+ * leve) com a metade de baixo achatada (base plana). Normais do elipsóide
+ * inferior, para o sombreado continuar suave na junção.
+ */
+function geometriaTufo(detalhe) {
+  const geo = new THREE.IcosahedronGeometry(1, detalhe);
+  const pos = geo.getAttribute('position');
+  const nor = geo.getAttribute('normal');
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    if (y >= 0) continue;
+    pos.setY(i, y * BASE_TUFO);
+    const l = Math.hypot(x, y / BASE_TUFO, z);
+    nor.setXYZ(i, x / l, y / BASE_TUFO / l, z / l);
+  }
+  return geo;
+}
+
+/**
+ * Cada nuvem é um cacho de 3 a 5 tufos (sementes fixas): desvio horizontal
+ * até ±0,35 do tamanho, vertical de 0 a 0,4 da altura, tamanho 0,5 a 1.
+ * Uma só InstancedMesh; `count` desenha só os tufos que existem.
+ */
+function camadaNuvens(n, detalhe) {
+  const rnd = mulberry32(222);
+  const nuvens = Array.from({ length: n }, () => {
+    const c = {
+      x: rnd() * CAMPO_NUVENS_M,
+      z: rnd() * CAMPO_NUVENS_M,
+      // Raios do cacho: tufos com ~2:1 de largura para altura (cúmulo baixo).
+      sx: 160 + rnd() * 160,
+      sy: 80 + rnd() * 70,
+      sz: 140 + rnd() * 140,
+      rumo: rnd() * Math.PI * 2,
+    };
+    const nTufos = 3 + Math.floor(rnd() * (MAX_TUFOS - 2));
+    c.tufos = Array.from({ length: nTufos }, () => {
+      const f = 0.5 + rnd() * 0.5;
+      return {
+        dx: (rnd() * 2 - 1) * 0.35 * c.sx,
+        dz: (rnd() * 2 - 1) * 0.35 * c.sz,
+        // Centro acima da base o bastante para o fundo achatado ficar no tecto.
+        dy: rnd() * 0.4 * c.sy + BASE_TUFO * f * c.sy,
+        sx: f * c.sx,
+        sy: f * c.sy,
+        sz: f * c.sz,
+        q: new THREE.Quaternion().setFromAxisAngle(EIXO_Y, rnd() * Math.PI),
+      };
+    });
+    return c;
+  });
+  const total = nuvens.reduce((acc, c) => acc + c.tufos.length, 0);
   const mat = new THREE.MeshLambertMaterial({ color: 0xdfe3e6, transparent: true, opacity: 0.92 });
-  const mesh = new THREE.InstancedMesh(geo, mat, n);
+  const mesh = new THREE.InstancedMesh(geometriaTufo(detalhe), mat, n * MAX_TUFOS);
+  mesh.count = total;
   mesh.name = 'ceu-nuvens';
   mesh.frustumCulled = false;
-  const rnd = mulberry32(222);
-  const eixoY = new THREE.Vector3(0, 1, 0);
-  const sementes = Array.from({ length: n }, () => ({
-    x: rnd() * CAMPO_NUVENS_M,
-    z: rnd() * CAMPO_NUVENS_M,
-    sx: 260 + rnd() * 480,
-    sy: 40 + rnd() * 48,
-    sz: 180 + rnd() * 300,
-    subida: Math.floor(rnd() * 3) * 18,
-    q: new THREE.Quaternion().setFromAxisAngle(eixoY, rnd() * Math.PI),
-  }));
-  return { mesh, sementes, m: new THREE.Matrix4(), s: new THREE.Vector3(), p: new THREE.Vector3() };
+  return { mesh, nuvens, m: new THREE.Matrix4(), s: new THREE.Vector3(), p: new THREE.Vector3() };
 }
 
 function rastos(n) {
@@ -118,7 +161,8 @@ export function criarCeu(scene, { cenario, leve = false, alcanceTerrenoM }) {
     alcanceTerrenoM,
     cupula: cupula(),
     hemi: new THREE.HemisphereLight(0xd7e8ff, 0x2a3328, 1.05),
-    nuvens: camadaNuvens(leve ? 24 : 60),
+    // ~240 tufos × 180 triângulos ≈ 43 mil no desktop; ~100 × 80 no leve.
+    nuvens: camadaNuvens(leve ? 24 : 60, leve ? 1 : 2),
     rastos: rastos(leve ? 80 : 220),
     noite: noiteAlvo(cenario, true),
   };
@@ -157,26 +201,35 @@ function aplicarLuz(ceu, { scene, sol, camera, ambiente, pose }, pal) {
 
 /**
  * Nuvens ancoradas no mundo ABSOLUTO (pose local + origem visual): recentrar
- * a origem não as arrasta com o avião. A base fica no tecto.
+ * a origem não as arrasta com o avião. A base dos cachos fica no tecto.
  */
 function aplicarNuvens(ceu, ambiente, pose, origem) {
-  const { mesh, sementes, m, s, p } = ceu.nuvens;
+  const { mesh, nuvens, m, s, p } = ceu.nuvens;
   const alt = alturaNuvensM(ambiente.tetoFt ?? 3000);
   mesh.visible = alt < NUVENS_ATE_M;
   if (!mesh.visible) return;
   const ax = pose.x + origem.x;
   const az = pose.z + origem.z;
   const meio = CAMPO_NUVENS_M / 2;
-  for (let i = 0; i < sementes.length; i++) {
-    const k = sementes[i];
-    const dx = dobrar(k.x, ax, CAMPO_NUVENS_M);
-    const dz = dobrar(k.z, az, CAMPO_NUVENS_M);
+  let i = 0;
+  for (const c of nuvens) {
+    const dx = dobrar(c.x, ax, CAMPO_NUVENS_M);
+    const dz = dobrar(c.z, az, CAMPO_NUVENS_M);
     const orla = Math.min(1, (meio - Math.max(Math.abs(dx), Math.abs(dz))) / ORLA_NUVENS_M);
+    // O cacho inteiro encolhe para o centro junto à orla do campo.
     const f = Math.max(0.001, orla);
-    p.set(pose.x + dx, alt + k.sy + k.subida, pose.z + dz);
-    s.set(k.sx * f, k.sy * f, k.sz * f);
-    m.compose(p, k.q, s);
-    mesh.setMatrixAt(i, m);
+    const cos = Math.cos(c.rumo);
+    const sin = Math.sin(c.rumo);
+    for (const t of c.tufos) {
+      p.set(
+        pose.x + dx + (t.dx * cos + t.dz * sin) * f,
+        alt + t.dy * f,
+        pose.z + dz + (t.dz * cos - t.dx * sin) * f,
+      );
+      s.set(t.sx * f, t.sy * f, t.sz * f);
+      m.compose(p, t.q, s);
+      mesh.setMatrixAt(i++, m);
+    }
   }
   mesh.instanceMatrix.needsUpdate = true;
 }
@@ -186,7 +239,8 @@ function aplicarRastos(ceu, ambiente, pose, dt) {
   const vento = ventoNoMundo(ambiente.ventoMs);
   const chuva = (ambiente.visKm ?? 10) < 5;
   const r = ceu.rastos;
-  const opacidade = chuva ? 0.45 : Math.min(0.35, vento.kt / 60);
+  // Até 10 kt não há rastos; aos 32 kt chegam ao máximo (0,35).
+  const opacidade = chuva ? 0.45 : Math.min(0.35, Math.max(0, (vento.kt - 10) / 40));
   r.linhas.visible = opacidade > 0.01;
   if (!r.linhas.visible) return;
   r.linhas.material.opacity = opacidade;

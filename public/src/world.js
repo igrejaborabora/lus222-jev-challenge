@@ -439,6 +439,9 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     terreno,
     ambienteRT,
     sol: sun,
+    fill,
+    // Valores de dia: a noite escala-os (escurecerAviao) sem os perder.
+    intensidadesDia: { ambiente: scene.environmentIntensity, fill: fill.intensity },
     ceu,
     luzesNav,
     origemVisual: { x: 0, z: 0 },
@@ -488,6 +491,18 @@ export function actualizarCena(mundo, visual, dt = 0) {
   });
   const acesas = pal.luzes > 0.05;
   for (const luz of mundo.luzesNav) luz.visible = acesas;
+  escurecerAviao(mundo, pal);
+}
+
+/**
+ * De noite os reflexos do ambiente e a luz de enchimento baixam até 25 %
+ * (relativamente aos valores de dia de cada cenário): o avião escurece e as
+ * luzes de navegação lêem-se. De dia (luzes = 0) nada muda.
+ */
+function escurecerAviao(mundo, pal) {
+  const f = 1 - 0.75 * pal.luzes;
+  mundo.scene.environmentIntensity = mundo.intensidadesDia.ambiente * f;
+  mundo.fill.intensity = mundo.intensidadesDia.fill * f;
 }
 
 /**

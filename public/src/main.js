@@ -215,7 +215,8 @@ function desenharMundo(dt) {
     } else if (!emModoPiloto()) api.posicionarBaloes(estado.mundo, estado.missao.ameacaAtiva, estado.missao.voo, pose);
     api.actualizarAmeacas(estado.mundo, dt);
     api.actualizarCamara(estado.mundo, pose, dt);
-    api.actualizarCena(estado.mundo, { pose: absoluta, poseLocal: pose, ambiente: ambienteVisivel() }, dt);
+    // Em pausa o céu congela (chuva, rastos e anoitecer); continua a desenhar.
+    api.actualizarCena(estado.mundo, { pose: absoluta, poseLocal: pose, ambiente: ambienteVisivel() }, estado.pausa ? 0 : dt);
     estado.mundo.renderer.render(estado.mundo.scene, estado.mundo.camera);
   } catch { /* falha visual não altera a decisão */ }
 }
