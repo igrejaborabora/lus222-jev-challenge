@@ -123,12 +123,14 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .flow-step div>span{font-size:11px;color:#b6c0c8;margin-top:5px}
 .decision-flags{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
 .decision-flags span{padding:6px 7px;border:1px solid rgba(255,255,255,.28);font:9px var(--mono);letter-spacing:.07em}
-.typed-details{margin-top:auto;padding-top:16px;font-size:11px}
-.typed-details summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:12px;color:#e1e6ea;font:10px var(--mono);border-top:1px solid rgba(255,255,255,.22);padding-top:12px}
-.typed-details summary::-webkit-details-marker{display:none}.typed-details[open] summary span{transform:rotate(45deg)}
-#typed-answers{padding-top:10px}
-.typed-row{display:grid;grid-template-columns:1fr auto;gap:7px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);font:10px var(--mono)}
-.typed-row span{color:#b6c0c8}.typed-row b{font-weight:500;text-align:right}
+.typed-panel{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.22)}
+.typed-meta{margin:0 0 6px;font:10px var(--mono);color:#e1e6ea;letter-spacing:.04em}
+.typed-row{padding:6px 0 7px;border-bottom:1px solid rgba(255,255,255,.08);font:10px var(--mono)}
+.typed-head{display:flex;align-items:baseline;gap:8px}.typed-name{flex:1;min-width:0;color:#b6c0c8}.typed-choice{font-weight:500;text-align:right}
+.conf-chip{flex:none;padding:1px 5px;border:1px solid rgba(255,255,255,.3);font:9px var(--mono);color:#e1e6ea}
+.typed-dist{display:flex;gap:1px;height:6px;margin-top:5px;background:rgba(255,255,255,.06)}
+.typed-seg{height:100%;background:rgba(255,255,255,.26);transition:width .35s ease}.typed-seg:nth-child(even){background:rgba(255,255,255,.16)}.typed-seg.is-on{background:#f4f6f8}
+.typed-legend{margin-top:4px;font:9px var(--mono);color:#9fa9b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .telemetry{position:absolute;z-index:3;top:calc(74px + var(--safe-t));right:calc(16px + var(--safe-r));width:140px;background:rgba(8,11,14,.88);border:1px solid rgba(255,255,255,.14);padding:12px 14px}
 .telemetry .kicker{font-size:8px;margin-bottom:8px}
 .telemetry>div{border-top:1px solid rgba(255,255,255,.15);padding:7px 0}
