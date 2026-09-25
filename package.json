@@ -16,6 +16,7 @@
     "lint": "eslint api lib public/src scripts",
     "replays:record": "node scripts/record-replays.mjs http://localhost:43123",
     "counterfactuals:check": "node scripts/check-counterfactuals.mjs http://localhost:43123",
+    "avaliar": "node --env-file=.env scripts/avaliar-jev.mjs",
     "deploy": "vercel deploy --prod"
   },
   "dependencies": {
