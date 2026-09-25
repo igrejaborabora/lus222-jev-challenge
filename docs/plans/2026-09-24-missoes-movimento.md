@@ -207,7 +207,16 @@ A referência passa a ser o «JEV plays DOOM».
 - lanternas e fogo de artifício.
 - São 31 chamadas de desenho.
 
-**Para o vídeo:** `?voo=gravado&desde=110` começa o voo gravado à chegada à Foz.
+**Para o vídeo:**
+- `?voo=gravado&desde=110` começa o voo gravado à chegada à Foz;
+- a câmara «cinema» encadeia planos e enquadra a ponte ao chegar.
+
+**Revisão de código antes de sair de rascunho** (servidor, simulação, interface/3D): quatro falhas corrigidas, com testes.
+- escolhas de uma opção só no /api/jev;
+- TCAS a descer perto do chão;
+- fuga das instâncias das ameaças na GPU.
+
+**Custo.** O contexto curto nas perguntas simples deixa ~2,6 mil tokens por chamada (−18 %), ~0,016 USD por minuto ao vivo.
 
 A secção B abaixo fica como referência técnica: B3, B4, B5, B7 e B8 são absorvidos pelos marcos M1–M3.
 
