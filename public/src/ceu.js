@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32 } from './decisao.js';
-import { alturaNuvensM, distanciaNoTufo, escalaBolha, nevoeiroDe, noiteAlvo, paletaCeu, ventoNoMundo } from './ambiente-visual.js';
+import { alturaNuvensM, distanciaNoTufo, escalaBolha, misturarCor, nevoeiroDe, noiteAlvo, paletaCeu, ventoNoMundo } from './ambiente-visual.js';
 
 /**
  * Céu desenhado a partir do ambiente que o JEV recebe (ambiente-visual.js):
@@ -8,6 +8,9 @@ import { alturaNuvensM, distanciaNoTufo, escalaBolha, nevoeiroDe, noiteAlvo, pal
  * rastos de vento (ou chuva, com pouca visibilidade) e a luz do sol.
  */
 const CAMPO_NUVENS_M = 9000;
+// De noite as nuvens escurecem para um cinzento quente, o reflexo da cidade.
+const COR_NUVEM = 0xdfe3e6;
+const COR_NUVEM_NOITE = 0x4f4640;
 // Nas últimas centenas de metros antes de dar a volta ao campo, a nuvem
 // encolhe até zero: reaparece do outro lado sem saltar à vista.
 const ORLA_NUVENS_M = 900;
@@ -133,7 +136,7 @@ function camadaNuvens(n, detalhe) {
     return c;
   });
   const total = nuvens.reduce((acc, c) => acc + c.tufos.length, 0);
-  const mat = new THREE.MeshLambertMaterial({ color: 0xdfe3e6, transparent: true, opacity: 0.92 });
+  const mat = new THREE.MeshLambertMaterial({ color: COR_NUVEM, transparent: true, opacity: 0.92 });
   const mesh = new THREE.InstancedMesh(geometriaTufo(detalhe), mat, n * MAX_TUFOS);
   mesh.count = total;
   mesh.name = 'ceu-nuvens';
@@ -195,6 +198,7 @@ function aplicarLuz(ceu, { scene, sol, camera, ambiente, pose }, pal) {
   scene.fog.near = nev.near;
   scene.fog.far = nev.far;
   ceu.hemi.intensity = pal.intensidadeCeu;
+  ceu.nuvens.mesh.material.color.setHex(misturarCor(COR_NUVEM, COR_NUVEM_NOITE, pal.luzes));
 
   if (!sol) return;
   sol.color.setHex(pal.corSol);
