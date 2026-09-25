@@ -189,6 +189,26 @@ A referência passa a ser o «JEV plays DOOM».
 - Cada chamada tem ~3 mil tokens, a 3 Hz: ~0,02 USD por minuto, ~0,11 USD por 5 minutos.
 - 25 USD/mês chegam para ~220 voos ao vivo de 5 min.
 
+### Estado a 25/09 (PR #26)
+
+**M1, M2 e M3 feitos.**
+
+**Órbita corrigida no M3.** O primeiro voo gravado mostrou uma órbita de 4 minutos a sul de Gaia.
+- A causa foi a instrução «em empate, mantém a manobra em curso»: o JEV ficava na curva mesmo com a rota do outro lado.
+- A manobra passou a escolher-se por eliminação, com as categorias de cada candidata na própria opção, e a manobra em curso saiu do estado.
+- Resultado no voo novo: passa na Foz aos 128 s e na ponte aos 187 s, com 34 mudanças de manobra em 790 decisões.
+
+**M4 feito:**
+- Douro escavado no relevo, com escarpas à volta da ponte (a física e o GPWS vêem o mesmo vale);
+- Ponte D. Luís I (arco em crescente, dois tabuleiros) e Arrábida;
+- Ribeira e cais de Gaia com janelas acesas;
+- 22 mil candeeiros em ruas;
+- pista do Sá Carneiro balizada;
+- lanternas e fogo de artifício.
+- São 31 chamadas de desenho.
+
+**Para o vídeo:** `?voo=gravado&desde=110` começa o voo gravado à chegada à Foz.
+
 A secção B abaixo fica como referência técnica: B3, B4, B5, B7 e B8 são absorvidos pelos marcos M1–M3.
 
 ## Fase B — Ameaças em movimento e reflexos tácticos (PR 2)
