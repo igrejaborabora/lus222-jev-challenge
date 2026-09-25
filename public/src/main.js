@@ -1,4 +1,4 @@
-import { CENARIOS_SIM, PERFIL, ambienteAposEvento, criarMissao, avancarMissao, aplicarDecisao, proximoEvento, estadoParaAvaliacao, combustivelNecessarioKg, pistaNecessariaM } from './simulacao.js';
+import { CENARIOS_SIM, PERFIL, ambienteAposEvento, criarMissao, avancarMissao, aplicarDecisao, proximoEvento, estadoParaAvaliacao, combustivelNecessarioKg, pistaNecessariaM, vooInterpolado } from './simulacao.js';
 import { validarRespostas } from './contrato-jev.js';
 import { avaliarLinha, resumirLinhas } from './avaliacao-sim.js';
 import { decisaoGeometrica, etiquetarAcao, etiquetarDestino, etiquetarManobraV, etiquetarManobraL, evasaoDeAnswers } from './decisao.js';
@@ -219,7 +219,8 @@ async function carregarReplaysPiloto() {
 
 function parametrosVoo() {
   if (emModoPiloto()) return poseAviao(estado.piloto.automato);
-  return poseMissao(estado.missao.voo, estado.missao.comando);
+  // A física avança em passos de 0,1 s; o desenho interpola entre os dois últimos.
+  return poseMissao(vooInterpolado(estado.missao), estado.missao.comando);
 }
 async function criarMundo() {
   try {
@@ -293,7 +294,7 @@ function dadosMarcas() {
     };
   }
   return {
-    pontosRota: pontosFitaRota(m.voo, c.destino),
+    pontosRota: pontosFitaRota(vooInterpolado(m), c.destino),
     destinoAtivoId: m.destinoId,
     distanciasKm: c.distanciasKm,
     reserva: c.reserva,
@@ -319,7 +320,7 @@ function desenharMundo(dt) {
         absoluta,
         { escalaDistancia: 1 },
       );
-    } else if (!emModoPiloto()) api.posicionarBaloes(estado.mundo, estado.missao.ameacaAtiva, estado.missao.voo, pose);
+    } else if (!emModoPiloto()) api.posicionarBaloes(estado.mundo, estado.missao.ameacaAtiva, vooInterpolado(estado.missao), pose);
     api.actualizarAmeacas(estado.mundo, dt);
     api.actualizarCamara(estado.mundo, pose, dt);
     // Em pausa o céu congela (chuva, rastos e anoitecer); continua a desenhar.

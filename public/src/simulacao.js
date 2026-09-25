@@ -129,6 +129,9 @@ export function criarMissao(cenarioId = 'medevac', semente = 222, restricoes = {
     orbitaRestanteS: 0,
     ameacaAtiva: null,
     separacoes: [],
+    passo: 0,
+    acumuladorS: 0,
+    vooAnterior: null,
   };
 }
 
@@ -295,34 +298,74 @@ function passoFisico(m, dt) {
   return { ...v, xM: v.xM + dx, zM: v.zM + dz, altitudeM: altitude, velocidadeMs: speed, velocidadeVerticalMs: subida, rumoRad: heading, bankRad: bank, pitchRad: Math.asin(clamp(subida / speed, -0.2, 0.2)), combustivelKg: fuel, massaKg: PERFIL.massaVaziaKg + v.payloadKg + fuel, distanciaPercorridaM: v.distanciaPercorridaM + Math.hypot(dx, dz), tempoS: v.tempoS + dt, potencia };
 }
 
-export function avancarMissao(m, segundos) {
-  if (m.resultado || !Number.isFinite(segundos) || segundos <= 0) return m;
-  let atual = m;
-  let restante = Math.min(segundos, 60);
-  while (restante > 1e-7 && !atual.resultado) {
-    const dt = Math.min(PERFIL.passoS, restante);
-    const voo = passoFisico(atual, dt);
-    const orbitaRestanteS = Math.max(0, atual.orbitaRestanteS - (atual.fase === 'orbita' ? dt : 0));
-    const fase = atual.fase === 'orbita' && orbitaRestanteS === 0 ? 'em_rota' : atual.fase;
-    const destino = destinoDe(atual, atual.destinoId);
-    let resultado = null;
-    if (voo.combustivelKg <= 0) resultado = 'combustivel_esgotado';
-    else if (voo.altitudeM <= 0 && dist(voo, destino) >= 250) resultado = 'limite_altitude';
-    else if (fase !== 'orbita' && dist(voo, destino) < 250 && voo.altitudeM <= 50) resultado = atual.destinoId === 'origem' ? 'regressou' : fase === 'emergencia' ? 'emergencia_resolvida' : 'chegou';
-    else if (voo.tempoS >= 2800) resultado = 'tempo_esgotado';
-    let ameacaAtiva = atual.ameacaAtiva;
-    let separacoes = atual.separacoes;
-    if (ameacaAtiva) {
-      const minima = Math.min(ameacaAtiva.separacaoMinM, distanciaAmeacaM(voo, ameacaAtiva));
-      ameacaAtiva = { ...ameacaAtiva, separacaoMinM: minima };
-      if (minima < ameacaAtiva.raioProtecaoM) resultado = 'separacao_perdida';
-      if (voo.zM > ameacaAtiva.zM + 120 || resultado) {
-        separacoes = [...separacoes, { id: ameacaAtiva.id, minimaM: Math.round(minima), limiteM: ameacaAtiva.raioProtecaoM }];
-        ameacaAtiva = null;
-      }
+/** Um passo da missão: física, órbita, resultado e separação à ameaça activa. */
+function passoMissao(atual, dt) {
+  const voo = passoFisico(atual, dt);
+  const orbitaRestanteS = Math.max(0, atual.orbitaRestanteS - (atual.fase === 'orbita' ? dt : 0));
+  const fase = atual.fase === 'orbita' && orbitaRestanteS === 0 ? 'em_rota' : atual.fase;
+  const destino = destinoDe(atual, atual.destinoId);
+  let resultado = null;
+  if (voo.combustivelKg <= 0) resultado = 'combustivel_esgotado';
+  else if (voo.altitudeM <= 0 && dist(voo, destino) >= 250) resultado = 'limite_altitude';
+  else if (fase !== 'orbita' && dist(voo, destino) < 250 && voo.altitudeM <= 50) resultado = atual.destinoId === 'origem' ? 'regressou' : fase === 'emergencia' ? 'emergencia_resolvida' : 'chegou';
+  else if (voo.tempoS >= 2800) resultado = 'tempo_esgotado';
+  let ameacaAtiva = atual.ameacaAtiva;
+  let separacoes = atual.separacoes;
+  if (ameacaAtiva) {
+    const minima = Math.min(ameacaAtiva.separacaoMinM, distanciaAmeacaM(voo, ameacaAtiva));
+    ameacaAtiva = { ...ameacaAtiva, separacaoMinM: minima };
+    if (minima < ameacaAtiva.raioProtecaoM) resultado = 'separacao_perdida';
+    if (voo.zM > ameacaAtiva.zM + 120 || resultado) {
+      separacoes = [...separacoes, { id: ameacaAtiva.id, minimaM: Math.round(minima), limiteM: ameacaAtiva.raioProtecaoM }];
+      ameacaAtiva = null;
     }
-    atual = { ...atual, voo, fase, orbitaRestanteS, resultado, ameacaAtiva, separacoes };
-    restante -= dt;
   }
-  return atual;
+  return { ...atual, voo, fase, orbitaRestanteS, resultado, ameacaAtiva, separacoes };
+}
+
+/**
+ * Relógio de passo fixo: o tempo acumula-se e a missão avança só em passos
+ * inteiros de PERFIL.passoS, por isso o estado é função do número de passos
+ * (`m.passo`) e das decisões aplicadas, seja qual for o ritmo dos frames.
+ * `ate` pára num passo exacto (para aplicar lá uma decisão gravada); `parar`
+ * pára antes do passo em que devolve verdadeiro. O tempo que sobra fica em
+ * `acumuladorS` para a chamada seguinte.
+ */
+export function avancarMissao(m, segundos, { ate = Infinity, parar = null } = {}) {
+  if (m.resultado || !Number.isFinite(segundos) || segundos < 0) return m;
+  let atual = m;
+  let passo = m.passo ?? 0;
+  let anterior = m.vooAnterior ?? null;
+  let acumulador = (m.acumuladorS ?? 0) + Math.min(segundos, 60);
+  while (acumulador >= PERFIL.passoS - 1e-9 && passo < ate && !atual.resultado) {
+    if (parar?.(atual)) break;
+    anterior = atual.voo;
+    passo += 1;
+    // passo actualizado em cada estado intermédio: `parar` pode lê-lo.
+    atual = { ...passoMissao(atual, PERFIL.passoS), passo };
+    acumulador -= PERFIL.passoS;
+  }
+  return { ...atual, passo, acumuladorS: atual.resultado ? 0 : Math.max(0, acumulador), vooAnterior: anterior };
+}
+
+/**
+ * O voo a desenhar entre o passo anterior e o actual, pela fracção do
+ * acumulador: a física avança a 10 Hz e o desenho a 60 sem saltos.
+ */
+export function vooInterpolado(m) {
+  const a = m?.vooAnterior;
+  const b = m?.voo;
+  if (!a || !b) return b;
+  const t = Math.min(1, Math.max(0, (m.acumuladorS ?? 0) / PERFIL.passoS));
+  const mix = (x, y) => x + (y - x) * t;
+  return {
+    ...b,
+    xM: mix(a.xM, b.xM),
+    zM: mix(a.zM, b.zM),
+    altitudeM: mix(a.altitudeM, b.altitudeM),
+    rumoRad: a.rumoRad + angulo(b.rumoRad - a.rumoRad) * t,
+    bankRad: mix(a.bankRad, b.bankRad),
+    pitchRad: mix(a.pitchRad, b.pitchRad),
+    tempoS: mix(a.tempoS, b.tempoS),
+  };
 }
