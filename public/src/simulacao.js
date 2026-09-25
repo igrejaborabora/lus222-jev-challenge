@@ -455,6 +455,18 @@ export function preverActuacao(m, actuacao, { horizonteS = 30, aplicarS = 8, dtS
 }
 
 const CANDIDATAS_SUPERVISOR = ['direita_subir', 'esquerda_subir', 'subir', 'direita', 'esquerda', 'manter', 'descer'];
+// Na previsão, abaixo disto a manobra aproxima-se do terreno (o GPWS dispara aos 60 m):
+// o supervisor só a escolhe se nenhuma outra mantiver esta folga ao chão.
+const FOLGA_TERRENO_SUPERVISOR_M = 90;
+
+/**
+ * Escolha do supervisor entre as previsões das candidatas ({ c, margemM, aglMinM }):
+ * primeiro a folga ao terreno, depois a maior margem à ameaça (no empate, a primeira).
+ */
+export function escolhaDoSupervisor(previsoes) {
+  const seguras = previsoes.filter((p) => p.aglMinM >= FOLGA_TERRENO_SUPERVISOR_M);
+  return (seguras.length ? seguras : previsoes).reduce((melhor, p) => (p.margemM > melhor.margemM ? p : melhor));
+}
 
 /**
  * Supervisor determinístico, a cada segundo de simulação: tipo GPWS (perto do
@@ -472,11 +484,7 @@ function verificarSupervisor(m) {
   const actual = actuacaoEfectiva(m.piloto, v.tempoS);
   if (actual.fonte === 'supervisor') return m;
   if (preverActuacao(m, actual).margemM >= 0) return m;
-  let melhor = null;
-  for (const c of CANDIDATAS_SUPERVISOR) {
-    const p = preverActuacao(m, { ...actuacaoDeManobra(c), potencia: 'manter' });
-    if (!melhor || p.margemM > melhor.margemM) melhor = { c, margemM: p.margemM };
-  }
+  const melhor = escolhaDoSupervisor(CANDIDATAS_SUPERVISOR.map((c) => ({ c, ...preverActuacao(m, { ...actuacaoDeManobra(c), potencia: 'manter' }) })));
   return { ...m, piloto: { ...m.piloto, supervisor: { ...actuacaoDeManobra(melhor.c), potencia: 'manter', ateS: v.tempoS + 3, motivo: 'separacao', manobra: melhor.c } } };
 }
 
