@@ -60,6 +60,9 @@ const PERFIS = {
       larguraM: 240,
       margemM: 220,
       fundoM: -4,
+      // Escarpas do Porto e de Gaia à volta da Ponte D. Luís I: o rio estreita para o
+      // arco de 172 m e as margens sobem depressa, para o tabuleiro superior assentar nelas.
+      escarpa: { x: 2200, z: 152700, raioM: 1800, transicaoM: 1400, alturaM: 32, larguraM: 160, margemM: 90 },
     },
   },
   sar: { agua: 'costa', costaX: -6000, recorteM: 1500, amplitude: 120, escala: 1 / 2200, seed: 23 },
@@ -102,13 +105,27 @@ export function distanciaAoRio(rio, x, z) {
   return Math.sqrt(melhor);
 }
 
-/** Leito do rio abaixo do nível da água, margens a subir suavemente até ao relevo natural. */
+/** Peso das escarpas em (x, z): 1 perto da ponte, 0 para lá da transição. */
+export function pesoEscarpa(escarpa, x, z) {
+  if (!escarpa) return 0;
+  const r = Math.hypot(x - escarpa.x, z - escarpa.z);
+  return suave(entre01((escarpa.raioM + escarpa.transicaoM - r) / escarpa.transicaoM));
+}
+
+/**
+ * Leito do rio abaixo do nível da água, margens a subir suavemente até ao
+ * relevo natural. Junto à ponte o relevo sobe (escarpas), o rio estreita e as
+ * margens ficam mais íngremes.
+ */
 function cavarRio(rio, x, z, h) {
-  const meia = rio.larguraM / 2;
+  const e = pesoEscarpa(rio.escarpa, x, z);
+  const alto = e ? h + rio.escarpa.alturaM * e : h;
+  const meia = (e ? rio.larguraM + (rio.escarpa.larguraM - rio.larguraM) * e : rio.larguraM) / 2;
+  const margem = e ? rio.margemM + (rio.escarpa.margemM - rio.margemM) * e : rio.margemM;
   const d = distanciaAoRio(rio, x, z);
-  if (d >= meia + rio.margemM) return h;
-  if (d <= meia) return Math.min(h, rio.fundoM);
-  return Math.min(h, rio.fundoM + (h - rio.fundoM) * suave((d - meia) / rio.margemM));
+  if (d >= meia + margem) return alto;
+  if (d <= meia) return Math.min(alto, rio.fundoM);
+  return Math.min(alto, rio.fundoM + (alto - rio.fundoM) * suave((d - meia) / margem));
 }
 
 function alturaBase(perfil, x, z) {
