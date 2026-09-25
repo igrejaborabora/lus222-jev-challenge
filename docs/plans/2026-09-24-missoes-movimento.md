@@ -118,6 +118,14 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
 - Escolhe a língua das instruções; a interface fica em PT.
 - Dá números verificáveis para o post.
 
+**Resultado do B0** (2026-09-25, `evidence/avaliacao-jev-2026-09-25.json`, 66 pedidos, 0,0075 USD)
+- Tácticos: 14/14 em PT e em EN. A confiança acompanha a dificuldade: 0,98–0,99 nos casos claros e 0,37 no compromisso sem opção limpa.
+- Estratégicos: 7/19 em PT e 8/19 em EN. O JEV prossegue mesmo com pista de 520 m, integridade a 30 % ou 4 min de janela clínica, porque tem de comparar números.
+- EN: menos 9 % de tokens e melhor Brier (0,227 contra 0,250). Os erros vêm com menos confiança: 4 de 11 iriam ao PIC, contra 0 de 12 em PT.
+- **Decisões (aprovadas):**
+  - instruções ao JEV em inglês, com a interface em PT;
+  - novo passo **B3b**: o estado estratégico também passa a categorias.
+
 **B1. Relógio de passo fixo** (refactor puro, commit à parte)
 - `avancarMissao` acumula tempo e avança só em passos inteiros de 0,1 s (`m.passo`).
 - Com a opção `ateMarco`, pára no próximo marco:
@@ -164,6 +172,16 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
   - `foraDoEnvelope` (boolean).
 - **Servidor:** `momento: 'tatico'`, timeout de 3 s, sem retries. O filtro `lerEstadoTatico` aceita só enums.
 - **Validação:** `validarRespostas(momento, answers, perguntas)` aceita domínios dinâmicos.
+
+**B3b. Estado estratégico em categorias**
+- O código calcula e o estado estratégico passa a trazer:
+  - por destino: pista (suficiente / curta), combustível (com reserva / sem reserva) e distância (perto / longe);
+  - janela clínica: folgada / apertada / esgotada;
+  - integridade: normal / degradada / crítica;
+  - meteorologia face aos mínimos: acima / no limite / abaixo;
+  - luz: dia / crepúsculo / noite.
+- Os números podem ficar para o painel, mas o JEV decide pelas categorias.
+- Repetir o banco de casos: objectivo ≥ 15/19 nos estratégicos, sem perder os tácticos.
 
 **B4. Ciclo táctico na missão** (`public/src/ciclo-tatico.js`, novo, com fetch injectado)
 - **Pipeline reutilizado** de `piloto-corredor.js` (`novoPipelinePiloto`, `reservarPasso`, `concluirPasso`, `falharPasso`, `metricasPiloto`).
