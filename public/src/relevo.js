@@ -51,7 +51,22 @@ export function fbm(x, z, seed = 1, oitavas = 4) {
 // Posições do mundo (x já espelhado). Açores: ilhas afastadas da rota para
 // o relevo não subir ao corredor de cruzeiro.
 const PERFIS = {
-  porto: { agua: 'costa', costaX: 7000, recorteM: 1800, amplitude: 90, escala: 1 / 2600, seed: 11 },
+  // O Douro corta a costa do Porto: da foz (mar a +X) até montante da Ponte D. Luís I
+  // (pontos do mundo, x = −xM da missão). A física e o 3D lêem o mesmo vale.
+  porto: {
+    agua: 'costa', costaX: 7000, recorteM: 1800, amplitude: 90, escala: 1 / 2600, seed: 11,
+    rio: {
+      pontos: [[9500, 151800], [6800, 151900], [5200, 152200], [3700, 152450], [2200, 152700], [900, 152850], [-800, 152600], [-2600, 152100], [-5000, 151500]],
+      larguraM: 240,
+      margemM: 220,
+      fundoM: -4,
+      // Escarpas do Porto e de Gaia à volta da Ponte D. Luís I: o rio estreita para o
+      // arco de 172 m e as margens sobem depressa, para o tabuleiro superior assentar nelas.
+      escarpa: { x: 2200, z: 152700, raioM: 1800, transicaoM: 1400, alturaM: 32, larguraM: 160, margemM: 90 },
+    },
+    // Manchas urbanas (Porto e Gaia à volta da Ribeira, Matosinhos): de noite o chão brilha.
+    cidade: [{ x: 2200, z: 152700, raioM: 4200 }, { x: 6200, z: 157800, raioM: 1800 }],
+  },
   sar: { agua: 'costa', costaX: -6000, recorteM: 1500, amplitude: 120, escala: 1 / 2200, seed: 23 },
   carga: { agua: 'terra', amplitude: 45, escala: 1 / 4200, seed: 31 },
   medevac: {
@@ -74,7 +89,53 @@ export function perfilComAgua(perfil) {
   return perfil?.agua === 'costa' || perfil?.agua === 'ilhas';
 }
 
+/** Distância de (x, z) à linha do rio (segmentos), sem alocações: chamado por vértice. */
+export function distanciaAoRio(rio, x, z) {
+  const pts = rio.pontos;
+  let melhor = Infinity;
+  for (let i = 1; i < pts.length; i++) {
+    const ax = pts[i - 1][0];
+    const az = pts[i - 1][1];
+    const bx = pts[i][0] - ax;
+    const bz = pts[i][1] - az;
+    const t = Math.min(1, Math.max(0, ((x - ax) * bx + (z - az) * bz) / (bx * bx + bz * bz)));
+    const dx = x - (ax + bx * t);
+    const dz = z - (az + bz * t);
+    const d = dx * dx + dz * dz;
+    if (d < melhor) melhor = d;
+  }
+  return Math.sqrt(melhor);
+}
+
+/** Peso das escarpas em (x, z): 1 perto da ponte, 0 para lá da transição. */
+export function pesoEscarpa(escarpa, x, z) {
+  if (!escarpa) return 0;
+  const r = Math.hypot(x - escarpa.x, z - escarpa.z);
+  return suave(entre01((escarpa.raioM + escarpa.transicaoM - r) / escarpa.transicaoM));
+}
+
+/**
+ * Leito do rio abaixo do nível da água, margens a subir suavemente até ao
+ * relevo natural. Junto à ponte o relevo sobe (escarpas), o rio estreita e as
+ * margens ficam mais íngremes.
+ */
+function cavarRio(rio, x, z, h) {
+  const e = pesoEscarpa(rio.escarpa, x, z);
+  const alto = e ? h + rio.escarpa.alturaM * e : h;
+  const meia = (e ? rio.larguraM + (rio.escarpa.larguraM - rio.larguraM) * e : rio.larguraM) / 2;
+  const margem = e ? rio.margemM + (rio.escarpa.margemM - rio.margemM) * e : rio.margemM;
+  const d = distanciaAoRio(rio, x, z);
+  if (d >= meia + margem) return alto;
+  if (d <= meia) return Math.min(alto, rio.fundoM);
+  return Math.min(alto, rio.fundoM + (alto - rio.fundoM) * suave((d - meia) / margem));
+}
+
 function alturaBase(perfil, x, z) {
+  const h = alturaBaseSemRio(perfil, x, z);
+  return perfil.rio ? cavarRio(perfil.rio, x, z, h) : h;
+}
+
+function alturaBaseSemRio(perfil, x, z) {
   const relevo = fbm(x * perfil.escala, z * perfil.escala, perfil.seed);
   if (perfil.agua === 'costa') {
     const costa = perfil.costaX + perfil.recorteM * ruido2(z / 7000, 3.7, perfil.seed + 5);
@@ -167,6 +228,21 @@ function folgaRampa(d, raio) {
 export function alcanceRampaM(pista) {
   if (typeof pista.baseM !== 'number') throw new TypeError('alcanceRampaM: pista sem baseM; usar prepararPistas');
   return (pista.raioPlanoM ?? 1200) + Math.abs(pista.baseM - PLANO_PISTA_M) / RAMPA_MAX + ARREDONDAR_M;
+}
+
+/**
+ * Quanto de cidade há em (x, z), de 0 a 1: manchas gaussianas do perfil,
+ * recortadas em bairros e jardins pelo ruído; nada na água (h < 1).
+ */
+export function urbanoEm(perfil, x, z, h) {
+  if (!perfil?.cidade || h < 1) return 0;
+  let u = 0;
+  for (const c of perfil.cidade) {
+    const d = Math.hypot(x - c.x, z - c.z) / c.raioM;
+    u = Math.max(u, Math.exp(-d * d));
+  }
+  // Bairros acesos e jardins escuros, com contraste.
+  return u * entre01((fbm(x / 450, z / 450, 71, 3) - 0.3) / 0.45);
 }
 
 /**

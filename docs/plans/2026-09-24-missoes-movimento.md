@@ -38,6 +38,11 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
 - Em paralelo, o «JEV operações» preenche formulários da Torre, do hospital ou do MRCC com um cursor visível.
 - Ouvem-se os motores.
 
+**Narrativa do post (decidida a 2026-09-25):** o LinkedIn da Pixelgrammar mostra um caso espectacular.
+- **O Claude Opus 5.5 desenvolveu a aplicação** — plano, código, revisões, testes e verificação — e não é chamado dentro dela.
+- **O JEV opera:** decide com probabilidades e *scores*, não com texto.
+- O LUS-222 é tecnologia portuguesa em construção. O simulador («Pilota tu») reforça essa ligação.
+
 ## Princípios
 
 1. **O ecrã mostra o que o JEV recebe.**
@@ -106,6 +111,115 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
   - nada com o separador escondido.
 - **Vercel** (com confirmação): regra WAF de rate limit em `/api/jev`, 600 pedidos por 60 s por IP, se o plano da conta a incluir.
 
+## Reorientação de 2026-09-25: simulador LUS-222, piloto humano ou JEV
+
+A referência passa a ser o «JEV plays DOOM».
+- O mundo corre sempre e o modelo decide várias vezes por segundo a partir de um estado em texto.
+- Vê-se o que o modelo lê, os julgamentos com barras e confiança, a acção acesa, a latência, as decisões por segundo e o custo, e uma caixa de ordens.
+- No LUS-222, **o JEV substitui o piloto humano**. Tem de ser dinâmico, nunca estático.
+
+**Decisões do Fernando:**
+- actuação directa como no DOOM;
+- voo livre com um «director» de ameaças, e as missões como cenários;
+- comparação lado a lado mais tarde;
+- 25 USD/mês, com 5 min de voo JEV ao vivo por visita e voos gravados para o resto.
+
+**O que já serve de base (feito):**
+- B0: formato táctico validado, 14/14 nos casos tácticos;
+- B1: relógio de passo fixo com desenho interpolado;
+- B2: ameaças em movimento no mundo.
+
+### Marcos
+
+**M1. Simulador jogável** (modo novo; as missões actuais ficam intactas)
+- **Actuação comum aos dois pilotos:**
+  - lateral: esquerda / nivelar / direita;
+  - vertical: subir / manter / descer;
+  - potência: mais / manter / menos.
+- **Controlador de intenção em `passoFisico`:**
+  - rolamento até ±25°;
+  - razão de subida até ±4 m/s;
+  - acelerador por incrementos.
+  - Sem ordem nova durante 0,6 s, volta a nivelar e a manter a altitude.
+- **Piloto humano:** teclado (setas/WASD, Shift/Ctrl), botões de toque e comando.
+- **Voo livre sobre o Porto no São João:**
+  - circuito de pontos de passagem (Foz, Ponte D. Luís I, Ribeira, Matosinhos, Sá Carneiro);
+  - um **director** com semente vai lançando 1–3 ameaças de cada vez (tráfego que cruza ou vira, balões, aves, células), com dificuldade crescente.
+- **Supervisor determinístico:**
+  - tipo TCAS: conflito previsto em 30 s → a manobra segura manda, com luz vermelha;
+  - tipo GPWS: perto do terreno → subir.
+- **Painel ao estilo DOOM:**
+  - 3D à esquerda;
+  - à direita, julgamentos, actuação acesa, «o que o JEV lê», contadores e ordens;
+  - mini-mapa com o circuito, as ameaças e o rasto;
+  - no telemóvel, empilhado.
+
+**M2. O JEV pilota** (a ~3 Hz, uma chamada com 6 julgamentos em paralelo)
+- **Julgamentos:**
+  - `plano`: seguir rota / evitar ameaça / ganhar altitude / poupar combustível / aterrar;
+  - `manobra`: as 7 candidatas;
+  - `potencia`;
+  - `ameacaPrioritaria`;
+  - `urgencia`;
+  - `foraDoEnvelope`.
+- **Estado em categorias:** rota (à esquerda / em frente / à direita, desvio), perfil de altitude, velocidade, ameaças e consequências por candidata.
+  - A candidata é aplicada 8 s e depois mantida, na previsão a 30 s.
+  - Entram também as **ordens do comandante**: texto até 120 caracteres, com atalhos como «poupa combustível», «evita as nuvens», «voa baixo».
+- **Instruções em inglês.**
+- **Servidor:** `momento: 'piloto'`, com filtro de enums e das ordens.
+- **Ciclo:** o pipeline de 2 pedidos da prova contínua, com cadência e retenção em passos. O relógio fica a 1× com o JEV aos comandos.
+- **Contadores:** ms, decisões/s, USD acumulado, separação mínima.
+
+**M3. Voos gravados e limites**
+- **Gravação:** o gravador em Node voa o JEV no mesmo motor e grava as decisões com o passo em que foram aplicadas (formato v5 do B8).
+- **Reprodução:** o site reproduz-as quando não há Gateway, quando o limite chega ou depois dos 5 min ao vivo por visita.
+
+**M4. Porto reconhecível no São João**
+- Vale do Douro, Ponte D. Luís I e Ribeira iluminada.
+- Luzes da cidade e lanternas a subir do rio, a derivar com o vento.
+
+**M5. Missões com o JEV aos comandos**
+- Os 4 cenários passam a ser voados em contínuo:
+  - com o estado estratégico em categorias (B3b);
+  - com escalada ao PIC quando o `plano` muda com pouca confiança;
+  - com aterragem assistida abaixo de 15 m, identificada.
+- A comparação lado a lado com um fantasma (regra ou humano) e a consola (fase C) vêm depois.
+
+**Custos.**
+- Cada chamada tem ~3 mil tokens, a 3 Hz: ~0,02 USD por minuto, ~0,11 USD por 5 minutos.
+- 25 USD/mês chegam para ~220 voos ao vivo de 5 min.
+
+### Estado a 25/09 (PR #26)
+
+**M1, M2 e M3 feitos.**
+
+**Órbita corrigida no M3.** O primeiro voo gravado mostrou uma órbita de 4 minutos a sul de Gaia.
+- A causa foi a instrução «em empate, mantém a manobra em curso»: o JEV ficava na curva mesmo com a rota do outro lado.
+- A manobra passou a escolher-se por eliminação, com as categorias de cada candidata na própria opção, e a manobra em curso saiu do estado.
+- Resultado no voo novo: passa na Foz aos 128 s e na ponte aos 187 s, com 34 mudanças de manobra em 790 decisões.
+
+**M4 feito:**
+- Douro escavado no relevo, com escarpas à volta da ponte (a física e o GPWS vêem o mesmo vale);
+- Ponte D. Luís I (arco em crescente, dois tabuleiros) e Arrábida;
+- Ribeira e cais de Gaia com janelas acesas;
+- 22 mil candeeiros em ruas;
+- pista do Sá Carneiro balizada;
+- lanternas e fogo de artifício.
+- São 31 chamadas de desenho.
+
+**Para o vídeo:**
+- `?voo=gravado&desde=110` começa o voo gravado à chegada à Foz;
+- a câmara «cinema» encadeia planos e enquadra a ponte ao chegar.
+
+**Revisão de código antes de sair de rascunho** (servidor, simulação, interface/3D): quatro falhas corrigidas, com testes.
+- escolhas de uma opção só no /api/jev;
+- TCAS a descer perto do chão;
+- fuga das instâncias das ameaças na GPU.
+
+**Custo.** O contexto curto nas perguntas simples deixa ~2,6 mil tokens por chamada (−18 %), ~0,016 USD por minuto ao vivo.
+
+A secção B abaixo fica como referência técnica: B3, B4, B5, B7 e B8 são absorvidos pelos marcos M1–M3.
+
 ## Fase B — Ameaças em movimento e reflexos tácticos (PR 2)
 
 **B0. Banco de casos** (`scripts/avaliar-jev.mjs` e `evidence/casos-jev.json`, novos)
@@ -117,6 +231,14 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
   - p50/p95.
 - Escolhe a língua das instruções; a interface fica em PT.
 - Dá números verificáveis para o post.
+
+**Resultado do B0** (2026-09-25, `evidence/avaliacao-jev-2026-09-25.json`, 66 pedidos, 0,0075 USD)
+- Tácticos: 14/14 em PT e em EN. A confiança acompanha a dificuldade: 0,98–0,99 nos casos claros e 0,37 no compromisso sem opção limpa.
+- Estratégicos: 7/19 em PT e 8/19 em EN. O JEV prossegue mesmo com pista de 520 m, integridade a 30 % ou 4 min de janela clínica, porque tem de comparar números.
+- EN: menos 9 % de tokens e melhor Brier (0,227 contra 0,250). Os erros vêm com menos confiança: 4 de 11 iriam ao PIC, contra 0 de 12 em PT.
+- **Decisões (aprovadas):**
+  - instruções ao JEV em inglês, com a interface em PT;
+  - novo passo **B3b**: o estado estratégico também passa a categorias.
 
 **B1. Relógio de passo fixo** (refactor puro, commit à parte)
 - `avancarMissao` acumula tempo e avança só em passos inteiros de 0,1 s (`m.passo`).
@@ -165,6 +287,16 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
 - **Servidor:** `momento: 'tatico'`, timeout de 3 s, sem retries. O filtro `lerEstadoTatico` aceita só enums.
 - **Validação:** `validarRespostas(momento, answers, perguntas)` aceita domínios dinâmicos.
 
+**B3b. Estado estratégico em categorias**
+- O código calcula e o estado estratégico passa a trazer:
+  - por destino: pista (suficiente / curta), combustível (com reserva / sem reserva) e distância (perto / longe);
+  - janela clínica: folgada / apertada / esgotada;
+  - integridade: normal / degradada / crítica;
+  - meteorologia face aos mínimos: acima / no limite / abaixo;
+  - luz: dia / crepúsculo / noite.
+- Os números podem ficar para o painel, mas o JEV decide pelas categorias.
+- Repetir o banco de casos: objectivo ≥ 15/19 nos estratégicos, sem perder os tácticos.
+
 **B4. Ciclo táctico na missão** (`public/src/ciclo-tatico.js`, novo, com fetch injectado)
 - **Pipeline reutilizado** de `piloto-corredor.js` (`novoPipelinePiloto`, `reservarPasso`, `concluirPasso`, `falharPasso`, `metricasPiloto`).
 - **Relógio simulado.** Cadência (a cada 10 passos), retenção (30 passos), idade e backoff contam passos simulados. Cada bilhete leva `passoDespacho`.
@@ -203,7 +335,7 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
 
 | Cenário | O que se move |
 |---|---|
-| São João / Porto | Lanternas a subir e derivar no corredor (km 32). Helicóptero pela direita que vira para o LUS-222 a meio (km 60). Partida de frente a subir do Porto (km 85; ambos à direita). Gaivotas na final (km 151). |
+| São João / Porto | Porto reconhecível (Ponte D. Luís I, Ribeira iluminada, foz do Douro), trazido da fase 2 do desenho de cenários. Lanternas a subir do Douro e a derivar no corredor (km 32). Helicóptero pela direita que vira para o LUS-222 a meio (km 60). Partida de frente a subir do Porto (km 85; ambos à direita). Gaivotas na final (km 151). |
 | MEDEVAC Açores | Célula da frente a atravessar o corredor. Tráfego inter-ilhas. O relevo costeiro fica fixo. |
 | Carga Ponte de Sor | Cegonhas com vagueio perto do Alqueva. Tráfego militar rápido e baixo perto de Beja (TCPA curto). |
 | SAR costa | Contacto a derivar (a consola reporta a posição). Tráfego civil a cruzar o sector. |
@@ -308,6 +440,46 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
 - O gravador corre as tarefas no modelo puro, em Node, e o browser reproduz com as latências gravadas.
 - Texto fixo: «O JEV não vê píxeis: lê a descrição estruturada do ecrã e escolhe a próxima acção. O cursor executa-a.»
 
+## Fase D — «Pilota tu, o JEV é o copiloto» (PR 4, depois da B)
+
+Aprovada a 2026-09-25. Reaproveita as ameaças, as categorias, o ciclo táctico e o supervisor da fase B.
+
+**D1. Comandos.**
+- Teclado: setas ou WASD para rolamento e arfagem, Shift/Ctrl para a potência.
+- Toque: um joystick virtual.
+- Comando: a Gamepad API.
+- O visitante dá intenções, não mexe em superfícies de controlo: os comandos viram alvos de rumo e altitude em `passoFisico`, os mesmos alvos da B4.
+
+**D2. Copiloto JEV.** A cada segundo, na janela táctica, o JEV recebe o estado táctico da B3 com a manobra do visitante como candidata «tua» e responde:
+- `aprovacaoManobra`: choice entre seguir, cautela e perigo, no padrão de guarda do eve;
+- `manobraSugerida`: a mesma choice táctica;
+- `urgencia`.
+
+O JEV só aconselha: não tira o controlo ao visitante.
+
+**D3. Quem tem o controlo.**
+- Por omissão, o visitante.
+- O supervisor determinístico toma a manobra quando há conflito previsto (seta vermelha, «O supervisor assumiu») e devolve-a quando o conflito passa.
+
+**D4. HUD.**
+- Aviso do copiloto com a confiança, por exemplo «Cautela · helicóptero a convergir pela direita · 0,82».
+- Seta da manobra sugerida.
+- Estado do controlo.
+
+**D5. Debrief.** Visitante contra JEV:
+- separações mínimas;
+- avisos seguidos e ignorados;
+- tempo de reacção;
+- vezes que o supervisor assumiu.
+
+**Custos e limites.** Iguais aos da B: um pedido por segundo, só na janela táctica.
+
+**Replay.** O modo é só ao vivo, porque o voo é humano. Sem Gateway ou com o limite atingido, mostra uma demonstração gravada do copiloto, identificada.
+
+**Verificação.**
+- Teclado e toque a 390 px; comando, se houver um disponível.
+- Testes das funções puras que convertem comandos em alvos e que decidem o controlo.
+
 ## Custos (a partir de 25/09)
 
 - **Tokens por pedido:** ~2 mil no táctico, ~3,1 mil no estratégico e ~2 mil na consola.
@@ -356,11 +528,11 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
 
 ## Execução
 
-- Passo 0, depois um PR por fase, pela ordem A → B → C.
+- Passo 0, depois um PR por fase, pela ordem A → B (com o Porto reconhecível) → D → C (ordem revista a 2026-09-25).
 - Um commit por mudança lógica; os refactors (B1, B9) ficam à parte.
 - Cada tarefa segue implementador → revisão de especificação → revisão de qualidade, com TDD nas funções puras.
 - Nada vai para `main` sem confirmação. A Vercel e as gravações ao vivo são pedidas antes.
-- Marco para o LinkedIn: A + B (São João) já mostram movimento; C completa o «computer use».
+- Marco para o LinkedIn: A + B (São João) já mostram movimento; D dá o simulador e C completa o «computer use».
 
 ## Verificação
 

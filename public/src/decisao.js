@@ -21,6 +21,8 @@ export const ACOES = [
 ];
 
 export const MANOBRAS_V = ['subir', 'descer', 'manter'];
+/** Candidatas tácticas, sempre por esta ordem: a ordem não sugere a resposta. */
+export const MANOBRAS_TATICAS = ['manter', 'esquerda', 'direita', 'subir', 'descer', 'esquerda_subir', 'direita_subir'];
 export const MANOBRAS_L = ['esquerda', 'direita', 'manter'];
 export const VISUAIS = ['torre', 'relevo', 'trafego', 'meteo', 'cabo', 'canyon', 'aves', 'guerra', 'baloes'];
 

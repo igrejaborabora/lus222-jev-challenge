@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32 } from './decisao.js';
-import { alturaNuvensM, distanciaNoTufo, escalaBolha, nevoeiroDe, noiteAlvo, paletaCeu, ventoNoMundo } from './ambiente-visual.js';
+import { alturaNuvensM, distanciaNoTufo, escalaBolha, misturarCor, nevoeiroDe, noiteAlvo, paletaCeu, ventoNoMundo } from './ambiente-visual.js';
 
 /**
  * Céu desenhado a partir do ambiente que o JEV recebe (ambiente-visual.js):
@@ -8,6 +8,9 @@ import { alturaNuvensM, distanciaNoTufo, escalaBolha, nevoeiroDe, noiteAlvo, pal
  * rastos de vento (ou chuva, com pouca visibilidade) e a luz do sol.
  */
 const CAMPO_NUVENS_M = 9000;
+// De noite as nuvens escurecem para um cinzento quente, o reflexo da cidade.
+const COR_NUVEM = 0xdfe3e6;
+const COR_NUVEM_NOITE = 0x4f4640;
 // Nas últimas centenas de metros antes de dar a volta ao campo, a nuvem
 // encolhe até zero: reaparece do outro lado sem saltar à vista.
 const ORLA_NUVENS_M = 900;
@@ -133,7 +136,7 @@ function camadaNuvens(n, detalhe) {
     return c;
   });
   const total = nuvens.reduce((acc, c) => acc + c.tufos.length, 0);
-  const mat = new THREE.MeshLambertMaterial({ color: 0xdfe3e6, transparent: true, opacity: 0.92 });
+  const mat = new THREE.MeshLambertMaterial({ color: COR_NUVEM, transparent: true, opacity: 0.92 });
   const mesh = new THREE.InstancedMesh(geometriaTufo(detalhe), mat, n * MAX_TUFOS);
   mesh.count = total;
   mesh.name = 'ceu-nuvens';
@@ -162,7 +165,7 @@ function dobrar(v, c, campo) {
  * Cria o céu e o nevoeiro da cena (substitui scene.background). `alcanceTerrenoM`
  * é o raio dos mosaicos carregados: o nevoeiro fecha antes da orla.
  */
-export function criarCeu(scene, { cenario, leve = false, alcanceTerrenoM }) {
+export function criarCeu(scene, { cenario, leve = false, alcanceTerrenoM, luzDia = true }) {
   const ceu = {
     cenario,
     alcanceTerrenoM,
@@ -171,7 +174,8 @@ export function criarCeu(scene, { cenario, leve = false, alcanceTerrenoM }) {
     // ~240 tufos × 180 triângulos ≈ 43 mil no desktop; ~100 × 80 no leve.
     nuvens: camadaNuvens(leve ? 24 : 60, leve ? 1 : 2),
     rastos: rastos(leve ? 80 : 220),
-    noite: noiteAlvo(cenario, true),
+    // As missões abrem com a luz do cenário e escurecem; o simulador nasce já de noite.
+    noite: noiteAlvo(cenario, luzDia),
   };
   const nev = nevoeiroDe(10, alcanceTerrenoM);
   scene.fog = new THREE.Fog(paletaCeu(ceu.noite).nevoeiro, nev.near, nev.far);
@@ -194,6 +198,7 @@ function aplicarLuz(ceu, { scene, sol, camera, ambiente, pose }, pal) {
   scene.fog.near = nev.near;
   scene.fog.far = nev.far;
   ceu.hemi.intensity = pal.intensidadeCeu;
+  ceu.nuvens.mesh.material.color.setHex(misturarCor(COR_NUVEM, COR_NUVEM_NOITE, pal.luzes));
 
   if (!sol) return;
   sol.color.setHex(pal.corSol);

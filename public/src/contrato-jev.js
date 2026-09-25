@@ -44,3 +44,28 @@ export function validarRespostas(momento, answers) {
   }
   return { ok: true, erro: null };
 }
+
+/**
+ * Contrato de perguntas com domínios dinâmicos (JEV piloto): cada resposta tem
+ * de cair nas opções que a pergunta enviada tinha, com probabilidades válidas.
+ */
+export function validarRespostasDinamicas(answers, questions) {
+  if (!answers || typeof answers !== 'object') return { ok: false, erro: 'Respostas ausentes' };
+  for (const [nome, q] of Object.entries(questions ?? {})) {
+    const a = answers[nome];
+    if (!a || typeof a !== 'object') return { ok: false, erro: `${nome}: resposta ausente` };
+    if (q.type === 'choice') {
+      const dominio = Object.keys(q.criteria ?? {});
+      if (!dominio.includes(a.choice)) return { ok: false, erro: `${nome}: escolha inválida` };
+      if (!validarDistribuicao(a.probabilities, dominio)) return { ok: false, erro: `${nome}: probabilidades inválidas` };
+    } else if (q.type === 'score') {
+      const max = (q.criteria?.length ?? 2) - 1;
+      if (typeof a.score !== 'number' || !Number.isFinite(a.score) || a.score < 0 || a.score > max) return { ok: false, erro: `${nome}: score inválido` };
+      if (!validarDistribuicao(a.probabilities, Array.from({ length: max + 1 }, (_, i) => String(i)))) return { ok: false, erro: `${nome}: probabilidades inválidas` };
+    } else if (typeof a.probability !== 'number' || !Number.isFinite(a.probability) || a.probability < 0 || a.probability > 1) {
+      return { ok: false, erro: `${nome}: probabilidade inválida` };
+    }
+  }
+  return { ok: true, erro: null };
+}
+

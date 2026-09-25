@@ -1,4 +1,8 @@
 import { mulberry32, offsetLateral } from './decisao.js';
+import { cpa, distanciaM, nascerAmeacas, passoAmeacas, raioEfectivoM } from './ameacas.js';
+import { actuacaoDeManobra, actuacaoEfectiva } from './piloto-sim.js';
+import { alturaTerreno, perfilTerreno, pistasDaMissao, prepararPistas } from './relevo.js';
+import { avancarCircuito, passoDiretor } from './diretor.js';
 
 /** Parâmetros ilustrativos, não são dados certificados do LUS-222. */
 export const PERFIL = Object.freeze({
@@ -129,6 +133,12 @@ export function criarMissao(cenarioId = 'medevac', semente = 222, restricoes = {
     orbitaRestanteS: 0,
     ameacaAtiva: null,
     separacoes: [],
+    passo: 0,
+    acumuladorS: 0,
+    vooAnterior: null,
+    // Ameaças em movimento (ameacas.js); ameacaAtiva fica para os balões antigos até à migração dos cenários.
+    ameacas: [],
+    proximaAmeaca: 1,
   };
 }
 
@@ -161,15 +171,65 @@ function separacaoPrevistaM(m, comando, ameaca) {
   return minimo;
 }
 
+function gatilhoCumprido(m, e) {
+  if (e.rota && e.rota !== m.destinoId) return false;
+  if (e.gatilho.tipo === 'tempo') return m.voo.tempoS >= e.gatilho.valor;
+  if (e.gatilho.tipo === 'posicao') return m.voo.zM >= e.gatilho.valor;
+  if (e.gatilho.tipo === 'combustivel') return m.voo.combustivelKg <= e.gatilho.valor;
+  return false;
+}
+
+/** O próximo evento que pede uma decisão estratégica ao JEV; os só de ameaça nascem sozinhos. */
 export function proximoEvento(m) {
   if (m.resultado) return null;
-  return m.eventosPendentes.find((e) => {
-    if (e.rota && e.rota !== m.destinoId) return false;
-    if (e.gatilho.tipo === 'tempo') return m.voo.tempoS >= e.gatilho.valor;
-    if (e.gatilho.tipo === 'posicao') return m.voo.zM >= e.gatilho.valor;
-    if (e.gatilho.tipo === 'combustivel') return m.voo.combustivelKg <= e.gatilho.valor;
-    return false;
-  }) ?? null;
+  return m.eventosPendentes.find((e) => e.pergunta !== false && gatilhoCumprido(m, e)) ?? null;
+}
+
+/** Eventos só de ameaça cujo gatilho chegou: as ameaças nascem neste passo, sem pergunta. */
+function nascerAmeacasDevidas(m) {
+  const devidos = m.eventosPendentes.filter((e) => e.pergunta === false && e.ameacas?.length && gatilhoCumprido(m, e));
+  if (!devidos.length) return m;
+  let proxima = m.proximaAmeaca ?? 1;
+  const novas = devidos.flatMap((e) => {
+    const nascidas = nascerAmeacas(e.ameacas, m.voo, { tempoS: m.voo.tempoS, semente: m.semente, proximoNumero: proxima });
+    proxima += nascidas.length;
+    return nascidas;
+  });
+  const ids = new Set(devidos.map((e) => e.id));
+  return {
+    ...m,
+    ameacas: [...(m.ameacas ?? []), ...novas],
+    proximaAmeaca: proxima,
+    eventosPendentes: m.eventosPendentes.filter((e) => !ids.has(e.id)),
+    eventosTratados: [...m.eventosTratados, ...ids],
+  };
+}
+
+/**
+ * Move as ameaças, mede a separação a cada uma e retira as que já passaram
+ * (a afastar-se a mais de 1,5 km) ou esgotaram a vida, registando a mínima.
+ */
+function actualizarAmeacas(m, voo, dt) {
+  if (!m.ameacas?.length) return { ameacas: m.ameacas ?? [], separacoes: m.separacoes, perdida: false };
+  const movidas = passoAmeacas(m.ameacas, dt, { vento: m.ambiente.ventoMs, tempoS: voo.tempoS });
+  const ameacas = [];
+  const separacoes = [...m.separacoes];
+  let perdida = false;
+  for (const a of movidas) {
+    const minima = Math.min(a.separacaoMinM, distanciaM(voo, a));
+    const limite = raioEfectivoM(a);
+    const registo = { id: a.id, origem: a.origem, tipo: a.tipo, minimaM: Math.round(minima), limiteM: Math.round(limite) };
+    if (minima < limite) {
+      perdida = true;
+      separacoes.push(registo);
+      continue;
+    }
+    const idade = voo.tempoS - a.nascidaS;
+    const c = cpa(voo, a, m.ambiente.ventoMs);
+    if (idade > a.vidaS || (c.movimento === 'afasta' && c.distanciaAgoraM > 1500)) separacoes.push(registo);
+    else ameacas.push({ ...a, separacaoMinM: minima });
+  }
+  return { ameacas, separacoes, perdida };
 }
 
 export function estadoParaAvaliacao(m, evento = null) {
@@ -265,6 +325,7 @@ export function aplicarDecisao(m, answers, fonte = 'jev', consumirEvento = true)
 }
 
 function passoFisico(m, dt) {
+  if (m.piloto) return passoPilotado(m, dt);
   const v = m.voo;
   const d = destinoDe(m, m.destinoId);
   const rumoDesejado = Math.atan2(d.xM - v.xM, d.zM - v.zM);
@@ -295,34 +356,215 @@ function passoFisico(m, dt) {
   return { ...v, xM: v.xM + dx, zM: v.zM + dz, altitudeM: altitude, velocidadeMs: speed, velocidadeVerticalMs: subida, rumoRad: heading, bankRad: bank, pitchRad: Math.asin(clamp(subida / speed, -0.2, 0.2)), combustivelKg: fuel, massaKg: PERFIL.massaVaziaKg + v.payloadKg + fuel, distanciaPercorridaM: v.distanciaPercorridaM + Math.hypot(dx, dz), tempoS: v.tempoS + dt, potencia };
 }
 
-export function avancarMissao(m, segundos) {
-  if (m.resultado || !Number.isFinite(segundos) || segundos <= 0) return m;
-  let atual = m;
-  let restante = Math.min(segundos, 60);
-  while (restante > 1e-7 && !atual.resultado) {
-    const dt = Math.min(PERFIL.passoS, restante);
-    const voo = passoFisico(atual, dt);
-    const orbitaRestanteS = Math.max(0, atual.orbitaRestanteS - (atual.fase === 'orbita' ? dt : 0));
-    const fase = atual.fase === 'orbita' && orbitaRestanteS === 0 ? 'em_rota' : atual.fase;
-    const destino = destinoDe(atual, atual.destinoId);
-    let resultado = null;
-    if (voo.combustivelKg <= 0) resultado = 'combustivel_esgotado';
-    else if (voo.altitudeM <= 0 && dist(voo, destino) >= 250) resultado = 'limite_altitude';
-    else if (fase !== 'orbita' && dist(voo, destino) < 250 && voo.altitudeM <= 50) resultado = atual.destinoId === 'origem' ? 'regressou' : fase === 'emergencia' ? 'emergencia_resolvida' : 'chegou';
-    else if (voo.tempoS >= 2800) resultado = 'tempo_esgotado';
-    let ameacaAtiva = atual.ameacaAtiva;
-    let separacoes = atual.separacoes;
-    if (ameacaAtiva) {
-      const minima = Math.min(ameacaAtiva.separacaoMinM, distanciaAmeacaM(voo, ameacaAtiva));
-      ameacaAtiva = { ...ameacaAtiva, separacaoMinM: minima };
-      if (minima < ameacaAtiva.raioProtecaoM) resultado = 'separacao_perdida';
-      if (voo.zM > ameacaAtiva.zM + 120 || resultado) {
-        separacoes = [...separacoes, { id: ameacaAtiva.id, minimaM: Math.round(minima), limiteM: ameacaAtiva.raioProtecaoM }];
-        ameacaAtiva = null;
-      }
-    }
-    atual = { ...atual, voo, fase, orbitaRestanteS, resultado, ameacaAtiva, separacoes };
-    restante -= dt;
+// Lei de comando do simulador (piloto-sim.js): pranchamento pedido, razão de
+// rolamento, razão de subida pedida e variação do acelerador por segundo.
+const BANCO_PILOTO_RAD = 0.44;
+const RAZAO_ROLAMENTO_RAD_S = 0.35;
+const SUBIDA_PILOTO_MS = 4;
+const RAZAO_ACELERADOR_S = 0.25;
+
+// Pistas por cenário, preparadas uma vez: o chão do simulador segue o mesmo relevo do 3D.
+const CHAO_CACHE = new Map();
+/** Altura do chão (relevo ou mar, ≥ 0) debaixo de um ponto da missão. */
+export function alturaChaoM(m, xM, zM) {
+  // No voo livre só o aeroporto é pista (m.pistas); nas missões, todos os destinos.
+  const comPista = m.pistas ?? m.destinos;
+  const chave = `${m.cenario}|${comPista.map((d) => d.id).join(',')}`;
+  let c = CHAO_CACHE.get(chave);
+  if (!c) {
+    const perfil = perfilTerreno(m.cenario);
+    c = { perfil, pistas: prepararPistas(perfil, pistasDaMissao(comPista)) };
+    CHAO_CACHE.set(chave, c);
   }
-  return atual;
+  // O mundo 3D espelha o x (escala.js): o relevo vive em x do mundo = −xM.
+  return Math.max(0, alturaTerreno(c.perfil, -xM, zM, c.pistas));
+}
+
+/** Física com o piloto (humano ou JEV) aos comandos: a mesma aerodinâmica, outra lei de comando. */
+function passoPilotado(m, dt) {
+  const v = m.voo;
+  const a = actuacaoEfectiva(m.piloto, v.tempoS);
+  const bancoAlvo = a.lateral === 'esquerda' ? -BANCO_PILOTO_RAD : a.lateral === 'direita' ? BANCO_PILOTO_RAD : 0;
+  const bank = v.bankRad + clamp(bancoAlvo - v.bankRad, -RAZAO_ROLAMENTO_RAD_S * dt, RAZAO_ROLAMENTO_RAD_S * dt);
+  const sinal = a.potencia === 'mais' ? 1 : a.potencia === 'menos' ? -1 : 0;
+  const acelerador = clamp((v.acelerador ?? 0.55) + sinal * RAZAO_ACELERADOR_S * dt, 0.24, 1);
+  const massa = PERFIL.massaVaziaKg + v.payloadKg + v.combustivelKg;
+  const rho = 1.225 * Math.exp(-v.altitudeM / 8500);
+  const q = 0.5 * rho * v.velocidadeMs ** 2;
+  const cl = massa * G / Math.max(1, q * PERFIL.areaAsaM2 * Math.cos(bank));
+  const drag = q * PERFIL.areaAsaM2 * (PERFIL.cd0 + PERFIL.kInduzido * Math.min(cl, PERFIL.clMax) ** 2);
+  const empuxo = PERFIL.empuxoMaxN * acelerador * Math.max(0.55, 1 - v.altitudeM / 13000);
+  const speed = clamp(v.velocidadeMs + ((empuxo - drag) / massa) * dt, 31, PERFIL.velocidadeMaxMs);
+  const excesso = Math.max(0, (empuxo - drag) * speed / Math.max(1, massa * G));
+  // Manter segura a altitude do momento em que se largou a subida ou a descida.
+  const altitudeAlvoM = a.vertical === 'manter'
+    ? (v.modoVertical === 'manter' && Number.isFinite(v.altitudeAlvoM) ? v.altitudeAlvoM : v.altitudeM)
+    : null;
+  const subidaAlvo = a.vertical === 'subir' ? Math.min(SUBIDA_PILOTO_MS, excesso + 1.5)
+    : a.vertical === 'descer' ? -SUBIDA_PILOTO_MS
+      : clamp((altitudeAlvoM - v.altitudeM) * 0.4, -2, 2);
+  const subida = cl > PERFIL.clMax ? -4 : v.velocidadeVerticalMs + clamp(subidaAlvo - v.velocidadeVerticalMs, -3 * dt, 3 * dt);
+  const altitude = Math.max(0, v.altitudeM + subida * dt);
+  const heading = v.rumoRad + G * Math.tan(bank) / Math.max(31, speed) * dt;
+  const fuel = Math.max(0, v.combustivelKg - (0.026 + 0.115 * acelerador) * dt);
+  const dx = (Math.sin(heading) * speed + m.ambiente.ventoMs.x) * dt;
+  const dz = (Math.cos(heading) * speed + m.ambiente.ventoMs.z) * dt;
+  return {
+    ...v, xM: v.xM + dx, zM: v.zM + dz, altitudeM: altitude, velocidadeMs: speed, velocidadeVerticalMs: subida,
+    rumoRad: heading, bankRad: bank, pitchRad: Math.asin(clamp(subida / speed, -0.2, 0.2)),
+    combustivelKg: fuel, massaKg: PERFIL.massaVaziaKg + v.payloadKg + fuel,
+    distanciaPercorridaM: v.distanciaPercorridaM + Math.hypot(dx, dz), tempoS: v.tempoS + dt,
+    potencia: acelerador, acelerador, modoVertical: a.vertical, altitudeAlvoM, fonteActuacao: a.fonte,
+  };
+}
+
+// O preditor não conhece intenções: só o vento é previsível (balões, células, contacto).
+const PREVISIVEIS = new Set(['vento', 'celula', 'deriva']);
+function paraPrever(ameacas) {
+  return ameacas.map((a) => (PREVISIVEIS.has(a.comportamento?.tipo) ? a : { ...a, comportamento: { ...a.comportamento, tipo: 'constante' } }));
+}
+
+/**
+ * Previsão de uma actuação: aplicada durante `aplicarS` e depois estabilizada,
+ * até `horizonteS`, com as ameaças a mexer. Devolve a margem mínima ao
+ * perímetro de protecção (negativa = conflito), a ameaça crítica e a menor
+ * altura ao chão. É a mesma conta para o supervisor e para o estado do JEV.
+ */
+export function preverActuacao(m, actuacao, { horizonteS = 30, aplicarS = 8, dtS = 0.5, amostraS = 3 } = {}) {
+  const inicio = m.voo.tempoS;
+  let sim = { ...m, piloto: { ...m.piloto, ...actuacao, potencia: actuacao.potencia ?? 'manter', ateS: inicio + aplicarS, supervisor: null, fonte: 'previsao' } };
+  let ameacas = paraPrever(m.ameacas ?? []);
+  let margemM = Infinity;
+  let critica = null;
+  let aglMinM = Infinity;
+  const margens = {};
+  let vooAmostra = null;
+  for (let t = 0; t < horizonteS - 1e-9; t += dtS) {
+    const voo = passoPilotado(sim, dtS);
+    if (!vooAmostra && t + dtS >= amostraS - 1e-9) vooAmostra = voo;
+    ameacas = passoAmeacas(ameacas, dtS, { vento: m.ambiente.ventoMs, tempoS: voo.tempoS });
+    for (const a of ameacas) {
+      const margem = distanciaM(voo, a) - raioEfectivoM(a);
+      if (!(margem >= (margens[a.id] ?? Infinity))) margens[a.id] = margem;
+      if (margem < margemM) { margemM = margem; critica = a.id; }
+    }
+    aglMinM = Math.min(aglMinM, voo.altitudeM - alturaChaoM(m, voo.xM, voo.zM));
+    sim = { ...sim, voo };
+  }
+  return { margemM, critica, margens, aglMinM, vooFinal: sim.voo, vooAmostra: vooAmostra ?? sim.voo };
+}
+
+const CANDIDATAS_SUPERVISOR = ['direita_subir', 'esquerda_subir', 'subir', 'direita', 'esquerda', 'manter', 'descer'];
+// Na previsão, abaixo disto a manobra aproxima-se do terreno (o GPWS dispara aos 60 m):
+// o supervisor só a escolhe se nenhuma outra mantiver esta folga ao chão.
+const FOLGA_TERRENO_SUPERVISOR_M = 90;
+
+/**
+ * Escolha do supervisor entre as previsões das candidatas ({ c, margemM, aglMinM }):
+ * primeiro a folga ao terreno, depois a maior margem à ameaça (no empate, a primeira).
+ */
+export function escolhaDoSupervisor(previsoes) {
+  const seguras = previsoes.filter((p) => p.aglMinM >= FOLGA_TERRENO_SUPERVISOR_M);
+  return (seguras.length ? seguras : previsoes).reduce((melhor, p) => (p.margemM > melhor.margemM ? p : melhor));
+}
+
+/**
+ * Supervisor determinístico, a cada segundo de simulação: tipo GPWS (perto do
+ * chão a descer → subir) e tipo TCAS (a actuação de agora entra num perímetro
+ * nos próximos 30 s → a manobra com mais margem manda durante 3 s). É a última
+ * barreira; o piloto, humano ou JEV, continua a decidir fora disso.
+ */
+function verificarSupervisor(m) {
+  const v = m.voo;
+  const agl = v.altitudeM - alturaChaoM(m, v.xM, v.zM);
+  if (agl < 60 && v.velocidadeVerticalMs < 0.5) {
+    return { ...m, piloto: { ...m.piloto, supervisor: { lateral: 'nivelar', vertical: 'subir', potencia: 'mais', ateS: v.tempoS + 4, motivo: 'terreno' } } };
+  }
+  if (!m.ameacas?.length) return m;
+  const actual = actuacaoEfectiva(m.piloto, v.tempoS);
+  if (actual.fonte === 'supervisor') return m;
+  if (preverActuacao(m, actual).margemM >= 0) return m;
+  const melhor = escolhaDoSupervisor(CANDIDATAS_SUPERVISOR.map((c) => ({ c, ...preverActuacao(m, { ...actuacaoDeManobra(c), potencia: 'manter' }) })));
+  return { ...m, piloto: { ...m.piloto, supervisor: { ...actuacaoDeManobra(melhor.c), potencia: 'manter', ateS: v.tempoS + 3, motivo: 'separacao', manobra: melhor.c } } };
+}
+
+/** Um passo da missão: física, órbita, resultado e separação à ameaça activa. */
+function passoMissao(anterior, dt) {
+  let atual = nascerAmeacasDevidas(anterior);
+  if (atual.piloto) {
+    if (atual.diretor) atual = passoDiretor(atual);
+    if ((atual.passo ?? 0) % 10 === 0) atual = verificarSupervisor(atual);
+  }
+  const voo = passoFisico(atual, dt);
+  const orbitaRestanteS = Math.max(0, atual.orbitaRestanteS - (atual.fase === 'orbita' ? dt : 0));
+  const fase = atual.fase === 'orbita' && orbitaRestanteS === 0 ? 'em_rota' : atual.fase;
+  const destino = destinoDe(atual, atual.destinoId);
+  let resultado = null;
+  if (voo.combustivelKg <= 0) resultado = 'combustivel_esgotado';
+  else if (voo.altitudeM <= 0 && dist(voo, destino) >= 250) resultado = 'limite_altitude';
+  else if (atual.piloto && voo.altitudeM <= alturaChaoM(atual, voo.xM, voo.zM) + 0.5 && dist(voo, destino) >= 1500) resultado = 'limite_altitude';
+  else if (fase !== 'orbita' && dist(voo, destino) < 250 && voo.altitudeM <= 50) resultado = atual.destinoId === 'origem' ? 'regressou' : fase === 'emergencia' ? 'emergencia_resolvida' : 'chegou';
+  else if (voo.tempoS >= 2800) resultado = 'tempo_esgotado';
+  const movidas = actualizarAmeacas(atual, voo, dt);
+  if (movidas.perdida) resultado = 'separacao_perdida';
+  let ameacaAtiva = atual.ameacaAtiva;
+  let separacoes = movidas.separacoes;
+  if (ameacaAtiva) {
+    const minima = Math.min(ameacaAtiva.separacaoMinM, distanciaAmeacaM(voo, ameacaAtiva));
+    ameacaAtiva = { ...ameacaAtiva, separacaoMinM: minima };
+    if (minima < ameacaAtiva.raioProtecaoM) resultado = 'separacao_perdida';
+    if (voo.zM > ameacaAtiva.zM + 120 || resultado) {
+      separacoes = [...separacoes, { id: ameacaAtiva.id, minimaM: Math.round(minima), limiteM: ameacaAtiva.raioProtecaoM }];
+      ameacaAtiva = null;
+    }
+  }
+  const seguinte = { ...atual, voo, fase, orbitaRestanteS, resultado, ameacaAtiva, separacoes, ameacas: movidas.ameacas };
+  return seguinte.circuito ? avancarCircuito(seguinte) : seguinte;
+}
+
+/**
+ * Relógio de passo fixo: o tempo acumula-se e a missão avança só em passos
+ * inteiros de PERFIL.passoS, por isso o estado é função do número de passos
+ * (`m.passo`) e das decisões aplicadas, seja qual for o ritmo dos frames.
+ * `ate` pára num passo exacto (para aplicar lá uma decisão gravada); `parar`
+ * pára antes do passo em que devolve verdadeiro. O tempo que sobra fica em
+ * `acumuladorS` para a chamada seguinte.
+ */
+export function avancarMissao(m, segundos, { ate = Infinity, parar = null } = {}) {
+  if (m.resultado || !Number.isFinite(segundos) || segundos < 0) return m;
+  let atual = m;
+  let passo = m.passo ?? 0;
+  let anterior = m.vooAnterior ?? null;
+  let acumulador = (m.acumuladorS ?? 0) + Math.min(segundos, 60);
+  while (acumulador >= PERFIL.passoS - 1e-9 && passo < ate && !atual.resultado) {
+    if (parar?.(atual)) break;
+    anterior = atual.voo;
+    passo += 1;
+    // passo actualizado em cada estado intermédio: `parar` pode lê-lo.
+    atual = { ...passoMissao(atual, PERFIL.passoS), passo };
+    acumulador -= PERFIL.passoS;
+  }
+  return { ...atual, passo, acumuladorS: atual.resultado ? 0 : Math.max(0, acumulador), vooAnterior: anterior };
+}
+
+/**
+ * O voo a desenhar entre o passo anterior e o actual, pela fracção do
+ * acumulador: a física avança a 10 Hz e o desenho a 60 sem saltos.
+ */
+export function vooInterpolado(m) {
+  const a = m?.vooAnterior;
+  const b = m?.voo;
+  if (!a || !b) return b;
+  const t = Math.min(1, Math.max(0, (m.acumuladorS ?? 0) / PERFIL.passoS));
+  const mix = (x, y) => x + (y - x) * t;
+  return {
+    ...b,
+    xM: mix(a.xM, b.xM),
+    zM: mix(a.zM, b.zM),
+    altitudeM: mix(a.altitudeM, b.altitudeM),
+    rumoRad: a.rumoRad + angulo(b.rumoRad - a.rumoRad) * t,
+    bankRad: mix(a.bankRad, b.bankRad),
+    pitchRad: mix(a.pitchRad, b.pitchRad),
+    tempoS: mix(a.tempoS, b.tempoS),
+  };
 }

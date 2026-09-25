@@ -31,6 +31,11 @@ export function picEsperado(cenario, id) {
   return RUBRICA[cenario]?.[id]?.pic ?? null;
 }
 
+/** Acções de missão que a rubrica aceita neste evento (banco de casos); [] sem rubrica. */
+export function acoesAceites(cenario, id) {
+  return [...(RUBRICA[cenario]?.[id]?.acoes ?? [])];
+}
+
 export function avaliarLinha(linha) {
   const a = linha?.jev?.answers ?? {};
   const rubrica = RUBRICA[linha?.cenario]?.[linha?.id] ?? null;

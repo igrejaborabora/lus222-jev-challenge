@@ -6,16 +6,19 @@ import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
 import { actualizarHelices, criarLus222 } from './lus222.js';
 import { offsetLateral, pontoAmeaca } from './decisao.js';
 import { alturaAteFolga, indiceAmeacaAEnquadrar, posicaoVisualBaloes } from './ameaca-visual.js';
-import { actualizarTerreno, criarTerreno, largarTerreno } from './terreno.js';
+import { actualizarTerreno, criarTerreno, escurecerTerreno, largarTerreno } from './terreno.js';
 import { alturaTerreno, perfilTerreno } from './relevo.js';
 import { TAMANHO_MOSAICO_M } from './mosaicos.js';
 import { actualizarCeu, criarCeu } from './ceu.js';
 import { actualizarMarcas, criarMarcas } from './marcas-missao.js';
+import { actualizarPortoNoite, criarPortoNoite } from './porto-noite.js';
 
 // Suavização do desvio da câmara em relação ao avião (por segundo); a vertical
 // é quase rígida para não largar a cauda na subida/descida do dodge.
 const K_CAMARA = 3.4;
 const K_VERTICAL = 7;
+// No modo cinema os planos encadeiam-se devagar, como uma panorâmica (~2,5 s).
+const K_CINEMA = 1.2;
 // Folga mínima da câmara acima do relevo (ou do mar, a y = 0).
 const FOLGA_CHAO_M = 5;
 
@@ -395,7 +398,7 @@ function luzesNavegacao(aviao) {
   });
 }
 
-export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null, pistas = [], apresentacao = true, destinos = [], nomesDestinos = {} } = {}) {
+export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null, pistas = [], apresentacao = true, destinos = [], nomesDestinos = {}, luzDia = true } = {}) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: !leve,
@@ -417,7 +420,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   scene.add(sun, sun.target);
   // Cúpula, nevoeiro, luz hemisférica, nuvens e rastos; o nevoeiro fecha
   // antes da orla dos mosaicos carregados.
-  const ceu = criarCeu(scene, { cenario, leve, alcanceTerrenoM: TAMANHO_MOSAICO_M * (leve ? 2 : 3) });
+  const ceu = criarCeu(scene, { cenario, leve, alcanceTerrenoM: TAMANHO_MOSAICO_M * (leve ? 2 : 3), luzDia });
 
   let ambienteRT = null;
   // Só o LUS-222 usa MeshStandardMaterial: o ambiente dá-lhe reflexos suaves
@@ -451,6 +454,8 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   const terreno = criarTerreno({ perfil: perfilTerreno(cenario), pistas, leve });
   geografia.add(terreno.grupo);
   if (pose) actualizarTerreno(terreno, pose.x, pose.z, Infinity);
+  // Porto na noite de São João: pontes, Ribeira, luzes da cidade, lanternas e fogo.
+  const portoNoite = cenario === 'porto' ? criarPortoNoite(geografia, { perfil: terreno.perfil, pistas: terreno.pistas, leve }) : null;
   scene.add(geografia);
 
   const aviao = criarLus222({ leve });
@@ -485,6 +490,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     ameaças,
     geografia,
     terreno,
+    portoNoite,
     marcas,
     ambienteRT,
     sol: sun,
@@ -502,6 +508,8 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     camara: novaCamara(performance.now() / 1000, { abertura: apresentacao && !reduzido }),
     // Foco do evento em coordenadas ABSOLUTAS: sobrevive a recentrarOrigem.
     focoEvento: null,
+    // Marco do modo cinema (próximo ponto do circuito), em coordenadas ABSOLUTAS.
+    marcoCinema: null,
     // Desvios da câmara e da mira em relação ao avião (não precisam de recentrar).
     desvioCamara: null,
     desvioMira: null,
@@ -556,6 +564,12 @@ function actualizarCeuEAviao(mundo, visual, dt) {
   const acesas = pal.luzes > 0.05;
   for (const luz of mundo.luzesNav) luz.visible = acesas;
   escurecerAviao(mundo, pal);
+  escurecerTerreno(mundo.terreno, pal.luzes);
+  if (mundo.portoNoite) {
+    // O vento da missão está no referencial da missão (x = −x do mundo).
+    const v = visual.ambiente.ventoMs ?? { x: 0, z: 0 };
+    actualizarPortoNoite(mundo.portoNoite, dt, { luzes: pal.luzes, vento: { x: -v.x, z: v.z } });
+  }
 }
 
 /**
@@ -584,6 +598,7 @@ export function largarCena(mundo) {
     for (const m of [o.material].flat().filter(Boolean)) {
       m.map?.dispose();
       m.roughnessMap?.dispose();
+      m.emissiveMap?.dispose();
       m.dispose();
     }
     // Mapa de sombra do sol (render target próprio) e matrizes das nuvens.
@@ -669,10 +684,12 @@ function limitarAoChao(mundo) {
   if (cam.position.y < chao) cam.position.y = chao;
 }
 
+function paraLocal(mundo, p) {
+  return p ? { x: p.x - mundo.origemVisual.x, y: p.y, z: p.z - mundo.origemVisual.z } : null;
+}
+
 function focoLocal(mundo) {
-  const f = mundo.focoEvento;
-  if (!f) return null;
-  return { x: f.x - mundo.origemVisual.x, y: f.y, z: f.z - mundo.origemVisual.z };
+  return paraLocal(mundo, mundo.focoEvento);
 }
 
 /**
@@ -712,7 +729,8 @@ function enquadrar(mundo, modo, pose, dt) {
   const cam = mundo.camera;
   // Ecrã estreito (telemóvel em pé): afasta a câmara para a asa caber no quadro.
   const fit = Math.min(1, Math.max(0.42, (cam.aspect || 1) / 1.2));
-  const alvo = alvoCamara(modo, pose, { fit, foco: modo === 'evento' ? focoLocal(mundo) : null });
+  const foco = modo === 'evento' ? focoLocal(mundo) : modo === 'cinema' ? paraLocal(mundo, mundo.marcoCinema) : null;
+  const alvo = alvoCamara(modo, pose, { fit, foco, agoraS: performance.now() / 1000 });
   if (modo === 'cauda' && mundo.alvoLook) puxarMiraParaAmeaca(alvo.mira, pose, mundo.alvoLook, fit);
   const cx = alvo.pos.x - pose.x;
   const cy = alvo.pos.y - pose.y;
@@ -727,8 +745,8 @@ function enquadrar(mundo, modo, pose, dt) {
     mundo.desvioMira = { x: mx, y: my, z: mz };
   } else {
     const t = Math.min(dt, 0.08);
-    const k = 1 - Math.exp(-K_CAMARA * t);
-    const ky = 1 - Math.exp(-K_VERTICAL * t);
+    const k = 1 - Math.exp(-(modo === 'cinema' ? K_CINEMA : K_CAMARA) * t);
+    const ky = 1 - Math.exp(-(modo === 'cinema' ? K_CINEMA : K_VERTICAL) * t);
     dc.x += (cx - dc.x) * k;
     dc.y += (cy - dc.y) * ky;
     dc.z += (cz - dc.z) * k;
@@ -773,7 +791,16 @@ export function focarEvento(mundo, foco) {
   mundo.camara = registarEvento(mundo.camara, performance.now() / 1000);
 }
 
-/** Botão do dock: cauda → lado → livre. Devolve o novo modo preferido. */
+/**
+ * Marco que o modo cinema enquadra com o avião (coordenadas ABSOLUTAS do
+ * mundo), ou null. O simulador passa o próximo ponto do circuito quando está
+ * perto e à frente.
+ */
+export function definirMarcoCinema(mundo, marco) {
+  if (mundo) mundo.marcoCinema = marco ? { x: marco.x, y: marco.y, z: marco.z } : null;
+}
+
+/** Botão do dock: cauda → lado → cinema → livre. Devolve o novo modo preferido. */
 export function alternarCamara(mundo) {
   mundo.camara = alternarPreferido(mundo.camara);
   return mundo.camara.preferido;
@@ -797,4 +824,270 @@ export function webglDisponivel() {
   } catch {
     return false;
   }
+}
+
+// ── Simulador: ameaças em movimento (ameacas.js) ───────────────────────────
+
+/**
+ * Liberta uma ameaça que saiu do céu. O InstancedMesh tem de ser libertado à
+ * parte (a matriz das instâncias não é da geometria); o brilho partilhado fica
+ * para as outras ameaças e só sai com a cena (largarCena).
+ */
+function libertarGrupo(g) {
+  g.traverse((o) => {
+    o.geometry?.dispose();
+    for (const m of [o.material].flat().filter(Boolean)) {
+      if (m.map && m.map !== TEXTURA_BRILHO) m.map.dispose();
+      m.dispose?.();
+    }
+    if (o.isInstancedMesh) o.dispose();
+  });
+}
+
+let TEXTURA_BRILHO = null;
+/** Brilho radial para as lanternas e luzes (canvas, sem ficheiros). */
+function texturaBrilho() {
+  if (TEXTURA_BRILHO) return TEXTURA_BRILHO;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,240,200,1)');
+  g.addColorStop(0.25, 'rgba(255,190,110,0.85)');
+  g.addColorStop(1, 'rgba(255,140,60,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  TEXTURA_BRILHO = new THREE.CanvasTexture(c);
+  return TEXTURA_BRILHO;
+}
+
+/** Pontos pseudo-aleatórios estáveis por ameaça (mesma semente, mesmo desenho). */
+function aleatorio(semente) {
+  let a = semente >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function luzPonto(cor, tamanho) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+  return new THREE.Points(geo, new THREE.PointsMaterial({ color: cor, size: tamanho, map: texturaBrilho(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false }));
+}
+
+function malhaTrafego(a) {
+  const g = new THREE.Group();
+  const helicoptero = /helic/i.test(a.tipo);
+  const corpo = mat(0xe9e4d6);
+  if (helicoptero) {
+    const cabine = new THREE.Mesh(new THREE.SphereGeometry(1.6, 12, 10), corpo);
+    cabine.scale.set(1, 1, 1.5);
+    const cauda = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 6), corpo);
+    cauda.position.set(0, 0.3, -4.5);
+    const rotor = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 5.5, 0.05, 24), new THREE.MeshBasicMaterial({ color: 0xcfd6dc, transparent: true, opacity: 0.22, depthWrite: false }));
+    rotor.position.y = 1.9;
+    g.add(cabine, cauda, rotor);
+    g.userData.rotor = rotor;
+  } else {
+    const fuselagem = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.3, 8.5), corpo);
+    const asa = new THREE.Mesh(new THREE.BoxGeometry(11, 0.18, 1.6), corpo);
+    asa.position.z = 0.6;
+    const estab = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.12, 0.9), corpo);
+    estab.position.z = -3.8;
+    const deriva = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.6, 1.1), mat(0x1a2744));
+    deriva.position.set(0, 0.9, -3.8);
+    g.add(fuselagem, asa, estab, deriva);
+  }
+  // Luzes de navegação e estroboscópio: de noite é o que se vê primeiro.
+  const vermelha = luzPonto(0xff3030, 9);
+  vermelha.position.set(helicoptero ? 1.4 : 5.5, 0, 0.6);
+  const verde = luzPonto(0x30ff70, 9);
+  verde.position.set(helicoptero ? -1.4 : -5.5, 0, 0.6);
+  const estrobo = luzPonto(0xffffff, 16);
+  estrobo.position.set(0, helicoptero ? 2.2 : 1.2, 0);
+  g.add(vermelha, verde, estrobo);
+  g.userData.estrobo = estrobo;
+  g.userData.orientar = true;
+  return g;
+}
+
+function malhaBaloes(a, leve) {
+  const g = new THREE.Group();
+  const n = Math.max(1, Math.min(leve ? 10 : 18, Number(a.membros) || 1));
+  const rnd = aleatorio(a.sementeVisual ?? 1);
+  const disp = Math.max(4, Number(a.dispersaoM) || 20);
+  const corpos = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(0.55, 0.4, 1.1, 8, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xffb466, transparent: true, opacity: 0.92, side: THREE.DoubleSide }),
+    n,
+  );
+  const posicoes = [];
+  const m4 = new THREE.Matrix4();
+  for (let i = 0; i < n; i++) {
+    const ang = rnd() * Math.PI * 2;
+    const r = Math.sqrt(rnd()) * disp;
+    const p = new THREE.Vector3(Math.cos(ang) * r, (rnd() - 0.5) * disp * 0.5, Math.sin(ang) * r);
+    posicoes.push(p.x, p.y, p.z);
+    m4.makeTranslation(p.x, p.y, p.z);
+    corpos.setMatrixAt(i, m4);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(posicoes, 3));
+  const brilho = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffc27a, size: 22, map: texturaBrilho(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false }));
+  g.add(corpos, brilho);
+  g.userData.brilho = brilho;
+  return g;
+}
+
+function malhaAves(a, leve) {
+  const g = new THREE.Group();
+  const n = Math.max(1, Math.min(leve ? 12 : 24, Number(a.membros) || 1));
+  const rnd = aleatorio(a.sementeVisual ?? 2);
+  const disp = Math.max(4, Number(a.dispersaoM) || 20);
+  // Uma ave é um «V» de dois triângulos; o bater de asas faz-se a rodar cada uma.
+  const v = new THREE.BufferGeometry();
+  v.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0.25, -0.9, 0.2, -0.2, 0, 0, -0.3, 0, 0, 0.25, 0.9, 0.2, -0.2, 0, 0, -0.3], 3));
+  v.computeVertexNormals();
+  const aves = new THREE.InstancedMesh(v, new THREE.MeshBasicMaterial({ color: 0xe8edf2, side: THREE.DoubleSide }), n);
+  const base = [];
+  for (let i = 0; i < n; i++) base.push({ x: (rnd() - 0.5) * disp * 2, y: (rnd() - 0.5) * disp * 0.4, z: (rnd() - 0.5) * disp * 2, fase: rnd() * 6.28, ritmo: 7 + rnd() * 3 });
+  g.add(aves);
+  g.userData.aves = { malha: aves, base };
+  g.userData.orientar = true;
+  return g;
+}
+
+function malhaCelula(a, leve) {
+  const g = new THREE.Group();
+  const nuvem = new THREE.MeshLambertMaterial({ color: 0x48505c, emissive: 0xb8c8ff, emissiveIntensity: 0, transparent: true, opacity: 0.42, depthWrite: false });
+  const rnd = aleatorio(a.sementeVisual ?? 3);
+  const camadas = leve ? 4 : 7;
+  for (let i = 0; i < camadas; i++) {
+    const r = 1 - i * 0.06;
+    const bola = new THREE.Mesh(new THREE.SphereGeometry(1, leve ? 10 : 16, leve ? 8 : 12), nuvem);
+    bola.scale.set(r, 0.55, r);
+    bola.position.set((rnd() - 0.5) * 0.25, 0.45 + i * 0.42, (rnd() - 0.5) * 0.25);
+    g.add(bola);
+  }
+  // Bigorna no topo.
+  const bigorna = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 0.9, 0.25, leve ? 16 : 28), nuvem);
+  bigorna.position.y = 0.45 + camadas * 0.42;
+  g.add(bigorna);
+  g.userData.celula = { material: nuvem, raio0: a.raioProtecaoM, proximoRelampago: 1 + rnd() * 3, rnd };
+  return g;
+}
+
+function malhaAmeacaSim(a, leve) {
+  if (a.visual === 'baloes') return malhaBaloes(a, leve);
+  if (a.visual === 'aves') return malhaAves(a, leve);
+  if (a.visual === 'celula') return malhaCelula(a, leve);
+  return malhaTrafego(a);
+}
+
+const Q = new THREE.Quaternion();
+const E = new THREE.Euler();
+const M4 = new THREE.Matrix4();
+const V3 = new THREE.Vector3();
+const UM = new THREE.Vector3(1, 1, 1);
+
+function animarAmeacaSim(g, a, t) {
+  if (g.userData.estrobo) g.userData.estrobo.visible = (t % 1.2) < 0.08;
+  if (g.userData.rotor) g.userData.rotor.rotation.y = t * 30;
+  if (g.userData.brilho) g.userData.brilho.material.opacity = 0.75 + 0.25 * Math.sin(t * 9 + (a.sementeVisual % 7));
+  const aves = g.userData.aves;
+  if (aves) {
+    aves.base.forEach((b, i) => {
+      E.set(0, 0, Math.sin(t * b.ritmo + b.fase) * 0.6);
+      Q.setFromEuler(E);
+      V3.set(b.x + Math.sin(t * 0.7 + b.fase) * 1.5, b.y + Math.sin(t * 1.3 + b.fase), b.z);
+      M4.compose(V3, Q, UM);
+      aves.malha.setMatrixAt(i, M4);
+    });
+    aves.malha.instanceMatrix.needsUpdate = true;
+  }
+  const c = g.userData.celula;
+  if (c) {
+    const r = a.raioProtecaoM;
+    // A coluna vai do chão a ~2 km; cresce com o raio da simulação.
+    g.scale.set(r, 900, r);
+    if (t > c.proximoRelampago) {
+      c.material.emissiveIntensity = 0.9;
+      c.fimRelampago = t + 0.12;
+      c.proximoRelampago = t + 2.5 + c.rnd() * 5;
+    } else if (c.fimRelampago && t > c.fimRelampago) {
+      c.material.emissiveIntensity = 0;
+      c.fimRelampago = null;
+    }
+  }
+}
+
+/** Trajectos previstos (15 s, a tracejado) de todas as ameaças numa só geometria. */
+function actualizarTrajectos(mundo, ameacas, atrasoS) {
+  if (!mundo.trajectos) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(6 * 10 * 12), 3));
+    const linhas = new THREE.LineSegments(geo, new THREE.LineDashedMaterial({ color: 0xf0a431, dashSize: 60, gapSize: 45, transparent: true, opacity: 0.75 }));
+    linhas.frustumCulled = false;
+    mundo.scene.add(linhas);
+    mundo.trajectos = linhas;
+  }
+  const pos = mundo.trajectos.geometry.attributes.position;
+  const o = mundo.origemVisual;
+  let k = 0;
+  for (const a of ameacas ?? []) {
+    if (a.cilindro || k >= 12) continue;
+    for (let s = 0; s < 10; s++) {
+      for (const tt of [s * 1.5, (s + 1) * 1.5]) {
+        const dt = atrasoS + tt;
+        pos.setXYZ(k * 20 + s * 2 + (tt === s * 1.5 ? 0 : 1), -(a.xM + a.vxMs * dt) - o.x, a.altitudeM + a.vyMs * dt, a.zM + a.vzMs * dt - o.z);
+      }
+    }
+    k += 1;
+  }
+  mundo.trajectos.geometry.setDrawRange(0, k * 20);
+  pos.needsUpdate = true;
+  mundo.trajectos.computeLineDistances();
+}
+
+/**
+ * Ameaças em movimento do simulador: uma malha por id, posta a cada frame na
+ * posição da simulação (x espelhado, origem visual), com o mesmo atraso do
+ * avião interpolado. As que saem da lista são largadas com a GPU libertada;
+ * as etiquetas vêm de marcas-missao.js, que lê mundo.ameaças. Devolve as ids
+ * novas, para a câmara as poder enquadrar.
+ */
+export function sincronizarAmeacas(mundo, ameacas, { atrasoS = 0, dt = 0 } = {}) {
+  if (!mundo?.ameaças) return [];
+  mundo.malhasAmeacas ??= new Map();
+  mundo.tAmeaca = (mundo.tAmeaca ?? 0) + dt;
+  const o = mundo.origemVisual;
+  const vivas = new Set();
+  const novas = [];
+  for (const a of ameacas ?? []) {
+    vivas.add(a.id);
+    let g = mundo.malhasAmeacas.get(a.id);
+    if (!g) {
+      g = malhaAmeacaSim(a, mundo.leve);
+      g.userData.idAmeaca = a.id;
+      g.userData.tipo = a.tipo;
+      g.userData.visual = a.visual;
+      mundo.malhasAmeacas.set(a.id, g);
+      mundo.ameaças.add(g);
+      novas.push(a.id);
+    }
+    g.position.set(-(a.xM + a.vxMs * atrasoS) - o.x, a.cilindro ? 0 : a.altitudeM + a.vyMs * atrasoS, a.zM + a.vzMs * atrasoS - o.z);
+    if (g.userData.orientar) g.rotation.y = -Math.atan2(a.vxMs, a.vzMs);
+    animarAmeacaSim(g, a, mundo.tAmeaca);
+  }
+  for (const [id, g] of mundo.malhasAmeacas) {
+    if (vivas.has(id)) continue;
+    mundo.ameaças.remove(g);
+    libertarGrupo(g);
+    mundo.malhasAmeacas.delete(id);
+  }
+  actualizarTrajectos(mundo, ameacas, atrasoS);
+  return novas;
 }

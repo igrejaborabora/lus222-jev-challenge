@@ -1,0 +1,1771 @@
+{
+  "versao": 1,
+  "gravadoEm": "2026-09-25T08:36:04.280Z",
+  "modelo": "typesafe-ai/jev",
+  "descricao": "Banco de casos: instruções em português e em inglês sobre o mesmo estado.",
+  "casos": [
+    {
+      "id": "porto/baloes",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "prosseguir",
+        "orbitar",
+        "desviar_alternativo"
+      ]
+    },
+    {
+      "id": "porto/trafego_porto",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "prosseguir",
+        "orbitar",
+        "desviar_alternativo"
+      ]
+    },
+    {
+      "id": "porto/anoitecer",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "prosseguir",
+        "orbitar",
+        "desviar_alternativo"
+      ]
+    },
+    {
+      "id": "porto/vento_porto",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "prosseguir",
+        "orbitar",
+        "desviar_alternativo"
+      ]
+    },
+    {
+      "id": "porto/final_porto",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "prosseguir",
+        "desviar_alternativo"
+      ]
+    },
+    {
+      "id": "medevac/frente",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "desviar_alternativo",
+        "orbitar"
+      ]
+    },
+    {
+      "id": "medevac/relevo",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "desviar_alternativo",
+        "orbitar"
+      ]
+    },
+    {
+      "id": "medevac/relogio",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "desviar_alternativo",
+        "orbitar"
+      ]
+    },
+    {
+      "id": "carga/massa",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "regressar_base",
+        "desviar_alternativo"
+      ]
+    },
+    {
+      "id": "carga/aves",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "desviar_alternativo",
+        "orbitar"
+      ]
+    },
+    {
+      "id": "carga/vento",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "regressar_base",
+        "desviar_alternativo",
+        "orbitar"
+      ]
+    },
+    {
+      "id": "sar/luz",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "orbitar",
+        "regressar_base"
+      ]
+    },
+    {
+      "id": "sar/contacto",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "orbitar",
+        "prosseguir"
+      ]
+    },
+    {
+      "id": "sar/trafego",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "desviar_alternativo",
+        "orbitar"
+      ]
+    },
+    {
+      "id": "sar/reserva",
+      "tipo": "estrategico",
+      "nota": "Evento gravado; acções aceites da rubrica do debrief.",
+      "aceites": [
+        "regressar_base",
+        "desviar_alternativo"
+      ]
+    },
+    {
+      "id": "porto/final_porto+pista_520",
+      "tipo": "estrategico",
+      "nota": "A pista do destino passa a 520 m, abaixo da necessária: prosseguir deixa de ser viável.",
+      "aceites": [
+        "desviar_alternativo",
+        "regressar_base"
+      ]
+    },
+    {
+      "id": "medevac/relogio+240s",
+      "tipo": "estrategico",
+      "nota": "Restam 4 minutos de janela clínica; o hospital alternativo é o mais próximo.",
+      "aceites": [
+        "desviar_alternativo"
+      ]
+    },
+    {
+      "id": "carga/massa+integridade_30",
+      "tipo": "estrategico",
+      "nota": "Integridade da aeronave a 30 %.",
+      "aceites": [
+        "abortar_emergencia",
+        "regressar_base"
+      ]
+    },
+    {
+      "id": "porto/baloes+nunca_desviar",
+      "tipo": "estrategico",
+      "nota": "O comandante proibiu desvios; os balões resolvem-se com a manobra.",
+      "aceites": [
+        "prosseguir",
+        "orbitar"
+      ]
+    },
+    {
+      "id": "tatico/frente_mesmo_nivel",
+      "tipo": "tatico",
+      "nota": "Tráfego de frente ao mesmo nível: a regra manda virar à direita.",
+      "aceites": [
+        "direita",
+        "direita_subir"
+      ]
+    },
+    {
+      "id": "tatico/convergente_direita",
+      "tipo": "tatico",
+      "nota": "Helicóptero a convergir pela direita: o LUS-222 dá passagem, passando-lhe por trás.",
+      "aceites": [
+        "direita",
+        "subir",
+        "direita_subir"
+      ]
+    },
+    {
+      "id": "tatico/convergente_esquerda",
+      "tipo": "tatico",
+      "nota": "Tráfego a convergir pela esquerda: é ele que dá passagem; manter é o que a regra pede.",
+      "aceites": [
+        "manter",
+        "direita",
+        "subir",
+        "direita_subir"
+      ]
+    },
+    {
+      "id": "tatico/baloes_nuvem_acima",
+      "tipo": "tatico",
+      "nota": "Lanternas de São João à frente; nuvens logo acima: subir entra na nuvem.",
+      "aceites": [
+        "direita",
+        "descer"
+      ]
+    },
+    {
+      "id": "tatico/aves_abaixo",
+      "tipo": "tatico",
+      "nota": "Bando de aves ligeiramente abaixo, à frente.",
+      "aceites": [
+        "subir",
+        "esquerda_subir",
+        "direita_subir"
+      ]
+    },
+    {
+      "id": "tatico/duas_ameacas",
+      "tipo": "tatico",
+      "nota": "Helicóptero pela direita (dar passagem) e aves à direita, baixas: virar à direita cai nas aves.",
+      "aceites": [
+        "subir"
+      ]
+    },
+    {
+      "id": "tatico/celula_a_direita",
+      "tipo": "tatico",
+      "nota": "Célula de trovoada à frente e à direita, a derivar para a rota.",
+      "aceites": [
+        "esquerda"
+      ]
+    },
+    {
+      "id": "tatico/a_afastar",
+      "tipo": "tatico",
+      "nota": "Tráfego já a afastar-se, CPA passado com folga.",
+      "aceites": [
+        "manter"
+      ]
+    },
+    {
+      "id": "tatico/sem_ameacas",
+      "tipo": "tatico",
+      "nota": "Corredor livre.",
+      "aceites": [
+        "manter"
+      ]
+    },
+    {
+      "id": "tatico/medevac_conforto",
+      "tipo": "tatico",
+      "nota": "MEDEVAC com doente a bordo; um drone à frente. Subir resolve sem desvio e com suavidade.",
+      "aceites": [
+        "subir"
+      ]
+    },
+    {
+      "id": "tatico/final_trafego",
+      "tipo": "tatico",
+      "nota": "Na final, um helicóptero cruza baixo à frente; descer não é candidata perto da pista.",
+      "aceites": [
+        "subir"
+      ]
+    },
+    {
+      "id": "tatico/relevo_frente",
+      "tipo": "tatico",
+      "nota": "Crista de relevo à frente, margem ao terreno curta.",
+      "aceites": [
+        "direita",
+        "subir",
+        "esquerda_subir",
+        "direita_subir"
+      ]
+    },
+    {
+      "id": "tatico/ultrapassagem",
+      "tipo": "tatico",
+      "nota": "Tráfego mais rápido a ultrapassar por trás e à esquerda: é ele que se afasta; manter cumpre a regra.",
+      "aceites": [
+        "manter",
+        "direita",
+        "subir"
+      ]
+    },
+    {
+      "id": "tatico/compromisso",
+      "tipo": "tatico",
+      "nota": "Sem opção limpa: a direita cumpre mas fica marginal, subir fica folgado mas entra na nuvem. Serve para ver a confiança baixar.",
+      "aceites": [
+        "subir",
+        "direita"
+      ]
+    }
+  ],
+  "resultados": [
+    {
+      "caso": "porto/baloes",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 0.98,
+      "confianca": 0.95,
+      "latencia_ms": 944,
+      "tokens": 3340,
+      "probabilidades": {
+        "desviar_alternativo": 0.02,
+        "abortar_emergencia": 0.02,
+        "regressar_base": 0,
+        "orbitar": 0,
+        "prosseguir": 0.96
+      },
+      "fora_envelope": 0.82
+    },
+    {
+      "caso": "porto/baloes",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.99,
+      "latencia_ms": 290,
+      "tokens": 3022,
+      "probabilidades": {
+        "abortar_emergencia": 0,
+        "desviar_alternativo": 0,
+        "regressar_base": 0,
+        "prosseguir": 1,
+        "orbitar": 0
+      },
+      "fora_envelope": 0.59
+    },
+    {
+      "caso": "porto/trafego_porto",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 0.99,
+      "confianca": 0.87,
+      "latencia_ms": 281,
+      "tokens": 3331,
+      "probabilidades": {
+        "regressar_base": 0,
+        "orbitar": 0.02,
+        "desviar_alternativo": 0.07,
+        "prosseguir": 0.9,
+        "abortar_emergencia": 0.01
+      },
+      "fora_envelope": 0.64
+    },
+    {
+      "caso": "porto/trafego_porto",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.94,
+      "latencia_ms": 331,
+      "tokens": 3013,
+      "probabilidades": {
+        "prosseguir": 0.96,
+        "abortar_emergencia": 0,
+        "orbitar": 0.02,
+        "desviar_alternativo": 0.02,
+        "regressar_base": 0
+      },
+      "fora_envelope": 0.5
+    },
+    {
+      "caso": "porto/anoitecer",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 0.9800000000000001,
+      "confianca": 0.59,
+      "latencia_ms": 298,
+      "tokens": 3204,
+      "probabilidades": {
+        "regressar_base": 0.01,
+        "prosseguir": 0.67,
+        "desviar_alternativo": 0.13,
+        "orbitar": 0.18,
+        "abortar_emergencia": 0.01
+      },
+      "fora_envelope": 0.76
+    },
+    {
+      "caso": "porto/anoitecer",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 0.9800000000000001,
+      "confianca": 0.56,
+      "latencia_ms": 336,
+      "tokens": 2886,
+      "probabilidades": {
+        "regressar_base": 0.02,
+        "desviar_alternativo": 0.15,
+        "prosseguir": 0.65,
+        "orbitar": 0.18,
+        "abortar_emergencia": 0
+      },
+      "fora_envelope": 0.73
+    },
+    {
+      "caso": "porto/vento_porto",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 0.99,
+      "confianca": 0.96,
+      "latencia_ms": 265,
+      "tokens": 3202,
+      "probabilidades": {
+        "prosseguir": 0.96,
+        "abortar_emergencia": 0,
+        "orbitar": 0.01,
+        "desviar_alternativo": 0.02,
+        "regressar_base": 0.01
+      },
+      "fora_envelope": 0.6
+    },
+    {
+      "caso": "porto/vento_porto",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 0.99,
+      "confianca": 0.95,
+      "latencia_ms": 1329,
+      "tokens": 2884,
+      "probabilidades": {
+        "prosseguir": 0.96,
+        "desviar_alternativo": 0.02,
+        "abortar_emergencia": 0,
+        "regressar_base": 0.01,
+        "orbitar": 0.01
+      },
+      "fora_envelope": 0.5
+    },
+    {
+      "caso": "porto/final_porto",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.96,
+      "latencia_ms": 303,
+      "tokens": 3200,
+      "probabilidades": {
+        "desviar_alternativo": 0.02,
+        "abortar_emergencia": 0,
+        "prosseguir": 0.98,
+        "orbitar": 0,
+        "regressar_base": 0
+      },
+      "fora_envelope": 0.58
+    },
+    {
+      "caso": "porto/final_porto",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 0.98,
+      "confianca": 0.95,
+      "latencia_ms": 315,
+      "tokens": 2882,
+      "probabilidades": {
+        "desviar_alternativo": 0.03,
+        "prosseguir": 0.95,
+        "abortar_emergencia": 0,
+        "regressar_base": 0.01,
+        "orbitar": 0.01
+      },
+      "fora_envelope": 0.49
+    },
+    {
+      "caso": "medevac/frente",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.22,
+      "confianca": 0.72,
+      "latencia_ms": 277,
+      "tokens": 3267,
+      "probabilidades": {
+        "abortar_emergencia": 0,
+        "desviar_alternativo": 0.21,
+        "prosseguir": 0.77,
+        "regressar_base": 0.01,
+        "orbitar": 0.01
+      },
+      "fora_envelope": 0.79
+    },
+    {
+      "caso": "medevac/frente",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.27,
+      "confianca": 0.65,
+      "latencia_ms": 313,
+      "tokens": 2949,
+      "probabilidades": {
+        "regressar_base": 0,
+        "desviar_alternativo": 0.26,
+        "orbitar": 0.01,
+        "prosseguir": 0.73,
+        "abortar_emergencia": 0
+      },
+      "fora_envelope": 0.72
+    },
+    {
+      "caso": "medevac/relevo",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.06,
+      "confianca": 0.91,
+      "latencia_ms": 524,
+      "tokens": 3399,
+      "probabilidades": {
+        "regressar_base": 0,
+        "prosseguir": 0.93,
+        "orbitar": 0,
+        "desviar_alternativo": 0.06,
+        "abortar_emergencia": 0.01
+      },
+      "fora_envelope": 0.86
+    },
+    {
+      "caso": "medevac/relevo",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.03,
+      "confianca": 0.96,
+      "latencia_ms": 420,
+      "tokens": 3083,
+      "probabilidades": {
+        "desviar_alternativo": 0.03,
+        "prosseguir": 0.97,
+        "abortar_emergencia": 0,
+        "regressar_base": 0,
+        "orbitar": 0
+      },
+      "fora_envelope": 0.8
+    },
+    {
+      "caso": "medevac/relogio",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.38,
+      "confianca": 0.51,
+      "latencia_ms": 303,
+      "tokens": 3276,
+      "probabilidades": {
+        "desviar_alternativo": 0.38,
+        "orbitar": 0,
+        "prosseguir": 0.62,
+        "abortar_emergencia": 0,
+        "regressar_base": 0
+      },
+      "fora_envelope": 0.7
+    },
+    {
+      "caso": "medevac/relogio",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "desviar_alternativo",
+      "acerto": true,
+      "massa": 0.52,
+      "confianca": 0.38,
+      "latencia_ms": 266,
+      "tokens": 2960,
+      "probabilidades": {
+        "desviar_alternativo": 0.52,
+        "abortar_emergencia": 0,
+        "regressar_base": 0,
+        "orbitar": 0,
+        "prosseguir": 0.48
+      },
+      "fora_envelope": 0.67
+    },
+    {
+      "caso": "carga/massa",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.05,
+      "confianca": 0.93,
+      "latencia_ms": 275,
+      "tokens": 3176,
+      "probabilidades": {
+        "prosseguir": 0.95,
+        "abortar_emergencia": 0,
+        "orbitar": 0,
+        "desviar_alternativo": 0.02,
+        "regressar_base": 0.03
+      },
+      "fora_envelope": 0.38
+    },
+    {
+      "caso": "carga/massa",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.08,
+      "confianca": 0.9,
+      "latencia_ms": 264,
+      "tokens": 2858,
+      "probabilidades": {
+        "prosseguir": 0.92,
+        "desviar_alternativo": 0.03,
+        "abortar_emergencia": 0,
+        "orbitar": 0,
+        "regressar_base": 0.05
+      },
+      "fora_envelope": 0.3
+    },
+    {
+      "caso": "carga/aves",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0,
+      "confianca": 0.99,
+      "latencia_ms": 278,
+      "tokens": 3299,
+      "probabilidades": {
+        "regressar_base": 0,
+        "desviar_alternativo": 0,
+        "orbitar": 0,
+        "prosseguir": 1,
+        "abortar_emergencia": 0
+      },
+      "fora_envelope": 0.76
+    },
+    {
+      "caso": "carga/aves",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0,
+      "confianca": 1,
+      "latencia_ms": 272,
+      "tokens": 2981,
+      "probabilidades": {
+        "abortar_emergencia": 0,
+        "orbitar": 0,
+        "regressar_base": 0,
+        "prosseguir": 1,
+        "desviar_alternativo": 0
+      },
+      "fora_envelope": 0.59
+    },
+    {
+      "caso": "carga/vento",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.03,
+      "confianca": 0.95,
+      "latencia_ms": 553,
+      "tokens": 3184,
+      "probabilidades": {
+        "abortar_emergencia": 0,
+        "orbitar": 0,
+        "regressar_base": 0.01,
+        "prosseguir": 0.97,
+        "desviar_alternativo": 0.02
+      },
+      "fora_envelope": 0.44
+    },
+    {
+      "caso": "carga/vento",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.04,
+      "confianca": 0.94,
+      "latencia_ms": 758,
+      "tokens": 2866,
+      "probabilidades": {
+        "orbitar": 0,
+        "desviar_alternativo": 0.02,
+        "regressar_base": 0.02,
+        "prosseguir": 0.96,
+        "abortar_emergencia": 0
+      },
+      "fora_envelope": 0.34
+    },
+    {
+      "caso": "sar/luz",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.22000000000000003,
+      "confianca": 0.59,
+      "latencia_ms": 270,
+      "tokens": 3162,
+      "probabilidades": {
+        "regressar_base": 0.08,
+        "desviar_alternativo": 0.09,
+        "orbitar": 0.14,
+        "prosseguir": 0.67,
+        "abortar_emergencia": 0.01
+      },
+      "fora_envelope": 0.78
+    },
+    {
+      "caso": "sar/luz",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.36,
+      "confianca": 0.44,
+      "latencia_ms": 794,
+      "tokens": 2844,
+      "probabilidades": {
+        "orbitar": 0.21,
+        "desviar_alternativo": 0.09,
+        "regressar_base": 0.15,
+        "prosseguir": 0.55,
+        "abortar_emergencia": 0
+      },
+      "fora_envelope": 0.76
+    },
+    {
+      "caso": "sar/contacto",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 0.86,
+      "confianca": 0.7,
+      "latencia_ms": 803,
+      "tokens": 3180,
+      "probabilidades": {
+        "prosseguir": 0.76,
+        "desviar_alternativo": 0.09,
+        "abortar_emergencia": 0.01,
+        "regressar_base": 0.04,
+        "orbitar": 0.1
+      },
+      "fora_envelope": 0.86
+    },
+    {
+      "caso": "sar/contacto",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 0.8999999999999999,
+      "confianca": 0.65,
+      "latencia_ms": 317,
+      "tokens": 2862,
+      "probabilidades": {
+        "regressar_base": 0.02,
+        "prosseguir": 0.72,
+        "abortar_emergencia": 0.01,
+        "desviar_alternativo": 0.07,
+        "orbitar": 0.18
+      },
+      "fora_envelope": 0.84
+    },
+    {
+      "caso": "sar/trafego",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.09,
+      "confianca": 0.87,
+      "latencia_ms": 274,
+      "tokens": 3311,
+      "probabilidades": {
+        "orbitar": 0.01,
+        "regressar_base": 0.01,
+        "desviar_alternativo": 0.08,
+        "abortar_emergencia": 0.01,
+        "prosseguir": 0.89
+      },
+      "fora_envelope": 0.88
+    },
+    {
+      "caso": "sar/trafego",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.05,
+      "confianca": 0.93,
+      "latencia_ms": 512,
+      "tokens": 2993,
+      "probabilidades": {
+        "orbitar": 0.01,
+        "desviar_alternativo": 0.04,
+        "abortar_emergencia": 0,
+        "regressar_base": 0,
+        "prosseguir": 0.95
+      },
+      "fora_envelope": 0.86
+    },
+    {
+      "caso": "sar/reserva",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.28,
+      "confianca": 0.6,
+      "latencia_ms": 318,
+      "tokens": 3181,
+      "probabilidades": {
+        "orbitar": 0.03,
+        "regressar_base": 0.13,
+        "desviar_alternativo": 0.15,
+        "abortar_emergencia": 0.01,
+        "prosseguir": 0.68
+      },
+      "fora_envelope": 0.79
+    },
+    {
+      "caso": "sar/reserva",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.41000000000000003,
+      "confianca": 0.44,
+      "latencia_ms": 294,
+      "tokens": 2865,
+      "probabilidades": {
+        "orbitar": 0.03,
+        "regressar_base": 0.19,
+        "desviar_alternativo": 0.22,
+        "abortar_emergencia": 0,
+        "prosseguir": 0.56
+      },
+      "fora_envelope": 0.76
+    },
+    {
+      "caso": "porto/final_porto+pista_520",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.36,
+      "confianca": 0.53,
+      "latencia_ms": 276,
+      "tokens": 3198,
+      "probabilidades": {
+        "prosseguir": 0.62,
+        "abortar_emergencia": 0.01,
+        "orbitar": 0.01,
+        "desviar_alternativo": 0.32,
+        "regressar_base": 0.04
+      },
+      "fora_envelope": 0.77
+    },
+    {
+      "caso": "porto/final_porto+pista_520",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.48,
+      "confianca": 0.37,
+      "latencia_ms": 274,
+      "tokens": 2880,
+      "probabilidades": {
+        "orbitar": 0.01,
+        "prosseguir": 0.51,
+        "desviar_alternativo": 0.44,
+        "abortar_emergencia": 0,
+        "regressar_base": 0.04
+      },
+      "fora_envelope": 0.7
+    },
+    {
+      "caso": "medevac/relogio+240s",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.39,
+      "confianca": 0.51,
+      "latencia_ms": 330,
+      "tokens": 3276,
+      "probabilidades": {
+        "regressar_base": 0,
+        "prosseguir": 0.61,
+        "desviar_alternativo": 0.39,
+        "orbitar": 0,
+        "abortar_emergencia": 0
+      },
+      "fora_envelope": 0.71
+    },
+    {
+      "caso": "medevac/relogio+240s",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.47,
+      "confianca": 0.39,
+      "latencia_ms": 298,
+      "tokens": 2958,
+      "probabilidades": {
+        "prosseguir": 0.52,
+        "orbitar": 0.01,
+        "regressar_base": 0,
+        "desviar_alternativo": 0.47,
+        "abortar_emergencia": 0
+      },
+      "fora_envelope": 0.68
+    },
+    {
+      "caso": "carga/massa+integridade_30",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.15000000000000002,
+      "confianca": 0.73,
+      "latencia_ms": 291,
+      "tokens": 3175,
+      "probabilidades": {
+        "desviar_alternativo": 0.06,
+        "regressar_base": 0.07,
+        "orbitar": 0,
+        "abortar_emergencia": 0.08,
+        "prosseguir": 0.79
+      },
+      "fora_envelope": 0.66
+    },
+    {
+      "caso": "carga/massa+integridade_30",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": false,
+      "massa": 0.14,
+      "confianca": 0.72,
+      "latencia_ms": 767,
+      "tokens": 2857,
+      "probabilidades": {
+        "desviar_alternativo": 0.09,
+        "abortar_emergencia": 0.03,
+        "prosseguir": 0.77,
+        "regressar_base": 0.11,
+        "orbitar": 0
+      },
+      "fora_envelope": 0.69
+    },
+    {
+      "caso": "porto/baloes+nunca_desviar",
+      "tipo": "estrategico",
+      "idioma": "pt",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 0.96,
+      "confianca": 0.95,
+      "latencia_ms": 316,
+      "tokens": 3340,
+      "probabilidades": {
+        "regressar_base": 0,
+        "desviar_alternativo": 0.01,
+        "prosseguir": 0.96,
+        "orbitar": 0,
+        "abortar_emergencia": 0.03
+      },
+      "fora_envelope": 0.8
+    },
+    {
+      "caso": "porto/baloes+nunca_desviar",
+      "tipo": "estrategico",
+      "idioma": "en",
+      "escolha": "prosseguir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.99,
+      "latencia_ms": 277,
+      "tokens": 3022,
+      "probabilidades": {
+        "prosseguir": 1,
+        "desviar_alternativo": 0,
+        "orbitar": 0,
+        "regressar_base": 0,
+        "abortar_emergencia": 0
+      },
+      "fora_envelope": 0.66
+    },
+    {
+      "caso": "tatico/frente_mesmo_nivel",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "direita",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.98,
+      "latencia_ms": 449,
+      "tokens": 2260,
+      "probabilidades": {
+        "subir": 0,
+        "esquerda": 0,
+        "manter": 0,
+        "esquerda_subir": 0,
+        "direita_subir": 0.01,
+        "direita": 0.99,
+        "descer": 0
+      },
+      "fora_envelope": 0.09
+    },
+    {
+      "caso": "tatico/frente_mesmo_nivel",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "direita",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.98,
+      "latencia_ms": 283,
+      "tokens": 2124,
+      "probabilidades": {
+        "direita_subir": 0.01,
+        "manter": 0,
+        "direita": 0.99,
+        "esquerda_subir": 0,
+        "esquerda": 0,
+        "descer": 0,
+        "subir": 0
+      },
+      "fora_envelope": 0.08
+    },
+    {
+      "caso": "tatico/convergente_direita",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "direita",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.53,
+      "latencia_ms": 291,
+      "tokens": 2258,
+      "probabilidades": {
+        "subir": 0.39,
+        "esquerda": 0,
+        "manter": 0,
+        "esquerda_subir": 0,
+        "direita_subir": 0.02,
+        "direita": 0.59,
+        "descer": 0
+      },
+      "fora_envelope": 0.08
+    },
+    {
+      "caso": "tatico/convergente_direita",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "direita",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.62,
+      "latencia_ms": 536,
+      "tokens": 2122,
+      "probabilidades": {
+        "direita_subir": 0.02,
+        "esquerda": 0,
+        "esquerda_subir": 0,
+        "direita": 0.67,
+        "descer": 0,
+        "subir": 0.31,
+        "manter": 0
+      },
+      "fora_envelope": 0.07
+    },
+    {
+      "caso": "tatico/convergente_esquerda",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "direita",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.65,
+      "latencia_ms": 270,
+      "tokens": 2260,
+      "probabilidades": {
+        "esquerda": 0,
+        "esquerda_subir": 0,
+        "subir": 0.28,
+        "descer": 0,
+        "direita": 0.7,
+        "direita_subir": 0.01,
+        "manter": 0.01
+      },
+      "fora_envelope": 0.08
+    },
+    {
+      "caso": "tatico/convergente_esquerda",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "direita",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.56,
+      "latencia_ms": 305,
+      "tokens": 2124,
+      "probabilidades": {
+        "direita_subir": 0.01,
+        "esquerda": 0,
+        "descer": 0,
+        "direita": 0.62,
+        "esquerda_subir": 0,
+        "subir": 0.36,
+        "manter": 0.01
+      },
+      "fora_envelope": 0.07
+    },
+    {
+      "caso": "tatico/baloes_nuvem_acima",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "direita",
+      "acerto": true,
+      "massa": 0.99,
+      "confianca": 0.76,
+      "latencia_ms": 282,
+      "tokens": 2258,
+      "probabilidades": {
+        "esquerda_subir": 0,
+        "manter": 0,
+        "esquerda": 0,
+        "descer": 0.19,
+        "direita": 0.8,
+        "subir": 0.01,
+        "direita_subir": 0
+      },
+      "fora_envelope": 0.08
+    },
+    {
+      "caso": "tatico/baloes_nuvem_acima",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "direita",
+      "acerto": true,
+      "massa": 0.99,
+      "confianca": 0.81,
+      "latencia_ms": 277,
+      "tokens": 2122,
+      "probabilidades": {
+        "esquerda_subir": 0,
+        "manter": 0,
+        "descer": 0.14,
+        "subir": 0.01,
+        "direita": 0.85,
+        "esquerda": 0,
+        "direita_subir": 0
+      },
+      "fora_envelope": 0.08
+    },
+    {
+      "caso": "tatico/aves_abaixo",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "subir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.99,
+      "latencia_ms": 276,
+      "tokens": 2258,
+      "probabilidades": {
+        "direita_subir": 0,
+        "descer": 0,
+        "esquerda_subir": 0.01,
+        "esquerda": 0,
+        "manter": 0,
+        "direita": 0,
+        "subir": 0.99
+      },
+      "fora_envelope": 0.08
+    },
+    {
+      "caso": "tatico/aves_abaixo",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "subir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.99,
+      "latencia_ms": 301,
+      "tokens": 2122,
+      "probabilidades": {
+        "esquerda_subir": 0.01,
+        "manter": 0,
+        "esquerda": 0,
+        "descer": 0,
+        "direita": 0,
+        "subir": 0.99,
+        "direita_subir": 0
+      },
+      "fora_envelope": 0.09
+    },
+    {
+      "caso": "tatico/duas_ameacas",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "subir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.99,
+      "latencia_ms": 269,
+      "tokens": 2384,
+      "probabilidades": {
+        "descer": 0,
+        "subir": 1,
+        "esquerda": 0,
+        "direita": 0,
+        "direita_subir": 0,
+        "manter": 0,
+        "esquerda_subir": 0
+      },
+      "fora_envelope": 0.26
+    },
+    {
+      "caso": "tatico/duas_ameacas",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "subir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.99,
+      "latencia_ms": 281,
+      "tokens": 2248,
+      "probabilidades": {
+        "manter": 0,
+        "subir": 1,
+        "descer": 0,
+        "esquerda_subir": 0,
+        "direita": 0,
+        "esquerda": 0,
+        "direita_subir": 0
+      },
+      "fora_envelope": 0.24
+    },
+    {
+      "caso": "tatico/celula_a_direita",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "esquerda",
+      "acerto": true,
+      "massa": 0.99,
+      "confianca": 0.99,
+      "latencia_ms": 287,
+      "tokens": 2258,
+      "probabilidades": {
+        "direita": 0,
+        "esquerda_subir": 0.01,
+        "manter": 0,
+        "direita_subir": 0,
+        "subir": 0,
+        "esquerda": 0.99,
+        "descer": 0
+      },
+      "fora_envelope": 0.12
+    },
+    {
+      "caso": "tatico/celula_a_direita",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "esquerda",
+      "acerto": true,
+      "massa": 0.98,
+      "confianca": 0.97,
+      "latencia_ms": 272,
+      "tokens": 2122,
+      "probabilidades": {
+        "subir": 0,
+        "esquerda_subir": 0.02,
+        "direita": 0,
+        "direita_subir": 0,
+        "descer": 0,
+        "esquerda": 0.98,
+        "manter": 0
+      },
+      "fora_envelope": 0.12
+    },
+    {
+      "caso": "tatico/a_afastar",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "manter",
+      "acerto": true,
+      "massa": 0.99,
+      "confianca": 0.99,
+      "latencia_ms": 259,
+      "tokens": 2248,
+      "probabilidades": {
+        "esquerda_subir": 0,
+        "manter": 0.99,
+        "esquerda": 0,
+        "descer": 0,
+        "direita": 0,
+        "subir": 0.01,
+        "direita_subir": 0
+      },
+      "fora_envelope": 0.04
+    },
+    {
+      "caso": "tatico/a_afastar",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "manter",
+      "acerto": true,
+      "massa": 0.99,
+      "confianca": 0.99,
+      "latencia_ms": 313,
+      "tokens": 2112,
+      "probabilidades": {
+        "manter": 0.99,
+        "subir": 0.01,
+        "direita_subir": 0,
+        "direita": 0,
+        "descer": 0,
+        "esquerda_subir": 0,
+        "esquerda": 0
+      },
+      "fora_envelope": 0.04
+    },
+    {
+      "caso": "tatico/sem_ameacas",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "manter",
+      "acerto": true,
+      "massa": 0.99,
+      "confianca": 0.99,
+      "latencia_ms": 260,
+      "tokens": 1938,
+      "probabilidades": {
+        "direita": 0,
+        "manter": 0.99,
+        "esquerda_subir": 0,
+        "direita_subir": 0,
+        "subir": 0.01,
+        "esquerda": 0,
+        "descer": 0
+      },
+      "fora_envelope": 0.04
+    },
+    {
+      "caso": "tatico/sem_ameacas",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "manter",
+      "acerto": true,
+      "massa": 0.99,
+      "confianca": 0.98,
+      "latencia_ms": 280,
+      "tokens": 1823,
+      "probabilidades": {
+        "esquerda_subir": 0,
+        "manter": 0.99,
+        "subir": 0.01,
+        "direita": 0,
+        "direita_subir": 0,
+        "descer": 0,
+        "esquerda": 0
+      },
+      "fora_envelope": 0.03
+    },
+    {
+      "caso": "tatico/medevac_conforto",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "subir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.99,
+      "latencia_ms": 335,
+      "tokens": 2255,
+      "probabilidades": {
+        "direita": 0,
+        "esquerda": 0,
+        "subir": 1,
+        "descer": 0,
+        "esquerda_subir": 0,
+        "direita_subir": 0,
+        "manter": 0
+      },
+      "fora_envelope": 0.08
+    },
+    {
+      "caso": "tatico/medevac_conforto",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "subir",
+      "acerto": true,
+      "massa": 0.99,
+      "confianca": 0.99,
+      "latencia_ms": 258,
+      "tokens": 2119,
+      "probabilidades": {
+        "esquerda": 0.01,
+        "subir": 0.99,
+        "esquerda_subir": 0,
+        "direita": 0,
+        "descer": 0,
+        "direita_subir": 0,
+        "manter": 0
+      },
+      "fora_envelope": 0.09
+    },
+    {
+      "caso": "tatico/final_trafego",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "subir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 1,
+      "latencia_ms": 292,
+      "tokens": 2139,
+      "probabilidades": {
+        "subir": 1,
+        "direita": 0,
+        "esquerda_subir": 0,
+        "manter": 0,
+        "esquerda": 0,
+        "direita_subir": 0
+      },
+      "fora_envelope": 0.08
+    },
+    {
+      "caso": "tatico/final_trafego",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "subir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.99,
+      "latencia_ms": 622,
+      "tokens": 2004,
+      "probabilidades": {
+        "esquerda": 0,
+        "direita_subir": 0,
+        "subir": 1,
+        "direita": 0,
+        "esquerda_subir": 0,
+        "manter": 0
+      },
+      "fora_envelope": 0.08
+    },
+    {
+      "caso": "tatico/relevo_frente",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "subir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.76,
+      "latencia_ms": 267,
+      "tokens": 2258,
+      "probabilidades": {
+        "manter": 0,
+        "subir": 0.79,
+        "direita_subir": 0,
+        "direita": 0.2,
+        "descer": 0,
+        "esquerda_subir": 0.01,
+        "esquerda": 0
+      },
+      "fora_envelope": 0.08
+    },
+    {
+      "caso": "tatico/relevo_frente",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "subir",
+      "acerto": true,
+      "massa": 1,
+      "confianca": 0.54,
+      "latencia_ms": 287,
+      "tokens": 2122,
+      "probabilidades": {
+        "direita_subir": 0,
+        "esquerda_subir": 0.01,
+        "direita": 0.38,
+        "subir": 0.61,
+        "descer": 0,
+        "manter": 0,
+        "esquerda": 0
+      },
+      "fora_envelope": 0.08
+    },
+    {
+      "caso": "tatico/ultrapassagem",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "direita",
+      "acerto": true,
+      "massa": 0.98,
+      "confianca": 0.6,
+      "latencia_ms": 276,
+      "tokens": 2258,
+      "probabilidades": {
+        "direita_subir": 0.02,
+        "esquerda": 0,
+        "esquerda_subir": 0,
+        "direita": 0.66,
+        "descer": 0,
+        "subir": 0.31,
+        "manter": 0.01
+      },
+      "fora_envelope": 0.07
+    },
+    {
+      "caso": "tatico/ultrapassagem",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "direita",
+      "acerto": true,
+      "massa": 0.99,
+      "confianca": 0.65,
+      "latencia_ms": 274,
+      "tokens": 2122,
+      "probabilidades": {
+        "manter": 0.01,
+        "subir": 0.29,
+        "direita": 0.69,
+        "direita_subir": 0.01,
+        "descer": 0,
+        "esquerda_subir": 0,
+        "esquerda": 0
+      },
+      "fora_envelope": 0.07
+    },
+    {
+      "caso": "tatico/compromisso",
+      "tipo": "tatico",
+      "idioma": "pt",
+      "escolha": "subir",
+      "acerto": true,
+      "massa": 0.8,
+      "confianca": 0.37,
+      "latencia_ms": 273,
+      "tokens": 2257,
+      "probabilidades": {
+        "descer": 0,
+        "subir": 0.46,
+        "direita": 0.34,
+        "esquerda": 0.19,
+        "esquerda_subir": 0.01,
+        "manter": 0,
+        "direita_subir": 0
+      },
+      "fora_envelope": 0.29
+    },
+    {
+      "caso": "tatico/compromisso",
+      "tipo": "tatico",
+      "idioma": "en",
+      "escolha": "subir",
+      "acerto": true,
+      "massa": 0.8,
+      "confianca": 0.35,
+      "latencia_ms": 318,
+      "tokens": 2121,
+      "probabilidades": {
+        "direita_subir": 0.01,
+        "descer": 0,
+        "esquerda_subir": 0.01,
+        "esquerda": 0.18,
+        "manter": 0,
+        "direita": 0.36,
+        "subir": 0.44
+      },
+      "fora_envelope": 0.2
+    }
+  ],
+  "erros": 0,
+  "resumo": {
+    "pt": {
+      "total": {
+        "casos": 33,
+        "acertos": 21,
+        "acerto": 0.636,
+        "massa_media": 0.689,
+        "brier": 0.25,
+        "confianca": {
+          "alta": {
+            "n": 16,
+            "acertos": 12
+          },
+          "media": {
+            "n": 16,
+            "acertos": 8
+          },
+          "baixa": {
+            "n": 1,
+            "acertos": 1
+          }
+        },
+        "latencia_p50_ms": 282,
+        "latencia_p95_ms": 803,
+        "tokens_medios": 2818
+      },
+      "estrategico": {
+        "casos": 19,
+        "acertos": 7,
+        "acerto": 0.368,
+        "massa_media": 0.473,
+        "brier": 0.432,
+        "confianca": {
+          "alta": {
+            "n": 8,
+            "acertos": 4
+          },
+          "media": {
+            "n": 11,
+            "acertos": 3
+          },
+          "baixa": {
+            "n": 0,
+            "acertos": 0
+          }
+        },
+        "latencia_p50_ms": 298,
+        "latencia_p95_ms": 944,
+        "tokens_medios": 3247
+      },
+      "tatico": {
+        "casos": 14,
+        "acertos": 14,
+        "acerto": 1,
+        "massa_media": 0.981,
+        "brier": 0.003,
+        "confianca": {
+          "alta": {
+            "n": 8,
+            "acertos": 8
+          },
+          "media": {
+            "n": 5,
+            "acertos": 5
+          },
+          "baixa": {
+            "n": 1,
+            "acertos": 1
+          }
+        },
+        "latencia_p50_ms": 276,
+        "latencia_p95_ms": 449,
+        "tokens_medios": 2235
+      }
+    },
+    "en": {
+      "total": {
+        "casos": 33,
+        "acertos": 22,
+        "acerto": 0.667,
+        "massa_media": 0.71,
+        "brier": 0.227,
+        "confianca": {
+          "alta": {
+            "n": 18,
+            "acertos": 13
+          },
+          "media": {
+            "n": 9,
+            "acertos": 7
+          },
+          "baixa": {
+            "n": 6,
+            "acertos": 2
+          }
+        },
+        "latencia_p50_ms": 301,
+        "latencia_p95_ms": 794,
+        "tokens_medios": 2578
+      },
+      "estrategico": {
+        "casos": 19,
+        "acertos": 8,
+        "acerto": 0.421,
+        "massa_media": 0.511,
+        "brier": 0.391,
+        "confianca": {
+          "alta": {
+            "n": 10,
+            "acertos": 5
+          },
+          "media": {
+            "n": 4,
+            "acertos": 2
+          },
+          "baixa": {
+            "n": 5,
+            "acertos": 1
+          }
+        },
+        "latencia_p50_ms": 315,
+        "latencia_p95_ms": 1329,
+        "tokens_medios": 2930
+      },
+      "tatico": {
+        "casos": 14,
+        "acertos": 14,
+        "acerto": 1,
+        "massa_media": 0.981,
+        "brier": 0.003,
+        "confianca": {
+          "alta": {
+            "n": 8,
+            "acertos": 8
+          },
+          "media": {
+            "n": 5,
+            "acertos": 5
+          },
+          "baixa": {
+            "n": 1,
+            "acertos": 1
+          }
+        },
+        "latencia_p50_ms": 283,
+        "latencia_p95_ms": 622,
+        "tokens_medios": 2101
+      }
+    }
+  }
+}

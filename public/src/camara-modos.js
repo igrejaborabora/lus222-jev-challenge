@@ -1,7 +1,14 @@
 export const DURACAO_ABERTURA_S = 3;
 export const REGRESSO_APOS_S = 4;
 export const DURACAO_EVENTO_S = 2.6;
-const ORDEM = ['cauda', 'lado', 'livre'];
+export const PLANO_CINEMA_S = 7;
+const ORDEM = ['cauda', 'lado', 'cinema', 'livre'];
+const PLANOS_CINEMA = ['alto', 'lado', 'frente', 'orbita'];
+
+/** Plano da câmara cinema neste instante: muda a cada 7 s, sempre pela mesma ordem. */
+export function planoCinema(agoraS) {
+  return PLANOS_CINEMA[Math.floor(Math.max(0, agoraS) / PLANO_CINEMA_S) % PLANOS_CINEMA.length];
+}
 
 export function novaCamara(agoraS, { abertura = true } = {}) {
   return { inicioS: abertura ? agoraS : -Infinity, ultimaInteracaoS: null, eventoAteS: null, preferido: 'cauda' };
@@ -75,11 +82,33 @@ function enquadrarEvento(pose, foco, fit, frente, esquerda) {
   };
 }
 
+/**
+ * Cinema, para vídeo: planos de 7 s em ciclo (perseguição alta a olhar a
+ * paisagem, lado, frente com a cidade por trás, órbita lenta). Com um marco
+ * perto e à frente (`foco`, o próximo ponto do circuito), fica atrás, alto e
+ * de lado, com a mira no marco: o avião em baixo e o marco ao centro.
+ */
+function alvoCinema(pose, { fit, foco, agoraS, frente, esquerda }) {
+  const junto = (f, e, cima) => ({ x: pose.x + frente.x * f + esquerda.x * e, y: pose.y + cima, z: pose.z + frente.z * f + esquerda.z * e });
+  if (foco) {
+    const lateral = (foco.x - pose.x) * esquerda.x + (foco.z - pose.z) * esquerda.z;
+    return { pos: junto(-70 / fit, (lateral > 0 ? -1 : 1) * 30, 28), mira: { ...foco } };
+  }
+  const plano = planoCinema(agoraS);
+  if (plano === 'alto') return { pos: junto(-80 / fit, 0, 40), mira: { ...junto(500, 0, 0), y: pose.y - 250 } };
+  if (plano === 'lado') return { pos: junto(6, -38 / Math.max(fit, 0.5), 6), mira: junto(20, 0, 0) };
+  if (plano === 'frente') return { pos: junto(55 / fit, 14, 5), mira: junto(0, 0, 2) };
+  const a = agoraS * 0.22;
+  const r = 65 / fit;
+  return { pos: { x: pose.x + Math.sin(a) * r, y: pose.y + 18, z: pose.z + Math.cos(a) * r }, mira: { x: pose.x, y: pose.y, z: pose.z } };
+}
+
 /** Posição e mira da câmara para os modos automáticos (coordenadas locais). */
-export function alvoCamara(modo, pose, { fit = 1, foco = null } = {}) {
+export function alvoCamara(modo, pose, { fit = 1, foco = null, agoraS = 0 } = {}) {
   const frente = { x: Math.sin(pose.heading), z: Math.cos(pose.heading) };
   // Esquerda do piloto: +X com rumo 0 (ver escala.js).
   const esquerda = { x: frente.z, z: -frente.x };
+  if (modo === 'cinema') return alvoCinema(pose, { fit, foco, agoraS, frente, esquerda });
   if (modo === 'abertura' || modo === 'lado') {
     // Lado direito do piloto (−X com rumo 0): é o flanco que o sol de world.js
     // ilumina; a pintura lê-se sem espelho dos dois lados. Perto, para o texto

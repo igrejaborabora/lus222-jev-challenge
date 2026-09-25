@@ -1,4 +1,4 @@
-import { CENARIOS_SIM, PERFIL, ambienteAposEvento, criarMissao, avancarMissao, aplicarDecisao, proximoEvento, estadoParaAvaliacao, combustivelNecessarioKg, pistaNecessariaM } from './simulacao.js';
+import { CENARIOS_SIM, PERFIL, ambienteAposEvento, criarMissao, avancarMissao, aplicarDecisao, proximoEvento, estadoParaAvaliacao, combustivelNecessarioKg, pistaNecessariaM, vooInterpolado } from './simulacao.js';
 import { validarRespostas } from './contrato-jev.js';
 import { avaliarLinha, resumirLinhas } from './avaliacao-sim.js';
 import { decisaoGeometrica, etiquetarAcao, etiquetarDestino, etiquetarManobraV, etiquetarManobraL, evasaoDeAnswers } from './decisao.js';
@@ -11,6 +11,7 @@ import { ameacaIminente, fatorTempo, TECTO_LEITURA } from './fator-tempo.js';
 import { decimal, pintarPainel, pintarPergunta } from './painel-jev.js';
 import { encaminhar, ROTULO_NIVEL } from './confianca.js';
 import { criarSomMotor } from './som-motor.js';
+import { criarSimuladorUI } from './simulador-ui.js';
 import {
   actualizarSeparacoes,
   actualizarOrdemPiloto,
@@ -219,7 +220,8 @@ async function carregarReplaysPiloto() {
 
 function parametrosVoo() {
   if (emModoPiloto()) return poseAviao(estado.piloto.automato);
-  return poseMissao(estado.missao.voo, estado.missao.comando);
+  // A física avança em passos de 0,1 s; o desenho interpola entre os dois últimos.
+  return poseMissao(vooInterpolado(estado.missao), estado.missao.comando);
 }
 async function criarMundo() {
   try {
@@ -293,7 +295,7 @@ function dadosMarcas() {
     };
   }
   return {
-    pontosRota: pontosFitaRota(m.voo, c.destino),
+    pontosRota: pontosFitaRota(vooInterpolado(m), c.destino),
     destinoAtivoId: m.destinoId,
     distanciasKm: c.distanciasKm,
     reserva: c.reserva,
@@ -319,7 +321,7 @@ function desenharMundo(dt) {
         absoluta,
         { escalaDistancia: 1 },
       );
-    } else if (!emModoPiloto()) api.posicionarBaloes(estado.mundo, estado.missao.ameacaAtiva, estado.missao.voo, pose);
+    } else if (!emModoPiloto()) api.posicionarBaloes(estado.mundo, estado.missao.ameacaAtiva, vooInterpolado(estado.missao), pose);
     api.actualizarAmeacas(estado.mundo, dt);
     api.actualizarCamara(estado.mundo, pose, dt);
     // Em pausa o céu congela (chuva, rastos e anoitecer); continua a desenhar.
@@ -1051,8 +1053,29 @@ function sair() {
   ++estado.geracao; cancelAnimationFrame(estado.raf); largarMundo(); som.suspender(); estado.missao = null; estado.log = null; mostrar('commander');
   estado.piloto = null; document.documentElement.classList.remove('pilot-active'); $('pilot-proof').hidden = true; $('btn-pic').hidden = false;
 }
+// Simulador: ecrã próprio, o mesmo som e o mesmo mundo 3D (carregado a pedido).
+const simulador = criarSimuladorUI({
+  som,
+  mostrar,
+  aoSair: () => mostrar('splash'),
+  gatewayDisponivel: () => estado.gateway,
+  carregarMundo: async () => {
+    if (new URLSearchParams(location.search).has('sem-webgl')) throw new Error('Modo de verificação sem WebGL');
+    const api = await import('./world.js');
+    if (!api.webglDisponivel()) throw new Error('WebGL indisponível');
+    return api;
+  },
+});
+
 function ligarUI() {
   criarCartoes(); void sondarGateway();
+  // O voo abre com o JEV aos comandos: ao vivo com Gateway, senão o voo gravado; o visitante
+  // pode retomá-los. ?voo=gravado força o voo gravado (sempre igual e sem custo, para vídeo)
+  // e ?desde=110 começa-o nesse segundo (a Foz), já com tudo o que aconteceu antes.
+  const parametros = new URLSearchParams(location.search);
+  const forcarGravado = parametros.get('voo') === 'gravado';
+  const desdeS = Math.max(0, Number(parametros.get('desde')) || 0);
+  $('btn-sim-abrir').addEventListener('click', () => { simulador.ligarSom(); void simulador.iniciar({ piloto: estado.gateway && !forcarGravado ? 'jev' : 'jev-gravado', desdeS }); });
   $('btn-open').addEventListener('click', () => mostrar('commander'));
   $('btn-home').addEventListener('click', () => mostrar('splash'));
   $('btn-launch').addEventListener('click', () => { if (!estado.gateway) return; ligarSom(); void iniciar('live'); });
