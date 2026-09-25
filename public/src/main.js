@@ -11,6 +11,7 @@ import { ameacaIminente, fatorTempo, TECTO_LEITURA } from './fator-tempo.js';
 import { decimal, pintarPainel, pintarPergunta } from './painel-jev.js';
 import { encaminhar, ROTULO_NIVEL } from './confianca.js';
 import { criarSomMotor } from './som-motor.js';
+import { criarSimuladorUI } from './simulador-ui.js';
 import {
   actualizarSeparacoes,
   actualizarOrdemPiloto,
@@ -1052,8 +1053,22 @@ function sair() {
   ++estado.geracao; cancelAnimationFrame(estado.raf); largarMundo(); som.suspender(); estado.missao = null; estado.log = null; mostrar('commander');
   estado.piloto = null; document.documentElement.classList.remove('pilot-active'); $('pilot-proof').hidden = true; $('btn-pic').hidden = false;
 }
+// Simulador: ecrã próprio, o mesmo som e o mesmo mundo 3D (carregado a pedido).
+const simulador = criarSimuladorUI({
+  som,
+  mostrar,
+  aoSair: () => mostrar('splash'),
+  carregarMundo: async () => {
+    if (new URLSearchParams(location.search).has('sem-webgl')) throw new Error('Modo de verificação sem WebGL');
+    const api = await import('./world.js');
+    if (!api.webglDisponivel()) throw new Error('WebGL indisponível');
+    return api;
+  },
+});
+
 function ligarUI() {
   criarCartoes(); void sondarGateway();
+  $('btn-sim-abrir').addEventListener('click', () => { simulador.ligarSom(); void simulador.iniciar({ piloto: 'humano' }); });
   $('btn-open').addEventListener('click', () => mostrar('commander'));
   $('btn-home').addEventListener('click', () => mostrar('splash'));
   $('btn-launch').addEventListener('click', () => { if (!estado.gateway) return; ligarSom(); void iniciar('live'); });

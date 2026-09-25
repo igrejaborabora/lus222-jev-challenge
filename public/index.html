@@ -29,7 +29,7 @@
         <div><span>JEV / REPLAY</span><strong>Prosseguir · direita + subir</strong></div>
         <div><span>EFEITO SIMULADO</span><strong>Separação ≈190 m · rota mantida</strong></div>
       </div>
-      <div class="hero-actions"><button type="button" class="button button-accent" id="btn-open">Escolher missão <span aria-hidden="true">↗</span></button><span class="gateway-status" id="gateway-status" role="status">A verificar o Gateway…</span></div>
+      <div class="hero-actions"><button type="button" class="button button-accent" id="btn-sim-abrir">Voar o LUS-222 <span aria-hidden="true">↗</span></button><button type="button" class="button button-outline" id="btn-open">Escolher missão <span aria-hidden="true">↗</span></button><span class="gateway-status" id="gateway-status" role="status">A verificar o Gateway…</span></div>
       <p class="hero-foot">typesafe-ai/jev via AI Gateway · dados estruturados, não imagens · física ilustrativa, não certificável · render do LUS-222: EEA Aircraft</p>
     </main>
     <div class="hero-index">QUATRO CENÁRIOS · PORTO EM DESTAQUE</div>
@@ -98,6 +98,52 @@
     </div>
     <div class="overlay" id="failure-overlay" hidden><div class="overlay-card"><p class="kicker">LIGAÇÃO INTERROMPIDA</p><h2>O JEV não respondeu.</h2><p id="failure-reason">—</p><div class="overlay-actions"><button type="button" class="button button-accent" id="btn-retry">Tentar novamente</button><button type="button" class="button button-outline" id="btn-incomplete">Terminar como incompleta</button></div></div></div>
     <div class="overlay" id="pic-overlay" hidden><div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="pic-title"><p class="kicker" id="pic-kicker">COMANDANTE / PIC</p><h2 id="pic-title">Sobrepor a escolha</h2><p id="pic-text">A intervenção humana fica identificada no registo. O supervisor continua a verificar os limites calculados.</p><div class="pic-dist" id="pic-dist" hidden></div><p class="pic-countdown" id="pic-countdown" aria-live="polite" hidden>10 s</p><label class="control-row"><span>Nova ação</span><select id="pic-action"><option value="orbitar">Orbitar</option><option value="regressar_base">Regressar à origem</option><option value="desviar_alternativo">Desviar para alternativo</option><option value="prosseguir">Prosseguir</option><option value="abortar_emergencia">Aterragem de emergência</option></select></label><div class="overlay-actions"><button type="button" class="button button-accent" id="btn-pic-apply">Aplicar intervenção</button><button type="button" class="button button-outline" id="btn-pic-cancel">Cancelar</button></div></div></div>
+  </section>
+
+  <section class="screen sim" id="screen-sim" aria-label="Simulador LUS-222">
+    <div class="sim-palco">
+      <canvas id="sim-canvas" aria-hidden="true"></canvas>
+      <header class="sim-topo">
+        <div class="flight-identity"><span class="brand-mark small">J<span>·</span>EV</span><div><b>Simulador LUS-222</b><small id="sim-fonte">Voo livre · Porto · noite de São João</small></div></div>
+        <div class="sim-piloto" role="group" aria-label="Quem pilota o LUS-222">
+          <button type="button" id="sim-piloto-jev" aria-pressed="false" disabled title="O JEV aos comandos chega no passo seguinte (M2)">JEV</button>
+          <button type="button" id="sim-piloto-humano" aria-pressed="true">Humano</button>
+        </div>
+        <button type="button" class="flight-sound" id="sim-som" aria-pressed="true" aria-label="Som dos motores" title="Som dos motores"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="som-ondas" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="som-mudo" d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+        <button type="button" class="flight-exit" id="sim-sair">Sair</button>
+      </header>
+      <div class="sim-hud" aria-label="Instrumentos">
+        <div><span>VEL</span><b id="sim-vel">—</b><small>kt</small></div>
+        <div><span>ALT</span><b id="sim-alt">—</b><small>ft</small></div>
+        <div><span>RUMO</span><b id="sim-rumo">—</b><small>°</small></div>
+        <div><span>POT</span><b id="sim-pot">—</b><small>%</small></div>
+        <div><span>FUEL</span><b id="sim-fuel">—</b><small>kg</small></div>
+      </div>
+      <p class="sim-objetivo" id="sim-objetivo" aria-live="polite">—</p>
+      <div class="sim-comandos">
+        <div class="sim-actuacao" id="sim-actuacao" role="group" aria-label="Actuação: carrega para pilotar; com o JEV aos comandos acende o que ele escolheu">
+          <button type="button" class="sim-lampada" data-eixo="lateral" data-valor="esquerda" aria-label="Esquerda">◀ ESQ</button>
+          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="subir" aria-label="Subir">▲ SUBIR</button>
+          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="descer" aria-label="Descer">▼ DESCER</button>
+          <button type="button" class="sim-lampada" data-eixo="lateral" data-valor="direita" aria-label="Direita">DIR ▶</button>
+          <button type="button" class="sim-lampada" data-eixo="potencia" data-valor="mais" aria-label="Mais potência">POT +</button>
+          <button type="button" class="sim-lampada" data-eixo="potencia" data-valor="menos" aria-label="Menos potência">POT −</button>
+          <span class="sim-lampada sim-supervisor" id="sim-supervisor">SUPERVISOR</span>
+        </div>
+        <div class="sim-botoes">
+          <button type="button" class="control-button" id="sim-pausa">Pausar</button>
+          <button type="button" class="control-button" id="sim-camara">Câmara: cauda</button>
+        </div>
+      </div>
+      <div class="overlay" id="sim-fim" hidden><div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="sim-fim-titulo"><p class="kicker" id="sim-fim-kicker">FIM DO VOO</p><h2 id="sim-fim-titulo">—</h2><p id="sim-fim-texto">—</p><div class="overlay-actions"><button type="button" class="button button-accent" id="sim-repetir">Voar outra vez</button><button type="button" class="button button-outline" id="sim-fim-sair">Sair</button></div></div></div>
+    </div>
+    <aside class="sim-painel" aria-label="Painel do JEV">
+      <section class="sim-bloco"><h2 class="sim-h">JEV · JULGAMENTOS <span id="sim-meta"></span></h2><div id="sim-julgamentos" class="sim-vazio">Com «Humano» aos comandos o JEV não decide. Escolhe «JEV» em cima para ele pilotar.</div></section>
+      <section class="sim-bloco"><h2 class="sim-h">O QUE O JEV LÊ</h2><pre id="sim-estado" class="sim-estado">—</pre></section>
+      <section class="sim-bloco"><h2 class="sim-h">ORDENS DO COMANDANTE</h2><form id="sim-ordens-form" class="sim-ordens"><input id="sim-ordens" maxlength="120" autocomplete="off" placeholder="Ex.: poupa combustível e evita as nuvens" aria-label="Ordem ao JEV"><button type="submit">Dar</button></form><div class="sim-atalhos" id="sim-atalhos"><button type="button">Poupa combustível</button><button type="button">Evita as nuvens</button><button type="button">Voa baixo</button><button type="button">Chega depressa</button></div><p class="sim-ordem-activa" id="sim-ordem-activa">Sem ordens.</p></section>
+      <section class="sim-bloco"><h2 class="sim-h">CONTADORES</h2><dl class="sim-contadores" id="sim-contadores"></dl></section>
+      <section class="sim-bloco"><h2 class="sim-h">MAPA</h2><svg id="sim-mapa" class="sim-mapa" role="img" aria-label="Mapa do circuito, das ameaças e do rasto"></svg></section>
+    </aside>
   </section>
 
   <section class="screen" id="screen-debrief">

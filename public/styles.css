@@ -154,6 +154,60 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .pilot-tape-row time{color:#aeb8c0}.pilot-tape-row b{font-weight:500;color:#f4f6f8}.pilot-tape-row span{color:#c4cdd4;text-align:right}
 .pilot-active .map-card{display:none}
 .flight-seal{position:absolute;z-index:3;left:50%;bottom:calc(92px + var(--safe-b));transform:translateX(-50%);display:grid;justify-items:center;gap:4px;min-width:min(420px,70vw);max-width:calc(100vw - 32px);padding:12px 22px 14px;background:rgba(6,8,10,.82);border:1px solid rgba(255,255,255,.3);text-align:center;pointer-events:none;backdrop-filter:blur(6px)}
+/* Simulador: palco 3D à esquerda, painel do JEV à direita (no telemóvel, empilhado). */
+.screen.sim.active{display:grid;grid-template-columns:minmax(0,1fr) 380px}
+.sim-palco{position:relative;min-width:0;min-height:0;overflow:hidden}
+#sim-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.sim-topo{position:absolute;z-index:3;left:0;right:0;top:0;height:calc(58px + var(--safe-t));padding:var(--safe-t) 16px 0 calc(16px + var(--safe-l));display:flex;align-items:center;gap:14px;background:linear-gradient(rgba(6,8,10,.92),rgba(6,8,10,.55));border-bottom:1px solid rgba(255,255,255,.12)}
+.sim-piloto{display:flex;margin-left:auto;border:1px solid rgba(255,255,255,.35)}
+.sim-piloto button{border:0;background:transparent;color:#cfd6dc;padding:9px 14px;font:600 11px var(--mono);letter-spacing:.12em;cursor:pointer}
+.sim-piloto button[aria-pressed="true"]{background:#f4f6f8;color:#090b0e}
+.sim-piloto button:disabled{opacity:.4;cursor:not-allowed}
+.sim-topo .flight-sound{margin-left:0}
+.sim-hud{position:absolute;z-index:2;left:calc(16px + var(--safe-l));top:calc(70px + var(--safe-t));display:flex;gap:1px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18)}
+.sim-hud div{background:rgba(6,8,10,.82);padding:6px 10px;display:grid;grid-template-columns:auto auto;column-gap:4px;align-items:baseline}
+.sim-hud span{grid-column:1/-1;font:600 8px var(--mono);letter-spacing:.12em;color:#9fa9b2}
+.sim-hud b{font:600 18px var(--display)}.sim-hud small{font:9px var(--mono);color:#cfd6dc}
+.sim-objetivo{position:absolute;z-index:2;left:calc(16px + var(--safe-l));top:calc(128px + var(--safe-t));margin:0;padding:6px 10px;background:rgba(6,8,10,.78);border-left:2px solid #f4f6f8;font:11px var(--mono);color:#e1e6ea}
+.sim-comandos{position:absolute;z-index:3;left:0;right:0;bottom:0;padding:10px 16px calc(12px + var(--safe-b)) calc(16px + var(--safe-l));display:flex;align-items:flex-end;justify-content:space-between;gap:12px;background:linear-gradient(transparent,rgba(6,8,10,.8))}
+.sim-actuacao{display:grid;grid-template-columns:repeat(4,auto);gap:4px}
+.sim-lampada{min-width:74px;padding:10px 8px;border:1px solid rgba(255,255,255,.28);background:rgba(6,8,10,.7);color:#8f99a3;font:600 11px var(--mono);letter-spacing:.08em;text-align:center;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;transition:background .08s,color .08s}
+.sim-lampada.is-on{background:#f4f6f8;color:#090b0e;border-color:#f4f6f8;box-shadow:0 0 14px rgba(255,255,255,.35)}
+.sim-supervisor{grid-column:span 2;cursor:default}
+.sim-supervisor.is-on{background:#e5484d;border-color:#e5484d;color:#fff;box-shadow:0 0 16px rgba(229,72,77,.6)}
+.sim-botoes{display:flex;gap:6px}
+.sim-painel{min-height:0;overflow:auto;overscroll-behavior:contain;background:#07090b;border-left:1px solid rgba(255,255,255,.14);padding:calc(14px + var(--safe-t)) 16px calc(16px + var(--safe-b));display:flex;flex-direction:column;gap:14px}
+.sim-bloco{border-top:1px solid rgba(255,255,255,.14);padding-top:10px}
+.sim-bloco:first-child{border-top:0;padding-top:0}
+.sim-h{margin:0 0 8px;display:flex;justify-content:space-between;gap:8px;font:600 10px var(--mono);letter-spacing:.14em;color:#e1e6ea}
+.sim-h span{font-weight:400;letter-spacing:.02em;color:#9fa9b2;text-align:right}
+.sim-vazio{font:11px/1.5 var(--mono);color:#9fa9b2}
+.sim-estado{margin:0;max-height:180px;overflow:auto;font:10px/1.45 var(--mono);color:#b9c3cc;white-space:pre-wrap}
+.sim-ordens{display:flex;gap:6px}
+.sim-ordens input{flex:1;min-width:0;background:#0f1317;border:1px solid rgba(255,255,255,.22);color:var(--ink);padding:8px;font:11px var(--mono)}
+.sim-ordens button,.sim-atalhos button{border:1px solid rgba(255,255,255,.3);background:transparent;color:var(--ink);padding:7px 9px;font:10px var(--mono);cursor:pointer}
+.sim-atalhos{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.sim-ordem-activa{margin:6px 0 0;font:10px var(--mono);color:#f0c27a}
+.sim-contadores{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(255,255,255,.1)}
+.sim-contadores div{background:#07090b;padding:6px 8px}
+.sim-contadores dt{font:8px var(--mono);letter-spacing:.1em;color:#9fa9b2}
+.sim-contadores dd{margin:2px 0 0;font:600 15px var(--display)}
+.sim-mapa{width:100%;aspect-ratio:1/1;background:#0b0f13;border:1px solid rgba(255,255,255,.12)}
+@media(max-width:1100px){.screen.sim.active{grid-template-columns:minmax(0,1fr) 320px}.sim-lampada{min-width:62px;padding:9px 6px}}
+@media(max-width:760px){
+  .screen.sim.active{display:flex;flex-direction:column;overflow:auto;height:auto;min-height:100dvh}
+  .sim-palco{flex:none;height:62dvh}
+  .sim-painel{border-left:0;border-top:1px solid rgba(255,255,255,.14);overflow:visible;padding-top:14px}
+  .sim-topo{height:calc(50px + var(--safe-t));gap:8px;padding-left:calc(10px + var(--safe-l));padding-right:10px}
+  .sim-topo .identity-thumb,.sim-topo .brand-mark{display:none}
+  .sim-piloto button{padding:8px 10px}
+  .sim-hud{top:calc(58px + var(--safe-t));left:8px}.sim-hud div{padding:4px 6px}.sim-hud b{font-size:14px}
+  .sim-objetivo{top:calc(104px + var(--safe-t));left:8px;font-size:10px}
+  .sim-comandos{flex-direction:column;align-items:stretch;padding:8px}
+  .sim-actuacao{grid-template-columns:repeat(4,1fr)}
+  .sim-lampada{min-width:0;padding:12px 4px;font-size:10px}
+  .sim-botoes{justify-content:flex-end}
+}
 @media(min-width:761px){.flight-seal{bottom:auto;top:calc(96px + var(--safe-t))}}
 @media(min-width:761px) and (max-width:1100px){
   .flight-seal{min-width:0;max-width:calc(100vw - var(--largura-gaveta) - 210px)}
