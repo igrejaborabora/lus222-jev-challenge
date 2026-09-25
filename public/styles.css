@@ -100,13 +100,15 @@ button:disabled{opacity:.42;cursor:not-allowed}
 #flight-canvas,.flight-tint{position:absolute;inset:0;width:100%;height:100%}
 .flight-tint{pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.4),transparent 34%,transparent 76%,rgba(0,0,0,.34)),linear-gradient(0deg,rgba(0,0,0,.42),transparent 30%)}
 .flight-header{position:absolute;z-index:3;left:0;right:0;top:0;height:calc(62px + var(--safe-t));padding:var(--safe-t) calc(20px + var(--safe-r)) 0 calc(20px + var(--safe-l));display:flex;align-items:center;gap:20px;background:rgba(6,8,10,.9);border-bottom:1px solid rgba(255,255,255,.14)}
-.flight-identity{display:flex;align-items:center;gap:12px;min-width:0}
+.flight-identity{display:flex;align-items:center;gap:12px;min-width:0}.flight-identity>div{min-width:0}
 .identity-thumb{width:58px;height:34px;object-fit:cover;object-position:60% 45%;filter:grayscale(1) contrast(1.1);border:1px solid rgba(255,255,255,.25)}
 .flight-identity b,.flight-identity small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .flight-identity b{font:600 13px var(--sans)}.flight-identity small{font:10px var(--mono);color:#e1e6ea;margin-top:2px}
 .flight-phase{display:flex;align-items:center;gap:9px;font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase}
 .pulse{width:6px;height:6px;border-radius:50%;background:#f4f6f8;box-shadow:0 0 0 4px rgba(255,255,255,.16)}
 .flight-exit{margin-left:auto;flex:none;border:1px solid rgba(255,255,255,.28);background:transparent;color:var(--ink);padding:10px 12px;font:11px var(--mono)}
+.flight-sound{margin-left:auto;flex:none;width:40px;height:38px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.28);background:transparent;color:var(--ink);padding:0}.flight-sound svg{width:20px;height:20px}
+.flight-sound+.flight-exit{margin-left:0}.flight-sound[aria-pressed="true"] .som-mudo,.flight-sound[aria-pressed="false"] .som-ondas{display:none}.flight-sound[aria-pressed="false"]{color:#9fa9b2}
 .flight-label{position:absolute;z-index:2;top:calc(74px + var(--safe-t));left:50%;transform:translateX(-50%);font:9px var(--mono);letter-spacing:.12em;color:rgba(255,255,255,.7);pointer-events:none;white-space:nowrap}
 .decision-panel{position:absolute;z-index:3;top:calc(74px + var(--safe-t));bottom:calc(86px + var(--safe-b));left:calc(16px + var(--safe-l));width:var(--largura-gaveta);display:flex;flex-direction:column;min-height:0;overflow:auto;overscroll-behavior:contain;background:rgba(8,11,14,.94);border:1px solid rgba(255,255,255,.18);padding:20px;transition:transform .28s ease,opacity .28s ease}
 /* Fechada: fora do Tab e do leitor de ecrã, mas só depois do deslize (a abertura mostra logo). */
@@ -123,12 +125,16 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .flow-step div>span{font-size:11px;color:#b6c0c8;margin-top:5px}
 .decision-flags{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
 .decision-flags span{padding:6px 7px;border:1px solid rgba(255,255,255,.28);font:9px var(--mono);letter-spacing:.07em}
-.typed-details{margin-top:auto;padding-top:16px;font-size:11px}
-.typed-details summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:12px;color:#e1e6ea;font:10px var(--mono);border-top:1px solid rgba(255,255,255,.22);padding-top:12px}
-.typed-details summary::-webkit-details-marker{display:none}.typed-details[open] summary span{transform:rotate(45deg)}
-#typed-answers{padding-top:10px}
-.typed-row{display:grid;grid-template-columns:1fr auto;gap:7px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08);font:10px var(--mono)}
-.typed-row span{color:#b6c0c8}.typed-row b{font-weight:500;text-align:right}
+.typed-panel{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.22)}
+.typed-meta{margin:0 0 6px;font:10px var(--mono);color:#e1e6ea;letter-spacing:.04em}
+.typed-row{padding:6px 0 7px;border-bottom:1px solid rgba(255,255,255,.08);font:10px var(--mono)}
+.typed-head{display:flex;align-items:baseline;gap:8px}.typed-name{flex:1;min-width:0;color:#b6c0c8}.typed-choice{font-weight:500;text-align:right}
+.conf-chip{flex:none;padding:1px 5px;border:1px solid rgba(255,255,255,.3);font:9px var(--mono);color:#e1e6ea}
+.typed-dist{display:flex;gap:1px;height:6px;margin-top:5px;background:rgba(255,255,255,.06)}
+.typed-seg{height:100%;background:rgba(255,255,255,.26);transition:width .35s ease}.typed-seg:nth-child(even){background:rgba(255,255,255,.16)}.typed-seg.is-on{background:#f4f6f8}
+.typed-legend{margin-top:4px;font:9px var(--mono);color:#9fa9b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.decision-flags span[data-nivel="assinalar"]{border-color:rgba(255,255,255,.62)}.decision-flags span[data-nivel="pic"]{border-color:#f0a431;color:#ffcf85}
+.pic-dist{margin:4px 0 10px}.pic-countdown{margin:0 0 12px;font:600 12px var(--mono);letter-spacing:.12em;color:#ffcf85}
 .telemetry{position:absolute;z-index:3;top:calc(74px + var(--safe-t));right:calc(16px + var(--safe-r));width:140px;background:rgba(8,11,14,.88);border:1px solid rgba(255,255,255,.14);padding:12px 14px}
 .telemetry .kicker{font-size:8px;margin-bottom:8px}
 .telemetry>div{border-top:1px solid rgba(255,255,255,.15);padding:7px 0}
@@ -282,7 +288,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
   .flight-header{height:calc(54px + var(--safe-t));padding-left:calc(12px + var(--safe-l));padding-right:calc(12px + var(--safe-r));gap:10px}
   .brand-mark.small{font-size:21px}.identity-thumb{width:44px;height:28px}
   .flight-identity b{font-size:11px}.flight-identity small{font-size:9px}
-  .flight-phase{display:none}.flight-exit{font-size:10px;padding:8px 10px}
+  .flight-phase{display:none}.flight-exit{font-size:10px;padding:8px 10px}.flight-sound{width:36px;height:34px}
   .flight-label{top:calc(116px + var(--safe-t));left:12px;transform:none;font-size:8px}
   .telemetry{top:calc(54px + var(--safe-t));left:0;right:0;width:auto;display:flex;align-items:center;justify-content:space-around;gap:6px;padding:5px 8px;border:0;border-bottom:1px solid rgba(255,255,255,.12);background:rgba(6,8,10,.72)}
   .telemetry .kicker{display:none}.telemetry>div{border:0;padding:2px}

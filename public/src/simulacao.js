@@ -291,7 +291,8 @@ function passoFisico(m, dt) {
   const fuel = Math.max(0, v.combustivelKg - consumo);
   const dx = (Math.sin(heading) * speed + m.ambiente.ventoMs.x) * dt;
   const dz = (Math.cos(heading) * speed + m.ambiente.ventoMs.z) * dt;
-  return { ...v, xM: v.xM + dx, zM: v.zM + dz, altitudeM: altitude, velocidadeMs: speed, velocidadeVerticalMs: subida, rumoRad: heading, bankRad: bank, pitchRad: Math.asin(clamp(subida / speed, -0.2, 0.2)), combustivelKg: fuel, massaKg: PERFIL.massaVaziaKg + v.payloadKg + fuel, distanciaPercorridaM: v.distanciaPercorridaM + Math.hypot(dx, dz), tempoS: v.tempoS + dt };
+  // potencia só sai para o som do motor; não entra no passo seguinte.
+  return { ...v, xM: v.xM + dx, zM: v.zM + dz, altitudeM: altitude, velocidadeMs: speed, velocidadeVerticalMs: subida, rumoRad: heading, bankRad: bank, pitchRad: Math.asin(clamp(subida / speed, -0.2, 0.2)), combustivelKg: fuel, massaKg: PERFIL.massaVaziaKg + v.payloadKg + fuel, distanciaPercorridaM: v.distanciaPercorridaM + Math.hypot(dx, dz), tempoS: v.tempoS + dt, potencia };
 }
 
 export function avancarMissao(m, segundos) {

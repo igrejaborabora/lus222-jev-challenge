@@ -2,6 +2,7 @@ import { experimental_evaluate as evaluate } from 'ai';
 import { decisaoGeometrica, estadoParaJev, MODELO_JEV } from '../lib/decisao.mjs';
 import { PERGUNTAS_BRIEFING, PERGUNTAS_INCIDENTE, perguntasPara } from '../lib/perguntas.mjs';
 import { validarRespostas } from '../public/src/contrato-jev.js';
+import { classificarErro, momentoDe, origemPermitida } from '../lib/limites-api.mjs';
 
 /**
  * /api/jev — JEV comanda o LUS-222.
@@ -10,6 +11,9 @@ import { validarRespostas } from '../public/src/contrato-jev.js';
  * Sucesso: { fonte: 'jev', answers, usage }
  * Falha: HTTP 503 { fonte: 'bloqueio' } — nunca devolve a regra geométrica
  * como se fosse JEV. A regra corre no cliente, em paralelo, para o debriefing.
+ * Limites: só o próprio site (Origin), 600 pedidos/min por IP nesta instância
+ * e o orçamento do AI Gateway; um limite atingido dá 429 { erro: 'limite' } e
+ * o cliente passa ao replay gravado.
  */
 
 const MODEL = MODELO_JEV;
@@ -17,7 +21,9 @@ const TIMEOUT_MS = 12_000;
 // No corredor contínuo uma resposta com mais de ~3 s já descreve outra geometria.
 const TIMEOUT_PILOTO_MS = 3_000;
 const buckets = new Map();
-const LIMITE_POR_MIN = Number(process.env.JEV_RATE_LIMIT_PER_MIN || 400);
+// Por instância: o travão real é o orçamento do Gateway. Alto porque o CGNAT
+// móvel põe muitos visitantes atrás do mesmo IP.
+const LIMITE_POR_MIN = Number(process.env.JEV_RATE_LIMIT_PER_MIN || 600);
 
 function rateLimited(ip) {
   const janela = Math.floor(Date.now() / 60_000);
@@ -35,11 +41,11 @@ function gatewayConfigurado() {
 }
 
 
-function momentoDe(body) {
-  return body?.momento === 'briefing' ? 'briefing' : 'incidente';
-}
-
 export async function POST(request) {
+  if (!origemPermitida(request.headers.get('origin'), process.env)) {
+    return Response.json({ fonte: 'bloqueio', erro: 'origem_nao_permitida' }, { status: 403 });
+  }
+
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     request.headers.get('x-real-ip') ||
@@ -47,7 +53,7 @@ export async function POST(request) {
 
   if (rateLimited(ip)) {
     return Response.json(
-      { fonte: 'bloqueio', erro: 'rate_limit', mensagem: 'Demasiadas avaliações por minuto.' },
+      { fonte: 'bloqueio', erro: 'limite', motivo: 'rate_limit', mensagem: 'Demasiadas avaliações por minuto.' },
       { status: 429 },
     );
   }
@@ -71,6 +77,9 @@ export async function POST(request) {
   }
 
   const momento = momentoDe(body);
+  if (!momento) {
+    return Response.json({ fonte: 'bloqueio', erro: 'momento_desconhecido' }, { status: 400 });
+  }
   const estado = estadoParaJev(body?.estado ?? body);
   const questions = perguntasPara(momento, estado);
   const piloto = estado?.voo?.fase === 'piloto_continuo';
@@ -104,24 +113,25 @@ export async function POST(request) {
       confidence: resultado.providerMetadata?.typesafe?.confidence ?? null,
     });
   } catch (erro) {
-    const mensagem = String(erro?.message ?? erro);
-    const semChave = /api key|unauthor|credential|401|403/i.test(mensagem);
-    const expirou = erro?.name === 'TimeoutError' || erro?.name === 'AbortError' || /timeout|abort/i.test(mensagem);
-    if (!semChave && !expirou) console.error('[api/jev] gateway', mensagem.slice(0, 300));
+    const tipo = classificarErro(erro);
+    if (tipo === 'gateway_indisponivel') console.error('[api/jev] gateway', String(erro?.message ?? erro).slice(0, 300));
+    const MENSAGENS = {
+      limite: 'Limite da demonstração ao vivo atingido.',
+      gateway_nao_configurado: 'AI Gateway sem credenciais. A regra geométrica não se vende como JEV.',
+      timeout: 'O JEV não respondeu a tempo. A missão fica incompleta — não se finge uma decisão JEV.',
+      gateway_indisponivel: 'Gateway indisponível. A missão não continua como JEV.',
+    };
     return Response.json(
       {
         fonte: 'bloqueio',
         modelo: null,
         momento,
         latencia_ms: Date.now() - inicio,
-        erro: semChave ? 'gateway_nao_configurado' : expirou ? 'timeout' : 'gateway_indisponivel',
-        mensagem: semChave
-          ? 'AI Gateway sem credenciais. A regra geométrica não se vende como JEV.'
-          : expirou
-            ? 'O JEV não respondeu a tempo. A missão fica incompleta — não se finge uma decisão JEV.'
-            : 'Gateway indisponível. A missão não continua como JEV.',
+        erro: tipo,
+        ...(tipo === 'limite' ? { motivo: 'orcamento' } : {}),
+        mensagem: MENSAGENS[tipo],
       },
-      { status: 503 },
+      { status: tipo === 'limite' ? 429 : 503 },
     );
   }
 }

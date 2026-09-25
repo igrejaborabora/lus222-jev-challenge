@@ -7,21 +7,24 @@ O cenário principal é **São João / Porto**: uma aproximação hipotética ao
 ## O que se observa
 
 1. O comandante escolhe cenário, carga, tolerância ao risco e restrições.
-2. O JEV responde a quatro perguntas tipadas no briefing. Em cada incidente responde a ação de missão, destino, eixos vertical/lateral, urgência, risco, revisão PIC e continuidade.
-3. O supervisor determinístico verifica pista, reserva, envelope e separação. Uma proposta incompatível fica no registo e a intervenção do supervisor aparece com autoria própria.
-4. O motor recalcula posição, velocidade, altitude, rumo, massa, consumo, destino e ETA. Regressar, orbitar, desviar e abortar mudam o percurso e os incidentes possíveis.
-5. O debriefing preserva entrada, resposta original, intervenção, estado antes/depois e comparação por dimensão. O laboratório altera uma variável numa **cópia** e pede nova resposta ao JEV.
+2. O JEV responde a quatro perguntas tipadas no briefing. Em cada incidente responde, em paralelo numa só chamada, a ação de missão, destino, eixos vertical/lateral, urgência, risco, «fora do envelope» e continuidade. O painel mostra a distribuição inteira de cada pergunta, a confiança devolvida pelo Gateway (choice e score), a latência e os tokens.
+3. A confiança da ação de missão encaminha a decisão: ≥ 0,9 o JEV age; entre 0,5 e 0,9 age e fica assinalado para revisão; abaixo de 0,5 pede o PIC. Ao vivo, o relógio pára e o visitante tem 10 s para escolher; sem escolha fica a do JEV, validada pelo supervisor. Nos 15 eventos gravados só a luz do SAR (0,46) pede o PIC; a revisão por confiança concorda com a rubrica em 12 de 15 eventos, contra 7 de 15 com a antiga P(revisão PIC) ≥ 0,55.
+4. O supervisor determinístico verifica pista, reserva, envelope e separação. Uma proposta incompatível fica no registo e a intervenção do supervisor aparece com autoria própria.
+5. O motor recalcula posição, velocidade, altitude, rumo, massa, consumo, destino e ETA. Regressar, orbitar, desviar e abortar mudam o percurso e os incidentes possíveis.
+6. O debriefing preserva entrada, resposta original, intervenção, estado antes/depois e comparação por dimensão. O laboratório altera uma variável numa **cópia** e pede nova resposta ao JEV.
 
-A regra geométrica de comparação é deliberadamente limitada e nunca controla o voo. Uma percentagem global de “sucesso” esconderia desacordos importantes; por isso ação, destino, manobra, limites e revisão PIC são apresentados separadamente. Uma sugestão de revisão do JEV não é confundida com uma intervenção humana.
+A regra geométrica de comparação é deliberadamente limitada e nunca controla o voo. Uma percentagem global de “sucesso” esconderia desacordos importantes; por isso ação, destino, manobra, limites e revisão sugerida (pela confiança) são apresentados separadamente. Uma sugestão de revisão do JEV não é confundida com uma intervenção humana.
 
 A **Prova contínua JEV** é um modo separado: o avião atravessa um slalom de torres, aves e tráfego de época. A cada 400 ms o cliente envia um snapshot com três a cinco obstáculos ainda à frente, com folgas por obstáculo e candidatas recalculadas a partir da posição actual (lateral positivo = direita do piloto). Há no máximo dois pedidos em voo; uma resposta antiga que chegue depois de uma mais recente, ou cujo obstáculo já foi ultrapassado, fica no registo mas não substitui a ordem actual. O JEV escolhe os eixos e o controlador local converte-os em alvos de posição (±52 m de lateral, +40 m de altitude). A mesma ordem, reconfirmada, mantém o alvo; sem confirmação durante 1,6 s o avião regressa ao eixo. O controlador antecipa 3 s a lateral para não passar do alvo com a curva coordenada, e o rumo nunca se afasta mais de 0,5 rad do corredor. Os obstáculos ficam fixos no mundo, nas mesmas posições que a física usa. Falhas seguidas do Gateway abrandam os pedidos e, à quinta, terminam a prova como incompleta. A fita mostra latência por passo, decisões por minuto, mediana, p95 e separação ao envelope de protecção simulado. Sem Gateway, a prova reproduz também a espera e usa respostas JEV já gravadas em cenários visuais equivalentes; cada linha guarda cenário, evento e data da gravação e nunca se apresenta como avaliação nova do snapshot actual.
+
+O som dos motores é procedimental (Web Audio, sem ficheiros): tom de passagem das pás de 4 pás, dois motores ligeiramente desafinados para o batimento de bimotor, assobio de turbina e vento, a seguir a potência, a velocidade e a distância da câmara. Começa com o clique que inicia o voo, cala-se em pausa, no relatório e com o separador escondido, e o botão `Som` guarda a preferência.
 
 A interface usa uma paleta preta e branca e uma animação de pontos “J·EV” na abertura, inspirada na linguagem visual da Pixelgrammar. A animação fica estática quando o sistema pede movimento reduzido; a missão também funciona sem WebGL (`?sem-webgl=1` permite verificar essa apresentação).
 
 Cada ecrã cabe na altura da janela (`100dvh`) a 375, 390, 768, 1366 e 1440 px, sem scroll de página. Só os painéis secundários (linha de decisão, respostas tipadas, gavetas) fazem scroll interno; nenhum comando fica fora da vista. A render do LUS-222 é o exlibris: ocupa a abertura, aparece esbatida na mesa e no relatório, recortada nas cartas de missão e em miniatura na identidade do voo. O voo abre com três segundos de vista lateral, do flanco iluminado, antes da vista atrás da cauda.
 
 - **Mesa de missão:** cartas numa linha (deslizam na horizontal no telemóvel), parâmetros compactos e `Iniciar JEV ao vivo` / `Ver replay gravado` fixos em baixo. A pista real abre numa sobreposição.
-- **Voo:** canvas a ecrã inteiro; topo com identidade, fase e `Terminar`; selo da decisão com a manobra e os milissegundos do JEV; dock com `Decisão`, `Pausar`, velocidade, `Câmara`, `Intervenção PIC` e `Pista real` (só no Porto). O painel de decisão é uma gaveta estreita, aberta por omissão a partir de 1280 px de largura e fechada abaixo disso; fechada, sai da ordem de foco.
+- **Voo:** canvas a ecrã inteiro; topo com identidade, fase, `Som` e `Terminar`; selo da decisão com a manobra, os milissegundos e a confiança do JEV; dock com `Decisão`, `Pausar`, velocidade, `Câmara`, `Intervenção PIC` e `Pista real` (só no Porto). O painel de decisão é uma gaveta estreita, aberta por omissão a partir de 1280 px de largura e fechada abaixo disso; fechada, sai da ordem de foco.
 - **Relatório:** métricas numa linha, linha de decisão com scroll interno e laboratório numa gaveta.
 
 ## Mundo 3D
@@ -62,6 +65,10 @@ api/jev.js                  POST /api/jev e validação da resposta JEV
 public/src/simulacao.js     cenários, física, eventos, destinos e supervisor
 public/src/contrato-jev.js  validação de choice, score e boolean
 public/src/avaliacao-sim.js rubricagem por dimensão
+public/src/confianca.js     encaminhamento por confiança: age, assinala ou pede o PIC
+public/src/painel-jev.js    distribuições, confiança, latência e tokens de cada resposta
+public/src/som-motor.js     som procedimental dos motores (Web Audio)
+lib/limites-api.mjs         origem, momentos e classificação dos erros do Gateway
 public/src/main.js          controlador de missão, UI, replay e laboratório
 public/src/piloto-corredor.js percurso contínuo, snapshots, pipeline de 2 e métricas
 public/src/world.js         representação 3D do estado do motor
@@ -104,6 +111,7 @@ npm run replays:record
 - Não é uma simulação aeronáutica certificada, nem um sistema Detect and Avoid ou um plano de voo.
 - Coordenadas, tráfego, meteorologia e performance alternativos são assumidos para demonstrar decisões causais.
 - O Google Maps e a renderização 3D não são enviados ao JEV; só segue o estado estruturado visível no registo.
+- O modo ao vivo tem limites de custo: só o próprio site chama `/api/jev` (Origin exacto), cada IP tem 600 pedidos/min por instância, cada missão 300 pedidos, e a chave do AI Gateway tem orçamento mensal próprio. Um limite atingido passa a sessão ao replay gravado, identificado no cabeçalho; com o separador escondido o voo pausa e não faz pedidos.
 - Os registos devem ser revistos antes de serem partilhados; esta demonstração usa apenas dados sintéticos, sem clientes ou passageiros reais.
 
 MIT — ver [LICENSE](./LICENSE).

@@ -5,13 +5,12 @@
  * payload, relógio MEDEVAC ou PIC — é isso que o debriefing confronta com o JEV.
  */
 
+import { encaminhar } from './confianca.js';
+
 export const MODELO_JEV = 'typesafe-ai/jev';
 export const TIPO_AERONAVE = 'LUS-222';
 export const MAX_OBSTACULOS = 5;
 export const LIMIAR_INTEGRIDADE_ABORTAR = 40;
-export const LIMIAR_ESCALAR_PIC = 0.55;
-export const LIMIAR_MAX_CHOICE = 0.55;
-export const LIMIAR_PIC_PROB = 0.55;
 
 export const ACOES = [
   'prosseguir',
@@ -258,10 +257,12 @@ export function maxProbabilidade(choiceAnswer) {
   return Math.max(0, ...Object.values(p).map((v) => num(v, 0)));
 }
 
-export function deveEscalarPIC(answers) {
-  const pic = num(answers?.precisaRevisaoPIC?.probability, 0);
-  const maxAcao = maxProbabilidade(answers?.acaoMissao);
-  return pic >= LIMIAR_PIC_PROB || maxAcao < LIMIAR_MAX_CHOICE;
+/**
+ * O JEV pede o PIC? Pela confiança da acção de missão (confianca.js). Aceita
+ * a resposta inteira ou só as answers; sem confiança usa a probabilidade máxima.
+ */
+export function deveEscalarPIC(resposta) {
+  return encaminhar(resposta?.answers ? resposta : { answers: resposta }).nivel === 'pic';
 }
 
 function obstaculoEmRota(estado) {
