@@ -12,6 +12,7 @@ const COR = {
 };
 // Plano da pista: asfalto esbatido no verde baixo, para não ser um disco preto.
 const COR_PLANO = COR.pista.clone().lerp(COR.baixo, 0.55);
+const COR_MAR = new THREE.Color(0x1f2e38);
 const FUNDO_VISIVEL_M = -6;
 // Chão abaixo disto (acima do mar) é praia, mas só num perfil com água: no
 // Alentejo e no corredor do piloto (2 a 8 m) é campo, não deserto.
@@ -98,7 +99,7 @@ export function criarTerreno({ perfil, pistas = [], leve = false }) {
   const raio = leve ? 2 : 3;
   // Mar raso que acompanha o avião; o relevo submerso fica por baixo dele.
   const lado = TAMANHO_MOSAICO_M * (2 * raio + 3);
-  const mar = new THREE.Mesh(new THREE.PlaneGeometry(lado, lado), new THREE.MeshLambertMaterial({ color: 0x1f2e38 }));
+  const mar = new THREE.Mesh(new THREE.PlaneGeometry(lado, lado), new THREE.MeshLambertMaterial({ color: COR_MAR }));
   mar.rotation.x = -Math.PI / 2;
   grupo.add(mar);
   return {
@@ -162,6 +163,15 @@ export function actualizarTerreno(t, x, z, orcamento = 1) {
     t.mosaicos.set(m.chave, mesh);
     criados++;
   }
+}
+
+/**
+ * De noite (`luzes` de 0 a 1, da paleta do céu) o chão e o mar escurecem para
+ * as luzes das cidades se lerem; o avião e as nuvens ficam com a luz do céu.
+ */
+export function escurecerTerreno(t, luzes) {
+  t.material.color.setScalar(1 - 0.6 * luzes);
+  t.mar.material.color.copy(COR_MAR).multiplyScalar(1 - 0.4 * luzes);
 }
 
 export function largarTerreno(t) {

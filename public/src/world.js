@@ -6,11 +6,12 @@ import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
 import { actualizarHelices, criarLus222 } from './lus222.js';
 import { offsetLateral, pontoAmeaca } from './decisao.js';
 import { alturaAteFolga, indiceAmeacaAEnquadrar, posicaoVisualBaloes } from './ameaca-visual.js';
-import { actualizarTerreno, criarTerreno, largarTerreno } from './terreno.js';
+import { actualizarTerreno, criarTerreno, escurecerTerreno, largarTerreno } from './terreno.js';
 import { alturaTerreno, perfilTerreno } from './relevo.js';
 import { TAMANHO_MOSAICO_M } from './mosaicos.js';
 import { actualizarCeu, criarCeu } from './ceu.js';
 import { actualizarMarcas, criarMarcas } from './marcas-missao.js';
+import { actualizarPortoNoite, criarPortoNoite } from './porto-noite.js';
 
 // Suavização do desvio da câmara em relação ao avião (por segundo); a vertical
 // é quase rígida para não largar a cauda na subida/descida do dodge.
@@ -451,6 +452,8 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   const terreno = criarTerreno({ perfil: perfilTerreno(cenario), pistas, leve });
   geografia.add(terreno.grupo);
   if (pose) actualizarTerreno(terreno, pose.x, pose.z, Infinity);
+  // Porto na noite de São João: pontes, Ribeira, luzes da cidade, lanternas e fogo.
+  const portoNoite = cenario === 'porto' ? criarPortoNoite(geografia, { perfil: terreno.perfil, pistas: terreno.pistas, leve }) : null;
   scene.add(geografia);
 
   const aviao = criarLus222({ leve });
@@ -485,6 +488,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     ameaças,
     geografia,
     terreno,
+    portoNoite,
     marcas,
     ambienteRT,
     sol: sun,
@@ -556,6 +560,12 @@ function actualizarCeuEAviao(mundo, visual, dt) {
   const acesas = pal.luzes > 0.05;
   for (const luz of mundo.luzesNav) luz.visible = acesas;
   escurecerAviao(mundo, pal);
+  escurecerTerreno(mundo.terreno, pal.luzes);
+  if (mundo.portoNoite) {
+    // O vento da missão está no referencial da missão (x = −x do mundo).
+    const v = visual.ambiente.ventoMs ?? { x: 0, z: 0 };
+    actualizarPortoNoite(mundo.portoNoite, dt, { luzes: pal.luzes, vento: { x: -v.x, z: v.z } });
+  }
 }
 
 /**
@@ -584,6 +594,7 @@ export function largarCena(mundo) {
     for (const m of [o.material].flat().filter(Boolean)) {
       m.map?.dispose();
       m.roughnessMap?.dispose();
+      m.emissiveMap?.dispose();
       m.dispose();
     }
     // Mapa de sombra do sol (render target próprio) e matrizes das nuvens.
