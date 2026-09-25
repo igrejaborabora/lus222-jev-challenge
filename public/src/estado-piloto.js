@@ -1,5 +1,5 @@
 import { cpa } from './ameacas.js';
-import { actuacaoDeManobra, manobraDeActuacao } from './piloto-sim.js';
+import { actuacaoDeManobra } from './piloto-sim.js';
 import { alturaChaoM, preverActuacao } from './simulacao.js';
 import { MANOBRAS_TATICAS } from './decisao.js';
 
@@ -21,7 +21,6 @@ export const ENUMS_PILOTO = Object.freeze({
   chao: ['folgado', 'perto'],
   velocidade: ['lenta', 'cruzeiro', 'rápida'],
   tendencia: ['a abrandar', 'estável', 'a acelerar'],
-  manobra_em_curso: ['manter', 'esquerda', 'direita', 'subir', 'descer', 'esquerda_subir', 'direita_subir'],
   potencia: ['baixa', 'média', 'alta'],
   direcao: ['à esquerda', 'em frente', 'à direita'],
   desvio: ['nenhum', 'pequeno', 'grande'],
@@ -95,9 +94,8 @@ function erroDeRota(voo, alvo) {
 /** Estado do JEV piloto a partir da missão do simulador e das ordens do comandante. */
 export function estadoPiloto(m, { ordens = '' } = {}) {
   const v = m.voo;
-  // Tendência da velocidade no último passo (m/s por segundo) e a manobra que o piloto tem em curso.
+  // Tendência da velocidade no último passo (m/s por segundo).
   const tendencia = m.vooAnterior ? (v.velocidadeMs - m.vooAnterior.velocidadeMs) / 0.1 : 0;
-  const manobraEmCurso = v.tempoS < (m.piloto?.ateS ?? 0) ? manobraDeActuacao(m.piloto) : 'manter';
   const agl = v.altitudeM - alturaChaoM(m, v.xM, v.zM);
   const alvo = m.destinos.find((d) => d.id === m.destinoId) ?? m.destinos[0];
   const erro = erroDeRota(v, alvo);
@@ -155,7 +153,6 @@ export function estadoPiloto(m, { ordens = '' } = {}) {
       chao: agl < AGL_SEM_DESCER_M ? 'perto' : 'folgado',
       velocidade: v.velocidadeMs < 80 ? 'lenta' : v.velocidadeMs > 96 ? 'rápida' : 'cruzeiro',
       tendencia: tendencia > 0.25 ? 'a acelerar' : tendencia < -0.25 ? 'a abrandar' : 'estável',
-      manobra_em_curso: manobraEmCurso,
       potencia: (v.acelerador ?? 0.55) < 0.45 ? 'baixa' : (v.acelerador ?? 0.55) > 0.8 ? 'alta' : 'média',
     },
     rota: {
@@ -223,7 +220,6 @@ export function lerEstadoPiloto(raw) {
       velocidade: um(v.velocidade, ENUMS_PILOTO.velocidade, 'cruzeiro'),
       tendencia: um(v.tendencia, ENUMS_PILOTO.tendencia, 'estável'),
       potencia: um(v.potencia, ENUMS_PILOTO.potencia, 'média'),
-      manobra_em_curso: um(v.manobra_em_curso, ENUMS_PILOTO.manobra_em_curso, 'manter'),
     },
     rota: {
       proximo_ponto: um(r.proximo_ponto, PONTOS_CIRCUITO, PONTOS_CIRCUITO[0]),
@@ -242,7 +238,7 @@ export function lerEstadoPiloto(raw) {
 export function textoEstado(e) {
   const linhas = [
     `ROTA   ${e.rota.proximo_ponto} · ${e.rota.direcao} · desvio ${e.rota.desvio} · ${e.rota.distancia}`,
-    `VOO    altitude ${e.voo.altitude} · ${e.voo.velocidade} (${e.voo.tendencia}) · potência ${e.voo.potencia} · chão ${e.voo.chao} · em curso: ${e.voo.manobra_em_curso}`,
+    `VOO    altitude ${e.voo.altitude} · ${e.voo.velocidade} (${e.voo.tendencia}) · potência ${e.voo.potencia} · chão ${e.voo.chao}`,
     `ORDEM  ${e.ordens_do_comandante}`,
   ];
   for (const a of e.ameacas) linhas.push(`${a.id.padEnd(6)} ${a.tipo} · ${a.posicao} · ${a.movimento} · CPA ${a.tempo_ate_cpa} · ${a.cpa_se_manter} se manter · ${a.altura_relativa} · ${a.intencao}`);
