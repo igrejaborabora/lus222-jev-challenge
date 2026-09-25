@@ -1,4 +1,5 @@
 import { mulberry32, offsetLateral } from './decisao.js';
+import { cpa, distanciaM, nascerAmeacas, passoAmeacas, raioEfectivoM } from './ameacas.js';
 
 /** Parâmetros ilustrativos, não são dados certificados do LUS-222. */
 export const PERFIL = Object.freeze({
@@ -132,6 +133,9 @@ export function criarMissao(cenarioId = 'medevac', semente = 222, restricoes = {
     passo: 0,
     acumuladorS: 0,
     vooAnterior: null,
+    // Ameaças em movimento (ameacas.js); ameacaAtiva fica para os balões antigos até à migração dos cenários.
+    ameacas: [],
+    proximaAmeaca: 1,
   };
 }
 
@@ -164,15 +168,65 @@ function separacaoPrevistaM(m, comando, ameaca) {
   return minimo;
 }
 
+function gatilhoCumprido(m, e) {
+  if (e.rota && e.rota !== m.destinoId) return false;
+  if (e.gatilho.tipo === 'tempo') return m.voo.tempoS >= e.gatilho.valor;
+  if (e.gatilho.tipo === 'posicao') return m.voo.zM >= e.gatilho.valor;
+  if (e.gatilho.tipo === 'combustivel') return m.voo.combustivelKg <= e.gatilho.valor;
+  return false;
+}
+
+/** O próximo evento que pede uma decisão estratégica ao JEV; os só de ameaça nascem sozinhos. */
 export function proximoEvento(m) {
   if (m.resultado) return null;
-  return m.eventosPendentes.find((e) => {
-    if (e.rota && e.rota !== m.destinoId) return false;
-    if (e.gatilho.tipo === 'tempo') return m.voo.tempoS >= e.gatilho.valor;
-    if (e.gatilho.tipo === 'posicao') return m.voo.zM >= e.gatilho.valor;
-    if (e.gatilho.tipo === 'combustivel') return m.voo.combustivelKg <= e.gatilho.valor;
-    return false;
-  }) ?? null;
+  return m.eventosPendentes.find((e) => e.pergunta !== false && gatilhoCumprido(m, e)) ?? null;
+}
+
+/** Eventos só de ameaça cujo gatilho chegou: as ameaças nascem neste passo, sem pergunta. */
+function nascerAmeacasDevidas(m) {
+  const devidos = m.eventosPendentes.filter((e) => e.pergunta === false && e.ameacas?.length && gatilhoCumprido(m, e));
+  if (!devidos.length) return m;
+  let proxima = m.proximaAmeaca ?? 1;
+  const novas = devidos.flatMap((e) => {
+    const nascidas = nascerAmeacas(e.ameacas, m.voo, { tempoS: m.voo.tempoS, semente: m.semente, proximoNumero: proxima });
+    proxima += nascidas.length;
+    return nascidas;
+  });
+  const ids = new Set(devidos.map((e) => e.id));
+  return {
+    ...m,
+    ameacas: [...(m.ameacas ?? []), ...novas],
+    proximaAmeaca: proxima,
+    eventosPendentes: m.eventosPendentes.filter((e) => !ids.has(e.id)),
+    eventosTratados: [...m.eventosTratados, ...ids],
+  };
+}
+
+/**
+ * Move as ameaças, mede a separação a cada uma e retira as que já passaram
+ * (a afastar-se a mais de 1,5 km) ou esgotaram a vida, registando a mínima.
+ */
+function actualizarAmeacas(m, voo, dt) {
+  if (!m.ameacas?.length) return { ameacas: m.ameacas ?? [], separacoes: m.separacoes, perdida: false };
+  const movidas = passoAmeacas(m.ameacas, dt, { vento: m.ambiente.ventoMs, tempoS: voo.tempoS });
+  const ameacas = [];
+  const separacoes = [...m.separacoes];
+  let perdida = false;
+  for (const a of movidas) {
+    const minima = Math.min(a.separacaoMinM, distanciaM(voo, a));
+    const limite = raioEfectivoM(a);
+    const registo = { id: a.id, origem: a.origem, tipo: a.tipo, minimaM: Math.round(minima), limiteM: Math.round(limite) };
+    if (minima < limite) {
+      perdida = true;
+      separacoes.push(registo);
+      continue;
+    }
+    const idade = voo.tempoS - a.nascidaS;
+    const c = cpa(voo, a, m.ambiente.ventoMs);
+    if (idade > a.vidaS || (c.movimento === 'afasta' && c.distanciaAgoraM > 1500)) separacoes.push(registo);
+    else ameacas.push({ ...a, separacaoMinM: minima });
+  }
+  return { ameacas, separacoes, perdida };
 }
 
 export function estadoParaAvaliacao(m, evento = null) {
@@ -299,7 +353,8 @@ function passoFisico(m, dt) {
 }
 
 /** Um passo da missão: física, órbita, resultado e separação à ameaça activa. */
-function passoMissao(atual, dt) {
+function passoMissao(anterior, dt) {
+  const atual = nascerAmeacasDevidas(anterior);
   const voo = passoFisico(atual, dt);
   const orbitaRestanteS = Math.max(0, atual.orbitaRestanteS - (atual.fase === 'orbita' ? dt : 0));
   const fase = atual.fase === 'orbita' && orbitaRestanteS === 0 ? 'em_rota' : atual.fase;
@@ -309,8 +364,10 @@ function passoMissao(atual, dt) {
   else if (voo.altitudeM <= 0 && dist(voo, destino) >= 250) resultado = 'limite_altitude';
   else if (fase !== 'orbita' && dist(voo, destino) < 250 && voo.altitudeM <= 50) resultado = atual.destinoId === 'origem' ? 'regressou' : fase === 'emergencia' ? 'emergencia_resolvida' : 'chegou';
   else if (voo.tempoS >= 2800) resultado = 'tempo_esgotado';
+  const movidas = actualizarAmeacas(atual, voo, dt);
+  if (movidas.perdida) resultado = 'separacao_perdida';
   let ameacaAtiva = atual.ameacaAtiva;
-  let separacoes = atual.separacoes;
+  let separacoes = movidas.separacoes;
   if (ameacaAtiva) {
     const minima = Math.min(ameacaAtiva.separacaoMinM, distanciaAmeacaM(voo, ameacaAtiva));
     ameacaAtiva = { ...ameacaAtiva, separacaoMinM: minima };
@@ -320,7 +377,7 @@ function passoMissao(atual, dt) {
       ameacaAtiva = null;
     }
   }
-  return { ...atual, voo, fase, orbitaRestanteS, resultado, ameacaAtiva, separacoes };
+  return { ...atual, voo, fase, orbitaRestanteS, resultado, ameacaAtiva, separacoes, ameacas: movidas.ameacas };
 }
 
 /**
