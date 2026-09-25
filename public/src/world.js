@@ -812,13 +812,19 @@ export function webglDisponivel() {
 
 // ── Simulador: ameaças em movimento (ameacas.js) ───────────────────────────
 
+/**
+ * Liberta uma ameaça que saiu do céu. O InstancedMesh tem de ser libertado à
+ * parte (a matriz das instâncias não é da geometria); o brilho partilhado fica
+ * para as outras ameaças e só sai com a cena (largarCena).
+ */
 function libertarGrupo(g) {
   g.traverse((o) => {
     o.geometry?.dispose();
     for (const m of [o.material].flat().filter(Boolean)) {
-      m.map?.dispose?.();
+      if (m.map && m.map !== TEXTURA_BRILHO) m.map.dispose();
       m.dispose?.();
     }
+    if (o.isInstancedMesh) o.dispose();
   });
 }
 
