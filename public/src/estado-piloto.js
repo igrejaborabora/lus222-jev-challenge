@@ -180,12 +180,19 @@ const um = (valor, lista, fallback) => (lista.includes(valor) ? valor : fallback
  * Filtro do servidor: reconstrói o estado só com valores das listas, ids aN,
  * horas de relógio válidas e as ordens limpas. Nada do cliente passa tal e qual.
  */
+/** Uma escolha precisa de duas opções (o Gateway recusa uma só): o estado tem de trazer pelo menos duas manobras. */
+export function estadoPilotoCompleto(estado) {
+  return Object.keys(estado?.manobras ?? {}).length >= 2;
+}
+
 export function lerEstadoPiloto(raw) {
   const e = raw && typeof raw === 'object' ? raw : {};
   const v = e.voo ?? {};
   const r = e.rota ?? {};
+  // Ids válidos e únicos: ids repetidos faziam da ameaça prioritária uma escolha de uma opção só.
   const ameacas = (Array.isArray(e.ameacas) ? e.ameacas : [])
     .filter((a) => /^a\d{1,4}$/.test(String(a?.id)))
+    .filter((a, i, lista) => lista.findIndex((b) => String(b?.id) === String(a.id)) === i)
     .slice(0, MAX_AMEACAS_ESTADO)
     .map((a) => ({
       id: String(a.id),

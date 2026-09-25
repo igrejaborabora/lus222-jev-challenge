@@ -2,7 +2,7 @@ import { experimental_evaluate as evaluate } from 'ai';
 import { decisaoGeometrica, estadoParaJev, MODELO_JEV } from '../lib/decisao.mjs';
 import { PERGUNTAS_BRIEFING, PERGUNTAS_INCIDENTE, perguntasPara, perguntasPiloto } from '../lib/perguntas.mjs';
 import { validarRespostas, validarRespostasDinamicas } from '../public/src/contrato-jev.js';
-import { lerEstadoPiloto } from '../lib/estado-piloto.mjs';
+import { estadoPilotoCompleto, lerEstadoPiloto } from '../lib/estado-piloto.mjs';
 import { classificarErro, momentoDe, origemPermitida } from '../lib/limites-api.mjs';
 
 /**
@@ -84,6 +84,10 @@ export async function POST(request) {
   // O JEV piloto (simulador) tem estado e perguntas próprios; o resto é a missão.
   const simulador = momento === 'piloto';
   const estado = simulador ? lerEstadoPiloto(body?.estado) : estadoParaJev(body?.estado ?? body);
+  // Sem duas manobras a pergunta seria uma escolha de uma opção: o Gateway recusava-a e o erro parecia do Gateway.
+  if (simulador && !estadoPilotoCompleto(estado)) {
+    return Response.json({ fonte: 'bloqueio', erro: 'estado_invalido', mensagem: 'O estado do piloto precisa de pelo menos duas manobras candidatas.' }, { status: 400 });
+  }
   const questions = simulador ? perguntasPiloto(estado) : perguntasPara(momento, estado);
   const piloto = simulador || estado?.voo?.fase === 'piloto_continuo';
   const inicio = Date.now();
