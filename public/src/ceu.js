@@ -162,7 +162,7 @@ function dobrar(v, c, campo) {
  * Cria o céu e o nevoeiro da cena (substitui scene.background). `alcanceTerrenoM`
  * é o raio dos mosaicos carregados: o nevoeiro fecha antes da orla.
  */
-export function criarCeu(scene, { cenario, leve = false, alcanceTerrenoM }) {
+export function criarCeu(scene, { cenario, leve = false, alcanceTerrenoM, luzDia = true }) {
   const ceu = {
     cenario,
     alcanceTerrenoM,
@@ -171,7 +171,8 @@ export function criarCeu(scene, { cenario, leve = false, alcanceTerrenoM }) {
     // ~240 tufos × 180 triângulos ≈ 43 mil no desktop; ~100 × 80 no leve.
     nuvens: camadaNuvens(leve ? 24 : 60, leve ? 1 : 2),
     rastos: rastos(leve ? 80 : 220),
-    noite: noiteAlvo(cenario, true),
+    // As missões abrem com a luz do cenário e escurecem; o simulador nasce já de noite.
+    noite: noiteAlvo(cenario, luzDia),
   };
   const nev = nevoeiroDe(10, alcanceTerrenoM);
   scene.fog = new THREE.Fog(paletaCeu(ceu.noite).nevoeiro, nev.near, nev.far);

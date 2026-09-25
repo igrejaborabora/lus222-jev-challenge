@@ -395,7 +395,7 @@ function luzesNavegacao(aviao) {
   });
 }
 
-export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null, pistas = [], apresentacao = true, destinos = [], nomesDestinos = {} } = {}) {
+export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null, pistas = [], apresentacao = true, destinos = [], nomesDestinos = {}, luzDia = true } = {}) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: !leve,
@@ -417,7 +417,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   scene.add(sun, sun.target);
   // Cúpula, nevoeiro, luz hemisférica, nuvens e rastos; o nevoeiro fecha
   // antes da orla dos mosaicos carregados.
-  const ceu = criarCeu(scene, { cenario, leve, alcanceTerrenoM: TAMANHO_MOSAICO_M * (leve ? 2 : 3) });
+  const ceu = criarCeu(scene, { cenario, leve, alcanceTerrenoM: TAMANHO_MOSAICO_M * (leve ? 2 : 3), luzDia });
 
   let ambienteRT = null;
   // Só o LUS-222 usa MeshStandardMaterial: o ambiente dá-lhe reflexos suaves

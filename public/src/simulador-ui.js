@@ -462,6 +462,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
         apresentacao: true,
         destinos: s.m.destinos,
         nomesDestinos: NOMES_CIRCUITO,
+        luzDia: s.m.ambiente.luzDia !== false,
       });
       ajustar();
     } catch {
