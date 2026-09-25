@@ -1,5 +1,5 @@
 import { poseMissao } from './escala.js';
-import { avancarMissao, vooInterpolado } from './simulacao.js';
+import { avancarMissao, PERFIL, vooInterpolado } from './simulacao.js';
 import { criarVooLivre, NOMES_CIRCUITO } from './simulador.js';
 import { actuacaoDeManobra, actuacaoEfectiva, darOrdem, ordemDeTeclas, POTENCIAS, RETENCAO_HUMANO_S, RETENCAO_JEV_S } from './piloto-sim.js';
 import { estadoPiloto, limparOrdens, textoEstado } from './estado-piloto.js';
@@ -108,14 +108,46 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     return s.gravacao;
   }
 
-  /** Painel e contadores a partir de uma decisão gravada, como se chegasse ao vivo. */
-  function mostrarDecisaoGravada(d) {
+  function pintarDecisaoGravada(d) {
     const host = $('sim-julgamentos');
     if (!host.querySelector('.typed-row')) { host.replaceChildren(); host.classList.remove('sim-vazio'); }
     actualizarPainel($('sim-meta'), host, { answers: d.r, confidence: d.c, latencia_ms: d.ms, usage: { inputTokens: d.tok, outputTokens: 0 } }, { replay: true });
+  }
+
+  function contarDecisaoGravada(d) {
     s.gravado.decisoes += 1;
     s.gravado.custoUsd += d.tok * CUSTO_TOKEN_USD;
     s.gravado.latencias.push(d.ms);
+  }
+
+  /** Painel e contadores a partir de uma decisão gravada, como se chegasse ao vivo. */
+  function mostrarDecisaoGravada(d) {
+    pintarDecisaoGravada(d);
+    contarDecisaoGravada(d);
+  }
+
+  /**
+   * Salta a reprodução até `desdeS` sem desenhar (?desde= no endereço, para
+   * gravar o vídeo a partir da Foz): a simulação é a mesma, passo a passo;
+   * contadores, rasto do mapa e painel ficam como se o voo tivesse sido visto.
+   */
+  function saltarGravacao(desdeS) {
+    let estado = null;
+    let ultima = null;
+    while (s.m.voo.tempoS < desdeS && !s.m.resultado && s.cursor.i < s.gravacao.decisoes.length) {
+      const r = reproduzir(s.m, s.gravacao, s.cursor, PERFIL.passoS);
+      s.m = r.m;
+      s.cursor = r.cursor;
+      for (const e of r.eventos) {
+        if (e.tipo === 'leitura') estado = e.estado;
+        else { ultima = e.decisao; contarDecisaoGravada(e.decisao); }
+      }
+      contarSupervisor();
+      const v = s.m.voo;
+      if (!s.trilho.length || v.tempoS - s.trilho.at(-1).t >= 1) s.trilho.push({ t: v.tempoS, x: v.xM, z: v.zM });
+    }
+    if (estado) $('sim-estado').textContent = textoEstado(estado);
+    if (ultima) pintarDecisaoGravada(ultima);
   }
 
   /** Volta a pôr o humano aos comandos; o JEV deixa de receber pedidos. */
@@ -424,7 +456,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     $('sim-pausa').textContent = s.pausa ? 'Continuar' : 'Pausar';
   }
 
-  async function iniciar({ semente = 222, piloto = 'humano' } = {}) {
+  async function iniciar({ semente = 222, piloto = 'humano', desdeS = 0 } = {}) {
     const gen = ++s.geracao;
     cancelAnimationFrame(s.raf);
     cancelarPedidosJev();
@@ -447,6 +479,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     definirPausa(false);
     $('sim-fim').hidden = true;
     marcarPiloto(gravacao ? 'jev-gravado' : 'humano');
+    if (gravacao && desdeS > 0) saltarGravacao(Math.min(desdeS, (gravacao.duracaoS ?? 0) - 5));
     if (piloto === 'jev') entregarAoJev();
     mostrar('sim');
     largarMundo();

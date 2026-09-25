@@ -1070,9 +1070,12 @@ const simulador = criarSimuladorUI({
 function ligarUI() {
   criarCartoes(); void sondarGateway();
   // O voo abre com o JEV aos comandos: ao vivo com Gateway, senão o voo gravado; o visitante
-  // pode retomá-los. ?voo=gravado força o voo gravado (sempre igual e sem custo, para vídeo).
-  const forcarGravado = new URLSearchParams(location.search).get('voo') === 'gravado';
-  $('btn-sim-abrir').addEventListener('click', () => { simulador.ligarSom(); void simulador.iniciar({ piloto: estado.gateway && !forcarGravado ? 'jev' : 'jev-gravado' }); });
+  // pode retomá-los. ?voo=gravado força o voo gravado (sempre igual e sem custo, para vídeo)
+  // e ?desde=110 começa-o nesse segundo (a Foz), já com tudo o que aconteceu antes.
+  const parametros = new URLSearchParams(location.search);
+  const forcarGravado = parametros.get('voo') === 'gravado';
+  const desdeS = Math.max(0, Number(parametros.get('desde')) || 0);
+  $('btn-sim-abrir').addEventListener('click', () => { simulador.ligarSom(); void simulador.iniciar({ piloto: estado.gateway && !forcarGravado ? 'jev' : 'jev-gravado', desdeS }); });
   $('btn-open').addEventListener('click', () => mostrar('commander'));
   $('btn-home').addEventListener('click', () => mostrar('splash'));
   $('btn-launch').addEventListener('click', () => { if (!estado.gateway) return; ligarSom(); void iniciar('live'); });
