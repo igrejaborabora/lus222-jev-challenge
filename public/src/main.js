@@ -1058,6 +1058,7 @@ const simulador = criarSimuladorUI({
   som,
   mostrar,
   aoSair: () => mostrar('splash'),
+  gatewayDisponivel: () => estado.gateway,
   carregarMundo: async () => {
     if (new URLSearchParams(location.search).has('sem-webgl')) throw new Error('Modo de verificação sem WebGL');
     const api = await import('./world.js');
@@ -1068,7 +1069,8 @@ const simulador = criarSimuladorUI({
 
 function ligarUI() {
   criarCartoes(); void sondarGateway();
-  $('btn-sim-abrir').addEventListener('click', () => { simulador.ligarSom(); void simulador.iniciar({ piloto: 'humano' }); });
+  // Com Gateway, o voo abre com o JEV aos comandos; o visitante pode retomá-los.
+  $('btn-sim-abrir').addEventListener('click', () => { simulador.ligarSom(); void simulador.iniciar({ piloto: estado.gateway ? 'jev' : 'humano' }); });
   $('btn-open').addEventListener('click', () => mostrar('commander'));
   $('btn-home').addEventListener('click', () => mostrar('splash'));
   $('btn-launch').addEventListener('click', () => { if (!estado.gateway) return; ligarSom(); void iniciar('live'); });

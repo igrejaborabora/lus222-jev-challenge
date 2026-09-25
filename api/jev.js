@@ -1,7 +1,8 @@
 import { experimental_evaluate as evaluate } from 'ai';
 import { decisaoGeometrica, estadoParaJev, MODELO_JEV } from '../lib/decisao.mjs';
-import { PERGUNTAS_BRIEFING, PERGUNTAS_INCIDENTE, perguntasPara } from '../lib/perguntas.mjs';
-import { validarRespostas } from '../public/src/contrato-jev.js';
+import { PERGUNTAS_BRIEFING, PERGUNTAS_INCIDENTE, perguntasPara, perguntasPiloto } from '../lib/perguntas.mjs';
+import { validarRespostas, validarRespostasDinamicas } from '../public/src/contrato-jev.js';
+import { lerEstadoPiloto } from '../lib/estado-piloto.mjs';
 import { classificarErro, momentoDe, origemPermitida } from '../lib/limites-api.mjs';
 
 /**
@@ -80,9 +81,11 @@ export async function POST(request) {
   if (!momento) {
     return Response.json({ fonte: 'bloqueio', erro: 'momento_desconhecido' }, { status: 400 });
   }
-  const estado = estadoParaJev(body?.estado ?? body);
-  const questions = perguntasPara(momento, estado);
-  const piloto = estado?.voo?.fase === 'piloto_continuo';
+  // O JEV piloto (simulador) tem estado e perguntas próprios; o resto é a missão.
+  const simulador = momento === 'piloto';
+  const estado = simulador ? lerEstadoPiloto(body?.estado) : estadoParaJev(body?.estado ?? body);
+  const questions = simulador ? perguntasPiloto(estado) : perguntasPara(momento, estado);
+  const piloto = simulador || estado?.voo?.fase === 'piloto_continuo';
   const inicio = Date.now();
 
   try {
@@ -95,7 +98,7 @@ export async function POST(request) {
       abortSignal: AbortSignal.timeout(piloto ? TIMEOUT_PILOTO_MS : TIMEOUT_MS),
       maxRetries: piloto ? 0 : 2,
     });
-    const contrato = validarRespostas(momento, resultado.answers);
+    const contrato = simulador ? validarRespostasDinamicas(resultado.answers, questions) : validarRespostas(momento, resultado.answers);
     if (!contrato.ok) {
       return Response.json(
         { fonte: 'bloqueio', erro: 'contrato_invalido', mensagem: `Resposta JEV inválida: ${contrato.erro}` },

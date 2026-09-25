@@ -46,6 +46,8 @@ export function planearAmeaca(m, rnd, tipo, numero) {
   const v = m.voo;
   const vento = m.ambiente.ventoMs;
   const vs = velocidadeSolo(v, vento);
+  // Onde o avião vai estar: pelo trajecto sobre o solo de agora (proa mais vento), que é o
+  // que o piloto segura entre correcções; apontar à linha da rota falhava pela deriva.
   const onde = (T) => ({ x: v.xM + vs.x * T, z: v.zM + vs.z * T });
   const id = `${tipo}-${numero}`;
   // +1: vem da direita do piloto e segue para a esquerda.
@@ -55,7 +57,7 @@ export function planearAmeaca(m, rnd, tipo, numero) {
     const ms = tipo === 'cruzado' ? 55 + rnd() * 25 : 42 + rnd() * 8;
     const rumo = v.rumoRad - lado * (Math.PI / 2) * (0.55 + rnd() * 0.9);
     // O helicóptero parece passar à frente com folga e vira para a rota a meio.
-    const falhaM = tipo === 'cruzado' ? (rnd() - 0.5) * 240 : lado * (380 + rnd() * 200);
+    const falhaM = tipo === 'cruzado' ? (rnd() - 0.5) * 100 : lado * (380 + rnd() * 200);
     const r = aoEncontro(v, onde(T), rumo, ms, T, falhaM);
     return {
       id,
@@ -74,7 +76,7 @@ export function planearAmeaca(m, rnd, tipo, numero) {
     const T = 34 + rnd() * 12;
     const subidaMs = 1.1;
     const P = onde(T);
-    const falhaM = (rnd() - 0.5) * 160;
+    const falhaM = (rnd() - 0.5) * 100;
     // O vento leva-os até à rota; nascem abaixo e sobem até à altitude do avião.
     const r = relativo(v, P.x - vento.x * T + falhaM, P.z - vento.z * T, v.rumoRad);
     return {

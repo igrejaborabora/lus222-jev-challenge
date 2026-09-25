@@ -430,24 +430,28 @@ function paraPrever(ameacas) {
  * perímetro de protecção (negativa = conflito), a ameaça crítica e a menor
  * altura ao chão. É a mesma conta para o supervisor e para o estado do JEV.
  */
-export function preverActuacao(m, actuacao, { horizonteS = 30, aplicarS = 8, dtS = 0.5 } = {}) {
+export function preverActuacao(m, actuacao, { horizonteS = 30, aplicarS = 8, dtS = 0.5, amostraS = 3 } = {}) {
   const inicio = m.voo.tempoS;
   let sim = { ...m, piloto: { ...m.piloto, ...actuacao, potencia: actuacao.potencia ?? 'manter', ateS: inicio + aplicarS, supervisor: null, fonte: 'previsao' } };
   let ameacas = paraPrever(m.ameacas ?? []);
   let margemM = Infinity;
   let critica = null;
   let aglMinM = Infinity;
+  const margens = {};
+  let vooAmostra = null;
   for (let t = 0; t < horizonteS - 1e-9; t += dtS) {
     const voo = passoPilotado(sim, dtS);
+    if (!vooAmostra && t + dtS >= amostraS - 1e-9) vooAmostra = voo;
     ameacas = passoAmeacas(ameacas, dtS, { vento: m.ambiente.ventoMs, tempoS: voo.tempoS });
     for (const a of ameacas) {
       const margem = distanciaM(voo, a) - raioEfectivoM(a);
+      if (!(margem >= (margens[a.id] ?? Infinity))) margens[a.id] = margem;
       if (margem < margemM) { margemM = margem; critica = a.id; }
     }
     aglMinM = Math.min(aglMinM, voo.altitudeM - alturaChaoM(m, voo.xM, voo.zM));
     sim = { ...sim, voo };
   }
-  return { margemM, critica, aglMinM, vooFinal: sim.voo };
+  return { margemM, critica, margens, aglMinM, vooFinal: sim.voo, vooAmostra: vooAmostra ?? sim.voo };
 }
 
 const CANDIDATAS_SUPERVISOR = ['direita_subir', 'esquerda_subir', 'subir', 'direita', 'esquerda', 'manter', 'descer'];

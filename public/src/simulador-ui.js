@@ -1,7 +1,10 @@
 import { poseMissao } from './escala.js';
 import { avancarMissao, vooInterpolado } from './simulacao.js';
 import { criarVooLivre, NOMES_CIRCUITO } from './simulador.js';
-import { actuacaoEfectiva, darOrdem, ordemDeTeclas, RETENCAO_HUMANO_S } from './piloto-sim.js';
+import { actuacaoDeManobra, actuacaoEfectiva, darOrdem, ordemDeTeclas, POTENCIAS, RETENCAO_HUMANO_S, RETENCAO_JEV_S } from './piloto-sim.js';
+import { estadoPiloto, limparOrdens, textoEstado } from './estado-piloto.js';
+import { concluirPasso, deveDespacharPasso, falharPasso, metricasPiloto, novoPipelinePiloto, reservarPasso } from './piloto-corredor.js';
+import { actualizarPainel, decimal } from './painel-jev.js';
 import { pontosFitaRota, setaManobra } from './rota-visual.js';
 import { alturaTerreno, perfilTerreno, pistasDaMissao, prepararPistas } from './relevo.js';
 import { raioEfectivoM } from './ameacas.js';
@@ -21,6 +24,12 @@ const RESULTADOS = {
   tempo_esgotado: ['Tempo esgotado.', 'O voo livre chegou ao limite de tempo.'],
 };
 const MAPA = { x0: -19000, z1: 168000, lado: 31000 };
+// JEV piloto: ~3 pedidos por segundo, dois em voo, 0,042 USD por milhão de tokens de entrada.
+const INTERVALO_JEV_MS = 330;
+const CUSTO_TOKEN_USD = 0.042 / 1e6;
+const LIMITE_AO_VIVO_MS = 5 * 60 * 1000;
+// Uma resposta sobre um estado com mais de 1,5 s de simulação já não comanda.
+const IDADE_MAX_S = 1.5;
 
 function el(tag, classe, texto) {
   const e = document.createElement(tag);
@@ -48,12 +57,116 @@ function linhaDeCosta(m) {
   return pontos;
 }
 
-export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo }) {
+/** Resposta do piloto dentro do contrato: manobra entre as candidatas enviadas, potência válida. */
+function respostaValida(answers, estado) {
+  const m = answers?.manobra?.choice;
+  return Boolean(m && estado?.manobras?.[m] && POTENCIAS.includes(answers?.potencia?.choice));
+}
+
+export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayDisponivel = () => false }) {
   const s = {
     m: null, api: null, mundo: null, raf: 0, ultimo: 0, ultimoUI: 0, pausa: false, fim: false,
     teclas: new Set(), toque: new Map(), trilho: [], supervisor: 0, ultimoSupervisor: null,
     ultimoFoco: -Infinity, geracao: 0, mapa: null,
+    ordens: '', jev: null, aviso: null,
   };
+  // O tempo de voo ao vivo do JEV conta por visita (página), não por voo.
+  let aoVivoMs = 0;
+
+  function novoJev() {
+    return { pipeline: novoPipelinePiloto({ intervaloMs: INTERVALO_JEV_MS, maxEmVoo: 2 }), pedidos: new Map(), falhas: 0, decisoes: 0, custoUsd: 0 };
+  }
+
+  function avisar(texto) {
+    s.aviso = texto;
+    $('sim-meta').textContent = texto;
+  }
+
+  function cancelarPedidosJev() {
+    for (const ctrl of s.jev?.pedidos.values() ?? []) ctrl.abort();
+    s.jev?.pedidos.clear();
+  }
+
+  function marcarPiloto(tipo) {
+    $('sim-piloto-humano').setAttribute('aria-pressed', String(tipo === 'humano'));
+    $('sim-piloto-jev').setAttribute('aria-pressed', String(tipo === 'jev'));
+    $('sim-fonte').textContent = tipo === 'jev' ? 'O JEV pilota · ao vivo · Porto, noite de São João' : 'Piloto humano · voo livre · Porto, noite de São João';
+  }
+
+  /** Volta a pôr o humano aos comandos; o JEV deixa de receber pedidos. */
+  function pararJev(motivo) {
+    cancelarPedidosJev();
+    if (s.m) s.m = { ...s.m, piloto: { ...s.m.piloto, tipo: 'humano', fonte: 'humano' } };
+    marcarPiloto('humano');
+    if (motivo) avisar(motivo);
+  }
+
+  function entregarAoJev() {
+    if (!s.m) return;
+    if (!gatewayDisponivel()) { avisar('Sem ligação ao JEV neste momento: continua o piloto humano.'); return; }
+    if (aoVivoMs >= LIMITE_AO_VIVO_MS) { avisar('Terminaram os 5 minutos de voo ao vivo do JEV nesta visita.'); return; }
+    s.jev = novoJev();
+    s.m = { ...s.m, piloto: { ...s.m.piloto, tipo: 'jev', fonte: 'jev' } };
+    s.teclas.clear();
+    s.toque.clear();
+    marcarPiloto('jev');
+    avisar('O JEV assumiu os comandos…');
+  }
+
+  function despacharJev(agora) {
+    const estado = estadoPiloto(s.m, { ordens: s.ordens });
+    $('sim-estado').textContent = textoEstado(estado);
+    const ticket = reservarPasso(s.jev.pipeline, { estado, tempoS: s.m.voo.tempoS, passo: s.m.passo }, agora);
+    void pedirJev(ticket, s.geracao, s.jev);
+  }
+
+  async function pedirJev(ticket, gen, jev) {
+    const ctrl = new AbortController();
+    jev.pedidos.set(ticket.id, ctrl);
+    const limite = setTimeout(() => ctrl.abort(), 3500);
+    try {
+      const r = await fetch('/api/jev', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ momento: 'piloto', estado: ticket.entrada.estado }), signal: ctrl.signal });
+      const d = await r.json().catch(() => ({}));
+      if (d.erro === 'limite' || r.status === 429) throw Object.assign(new Error('Limite de voo ao vivo atingido.'), { codigo: 'limite' });
+      if (!r.ok || d.fonte !== 'jev') throw new Error(d.mensagem || 'O JEV não respondeu.');
+      if (!respostaValida(d.answers, ticket.entrada.estado)) throw new Error('Resposta do JEV fora do contrato.');
+      if (gen !== s.geracao || jev !== s.jev) return;
+      aplicarJev(ticket, d);
+    } catch (e) {
+      if (gen !== s.geracao || jev !== s.jev) return;
+      falharJev(ticket, e);
+    } finally {
+      clearTimeout(limite);
+      jev.pedidos.delete(ticket.id);
+    }
+  }
+
+  function aplicarJev(ticket, d) {
+    const jev = s.jev;
+    const res = concluirPasso(jev.pipeline, ticket.id, d, performance.now());
+    jev.falhas = 0;
+    jev.decisoes += 1;
+    jev.custoUsd += (Number(d.usage?.inputTokens) || 0) * CUSTO_TOKEN_USD;
+    s.aviso = null;
+    const host = $('sim-julgamentos');
+    if (!host.querySelector('.typed-row')) { host.replaceChildren(); host.classList.remove('sim-vazio'); }
+    actualizarPainel($('sim-meta'), host, d);
+    // Uma resposta mais antiga que chega depois de uma nova fica no painel, não nos comandos.
+    if (!res.aplicar || s.m.piloto.tipo !== 'jev' || s.m.resultado) return;
+    if (s.m.voo.tempoS - ticket.entrada.tempoS > IDADE_MAX_S) return;
+    const eixos = actuacaoDeManobra(d.answers.manobra.choice);
+    s.m = { ...s.m, piloto: darOrdem(s.m.piloto, { ...eixos, potencia: d.answers.potencia.choice, fonte: 'jev' }, s.m.voo.tempoS, RETENCAO_JEV_S) };
+  }
+
+  function falharJev(ticket, erro) {
+    const jev = s.jev;
+    falharPasso(jev.pipeline, ticket.id, erro, performance.now());
+    if (erro.codigo === 'limite') { pararJev('Limite de voo ao vivo atingido: continua o piloto humano.'); return; }
+    jev.falhas += 1;
+    jev.pipeline.proximoEm = Math.max(jev.pipeline.proximoEm, performance.now() + Math.min(8000, 400 * 2 ** jev.falhas));
+    if (jev.falhas >= 5) { pararJev(`Cinco pedidos seguidos sem resposta do JEV (${erro.message}); continua o piloto humano.`); return; }
+    avisar(`Sem resposta do JEV (${erro.message}); o avião estabiliza e o supervisor vigia.`);
+  }
 
   function ligarSomAgora() {
     try { som.silenciar($('sim-som').getAttribute('aria-pressed') !== 'true'); som.ligar(); } catch { /* sem áudio */ }
@@ -142,6 +255,15 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo }) {
       ['SUPERVISOR', `${s.supervisor}×`],
       ['EM VOO', s.m.ameacas.length],
     ];
+    if (s.jev) {
+      const met = metricasPiloto(s.jev.pipeline, performance.now());
+      itens.push(
+        ['DECISÕES JEV', s.jev.decisoes],
+        ['DECISÕES/S', decimal((met.decisoes_por_minuto ?? 0) / 60).replace(/0$/, '')],
+        ['LATÊNCIA P50', met.latencia_mediana_ms == null ? '—' : `${met.latencia_mediana_ms} ms`],
+        ['CUSTO', `${s.jev.custoUsd.toFixed(4).replace('.', ',')} USD`],
+      );
+    }
     const host = $('sim-contadores');
     host.replaceChildren(...itens.map(([k, v]) => { const d = el('div'); d.append(el('dt', '', k), el('dd', '', v)); return d; }));
   }
@@ -201,6 +323,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo }) {
 
   function mostrarFim() {
     s.fim = true;
+    cancelarPedidosJev();
     const [titulo, texto] = RESULTADOS[s.m.resultado] ?? ['Fim do voo.', '—'];
     $('sim-fim-titulo').textContent = titulo;
     const seps = s.m.separacoes;
@@ -217,6 +340,11 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo }) {
     s.ultimo = t;
     if (!s.pausa && !s.m.resultado) {
       if (s.m.piloto.tipo === 'humano') aplicarHumano();
+      else if (s.jev) {
+        aoVivoMs += dt * 1000;
+        if (aoVivoMs >= LIMITE_AO_VIVO_MS) pararJev('Terminaram os 5 minutos de voo ao vivo do JEV nesta visita: continua o piloto humano.');
+        else if (deveDespacharPasso(s.jev.pipeline, t)) despacharJev(t);
+      }
       s.m = avancarMissao(s.m, dt);
       contarSupervisor();
     }
@@ -251,13 +379,19 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo }) {
   async function iniciar({ semente = 222, piloto = 'humano' } = {}) {
     const gen = ++s.geracao;
     cancelAnimationFrame(s.raf);
-    s.m = criarVooLivre(semente, { piloto });
+    cancelarPedidosJev();
+    s.jev = null;
+    s.m = criarVooLivre(semente, { piloto: 'humano' });
     s.fim = false; s.trilho = []; s.supervisor = 0; s.ultimoSupervisor = null; s.ultimoFoco = -Infinity;
+    $('sim-julgamentos').replaceChildren(document.createTextNode('Com «Humano» aos comandos o JEV não decide. Escolhe «JEV» em cima para ele pilotar.'));
+    $('sim-julgamentos').classList.add('sim-vazio');
+    $('sim-meta').textContent = '';
+    $('sim-estado').textContent = '—';
     s.teclas.clear(); s.toque.clear();
     definirPausa(false);
     $('sim-fim').hidden = true;
-    $('sim-piloto-humano').setAttribute('aria-pressed', String(piloto === 'humano'));
-    $('sim-piloto-jev').setAttribute('aria-pressed', String(piloto === 'jev'));
+    marcarPiloto('humano');
+    if (piloto === 'jev') entregarAoJev();
     mostrar('sim');
     largarMundo();
     try {
@@ -284,6 +418,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo }) {
   }
 
   function sair() {
+    cancelarPedidosJev();
     ++s.geracao;
     cancelAnimationFrame(s.raf);
     largarMundo();
@@ -330,12 +465,15 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo }) {
   $('sim-sair').addEventListener('click', sair);
   $('sim-fim-sair').addEventListener('click', sair);
   $('sim-repetir').addEventListener('click', () => { ligarSomAgora(); void iniciar({ semente: (s.m?.semente ?? 222) + 1, piloto: s.m?.piloto.tipo ?? 'humano' }); });
-  $('sim-piloto-humano').addEventListener('click', () => {
-    if (!s.m) return;
-    s.m = { ...s.m, piloto: { ...s.m.piloto, tipo: 'humano', fonte: 'humano' } };
-    $('sim-piloto-humano').setAttribute('aria-pressed', 'true');
-    $('sim-piloto-jev').setAttribute('aria-pressed', 'false');
-  });
+  $('sim-piloto-humano').addEventListener('click', () => { if (s.m?.piloto.tipo === 'jev') pararJev('O humano retomou os comandos.'); });
+  $('sim-piloto-jev').addEventListener('click', () => { if (s.m?.piloto.tipo !== 'jev') entregarAoJev(); });
+  const darOrdens = (texto) => {
+    s.ordens = limparOrdens(texto);
+    $('sim-ordens').value = s.ordens;
+    $('sim-ordem-activa').textContent = s.ordens ? `Ordem activa: «${s.ordens}»` : 'Sem ordens.';
+  };
+  $('sim-ordens-form').addEventListener('submit', (e) => { e.preventDefault(); darOrdens($('sim-ordens').value); });
+  for (const b of document.querySelectorAll('#sim-atalhos button')) b.addEventListener('click', () => darOrdens(b.textContent));
   $('sim-som').setAttribute('aria-pressed', String((() => { try { return localStorage.getItem('lus222-som') !== 'desligado'; } catch { return true; } })()));
   $('sim-som').addEventListener('click', () => {
     const ligar = $('sim-som').getAttribute('aria-pressed') !== 'true';

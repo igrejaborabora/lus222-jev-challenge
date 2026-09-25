@@ -21,7 +21,17 @@ export const ROTULOS_PERGUNTAS = Object.freeze({
   riscoMeteorologico: 'Risco meteorológico',
   precisaRevisaoPIC: 'Fora do envelope',
   continuarVoo: 'Continuar voo',
+  plano: 'Plano',
+  manobra: 'Manobra',
+  potencia: 'Potência',
+  ameacaPrioritaria: 'Ameaça prioritária',
+  foraDoEnvelope: 'Fora do envelope',
+  manobraTactica: 'Manobra',
 });
+
+const MANOBRAS = { manter: 'Manter', esquerda: 'Esquerda', direita: 'Direita', subir: 'Subir', descer: 'Descer', esquerda_subir: 'Esquerda + subir', direita_subir: 'Direita + subir' };
+const PLANOS = { seguir_rota: 'Seguir rota', evitar: 'Evitar', estabilizar: 'Estabilizar', cumprir_ordem: 'Cumprir ordem' };
+const POTENCIAS = { mais: 'Mais', manter: 'Manter', menos: 'Menos' };
 
 const ETIQUETAS_OPCAO = {
   acaoMissao: etiquetarAcao,
@@ -30,6 +40,10 @@ const ETIQUETAS_OPCAO = {
   destinoPreferido: etiquetarDestino,
   urgencia: (nivel) => etiquetarUrgencia(Number(nivel)),
   riscoMeteorologico: (nivel) => etiquetarRiscoMeteo(Number(nivel)),
+  manobra: (m) => MANOBRAS[m] ?? m,
+  manobraTactica: (m) => MANOBRAS[m] ?? m,
+  plano: (p) => PLANOS[p] ?? p,
+  potencia: (p) => POTENCIAS[p] ?? p,
 };
 
 /** «0,97»: probabilidades e confianças com vírgula, duas casas. */
@@ -149,3 +163,41 @@ export function pintarPergunta(host, resposta, chave) {
   const answers = resposta?.answers?.[chave] ? { [chave]: resposta.answers[chave] } : {};
   host.replaceChildren(...linhasPainel(answers, resposta?.confidence).map(linhaDom));
 }
+
+/**
+ * Como pintarPainel, mas reaproveita as linhas: as larguras mudam e a
+ * transição CSS anima as barras a cada resposta (o JEV piloto responde ~3 vezes
+ * por segundo). Uma linha cujas opções mudaram é refeita.
+ */
+export function actualizarPainel(meta, host, resposta, opcoes = {}) {
+  if (meta) meta.textContent = resumoCabecalho(resposta, opcoes);
+  const linhas = linhasPainel(resposta?.answers, resposta?.confidence);
+  const vivas = new Set(linhas.map((l) => l.chave));
+  for (const row of [...host.children]) if (!vivas.has(row.dataset.chave)) row.remove();
+  linhas.forEach((l, i) => {
+    const existente = [...host.children].find((r) => r.dataset.chave === l.chave);
+    const opcoesIguais = existente && existente.dataset.opcoes === l.distribuicao.map((d) => d.opcao).join('|');
+    if (!opcoesIguais) {
+      const nova = linhaDom(l);
+      nova.dataset.chave = l.chave;
+      nova.dataset.opcoes = l.distribuicao.map((d) => d.opcao).join('|');
+      if (existente) existente.replaceWith(nova);
+      else host.insertBefore(nova, host.children[i] ?? null);
+      return;
+    }
+    existente.querySelector('.typed-choice').textContent = l.p == null ? l.escolha : `${l.escolha} ${decimal(l.p)}`;
+    const chip = existente.querySelector('.conf-chip');
+    if (chip) chip.textContent = l.confianca == null ? '' : `conf ${decimal(l.confianca)}`;
+    const segs = existente.querySelectorAll('.typed-seg');
+    l.distribuicao.forEach((d, k) => {
+      const seg = segs[k];
+      if (!seg) return;
+      seg.style.width = `${Math.max(0, Math.min(1, d.p)) * 100}%`;
+      seg.classList.toggle('is-on', d.escolhida);
+      seg.title = `${d.rotulo} ${decimal(d.p)}`;
+    });
+    const legenda = existente.querySelector('.typed-legend');
+    if (legenda) legenda.textContent = l.distribuicao.filter((d) => d.p >= 0.03).slice(0, 4).map((d) => `${d.rotulo} ${decimal(d.p)}`).join(' · ');
+  });
+}
+
