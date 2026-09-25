@@ -5,6 +5,7 @@ import { actuacaoDeManobra, actuacaoEfectiva, darOrdem, ordemDeTeclas, POTENCIAS
 import { estadoPiloto, limparOrdens, textoEstado } from './estado-piloto.js';
 import { concluirPasso, deveDespacharPasso, falharPasso, metricasPiloto, novoPipelinePiloto, reservarPasso } from './piloto-corredor.js';
 import { actualizarPainel, decimal } from './painel-jev.js';
+import { iniciarReproducao, reproduzir } from './voo-gravado.js';
 import { pontosFitaRota, setaManobra } from './rota-visual.js';
 import { alturaTerreno, perfilTerreno, pistasDaMissao, prepararPistas } from './relevo.js';
 import { raioEfectivoM } from './ameacas.js';
@@ -22,6 +23,7 @@ const RESULTADOS = {
   combustivel_esgotado: ['Sem combustível.', 'O voo terminou por falta de combustível.'],
   chegou: ['Aterrou em Sá Carneiro.', 'O LUS-222 pousou na pista do Francisco Sá Carneiro.'],
   tempo_esgotado: ['Tempo esgotado.', 'O voo livre chegou ao limite de tempo.'],
+  fim_gravacao: ['Fim do voo gravado.', 'O JEV pilotou este voo com decisões reais, gravadas e reproduzidas passo a passo.'],
 };
 const MAPA = { x0: -19000, z1: 168000, lado: 31000 };
 // JEV piloto: ~3 pedidos por segundo, dois em voo, 0,042 USD por milhão de tokens de entrada.
@@ -30,6 +32,8 @@ const CUSTO_TOKEN_USD = 0.042 / 1e6;
 const LIMITE_AO_VIVO_MS = 5 * 60 * 1000;
 // Uma resposta sobre um estado com mais de 1,5 s de simulação já não comanda.
 const IDADE_MAX_S = 1.5;
+// Voo real do JEV, gravado com scripts/gravar-voo-jev.mjs, para quem não tem voo ao vivo.
+const VOO_GRAVADO = './voos/porto-sao-joao-222.json';
 
 function el(tag, classe, texto) {
   const e = document.createElement(tag);
@@ -68,7 +72,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     m: null, api: null, mundo: null, raf: 0, ultimo: 0, ultimoUI: 0, pausa: false, fim: false,
     teclas: new Set(), toque: new Map(), trilho: [], supervisor: 0, ultimoSupervisor: null,
     ultimoFoco: -Infinity, geracao: 0, mapa: null,
-    ordens: '', jev: null, aviso: null,
+    ordens: '', jev: null, aviso: null, gravacao: null, cursor: null,
   };
   // O tempo de voo ao vivo do JEV conta por visita (página), não por voo.
   let aoVivoMs = 0;
@@ -89,8 +93,29 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
 
   function marcarPiloto(tipo) {
     $('sim-piloto-humano').setAttribute('aria-pressed', String(tipo === 'humano'));
-    $('sim-piloto-jev').setAttribute('aria-pressed', String(tipo === 'jev'));
-    $('sim-fonte').textContent = tipo === 'jev' ? 'O JEV pilota · ao vivo · Porto, noite de São João' : 'Piloto humano · voo livre · Porto, noite de São João';
+    $('sim-piloto-jev').setAttribute('aria-pressed', String(tipo !== 'humano'));
+    const data = s.gravacao?.gravadoEm ? new Date(s.gravacao.gravadoEm).toLocaleDateString('pt-PT') : '';
+    $('sim-fonte').textContent = tipo === 'jev' ? 'O JEV pilota · ao vivo · Porto, noite de São João'
+      : tipo === 'jev-gravado' ? `O JEV pilota · voo gravado${data ? ` em ${data}` : ''} · sem novas chamadas`
+        : 'Piloto humano · voo livre · Porto, noite de São João';
+  }
+
+  async function carregarGravacao() {
+    if (s.gravacao) return s.gravacao;
+    const r = await fetch(VOO_GRAVADO, { cache: 'no-store' });
+    if (!r.ok) throw new Error('Não há voo gravado do JEV.');
+    s.gravacao = await r.json();
+    return s.gravacao;
+  }
+
+  /** Painel e contadores a partir de uma decisão gravada, como se chegasse ao vivo. */
+  function mostrarDecisaoGravada(d) {
+    const host = $('sim-julgamentos');
+    if (!host.querySelector('.typed-row')) { host.replaceChildren(); host.classList.remove('sim-vazio'); }
+    actualizarPainel($('sim-meta'), host, { answers: d.r, confidence: d.c, latencia_ms: d.ms, usage: { inputTokens: d.tok, outputTokens: 0 } }, { replay: true });
+    s.gravado.decisoes += 1;
+    s.gravado.custoUsd += d.tok * CUSTO_TOKEN_USD;
+    s.gravado.latencias.push(d.ms);
   }
 
   /** Volta a pôr o humano aos comandos; o JEV deixa de receber pedidos. */
@@ -103,8 +128,8 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
 
   function entregarAoJev() {
     if (!s.m) return;
-    if (!gatewayDisponivel()) { avisar('Sem ligação ao JEV neste momento: continua o piloto humano.'); return; }
-    if (aoVivoMs >= LIMITE_AO_VIVO_MS) { avisar('Terminaram os 5 minutos de voo ao vivo do JEV nesta visita.'); return; }
+    // Sem voo ao vivo (sem Gateway ou depois dos 5 min), o JEV pilota o voo gravado desde o início.
+    if (!gatewayDisponivel() || aoVivoMs >= LIMITE_AO_VIVO_MS) { void iniciar({ semente: s.m.semente, piloto: 'jev-gravado' }); return; }
     s.jev = novoJev();
     s.m = { ...s.m, piloto: { ...s.m.piloto, tipo: 'jev', fonte: 'jev' } };
     s.teclas.clear();
@@ -249,13 +274,21 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     const margem = seps.length ? Math.min(...seps.map((r) => r.minimaM - r.limiteM)) : null;
     const itens = [
       ['TEMPO', tempo(s.m.voo.tempoS)],
-      ['PILOTO', s.m.piloto.tipo === 'jev' ? 'JEV' : 'Humano'],
+      ['PILOTO', s.m.piloto.tipo === 'jev' ? 'JEV ao vivo' : s.m.piloto.tipo === 'jev-gravado' ? 'JEV gravado' : 'Humano'],
       ['AMEAÇAS PASSADAS', seps.length],
       ['MARGEM MÍNIMA', margem == null ? '—' : `${margem} m`],
       ['SUPERVISOR', `${s.supervisor}×`],
       ['EM VOO', s.m.ameacas.length],
     ];
-    if (s.jev) {
+    if (s.m.piloto.tipo === 'jev-gravado' && s.gravado) {
+      const ord = [...s.gravado.latencias].sort((a, b) => a - b);
+      itens.push(
+        ['DECISÕES JEV', s.gravado.decisoes],
+        ['DECISÕES/S', decimal(s.gravado.decisoes / Math.max(1, s.m.voo.tempoS)).replace(/0$/, '')],
+        ['LATÊNCIA P50', ord.length ? `${ord[Math.floor(ord.length / 2)]} ms` : '—'],
+        ['CUSTO (GRAVADO)', `${s.gravado.custoUsd.toFixed(4).replace('.', ',')} USD`],
+      );
+    } else if (s.jev) {
       const met = metricasPiloto(s.jev.pipeline, performance.now());
       itens.push(
         ['DECISÕES JEV', s.jev.decisoes],
@@ -339,6 +372,21 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     const dt = Math.min(0.1, Math.max(0, (t - s.ultimo) / 1000));
     s.ultimo = t;
     if (!s.pausa && !s.m.resultado) {
+      if (s.m.piloto.tipo === 'jev-gravado' && s.gravacao) {
+        const r = reproduzir(s.m, s.gravacao, s.cursor, dt);
+        s.m = r.m;
+        s.cursor = r.cursor;
+        for (const e of r.eventos) {
+          if (e.tipo === 'leitura') $('sim-estado').textContent = textoEstado(e.estado);
+          else mostrarDecisaoGravada(e.decisao);
+        }
+        if (s.cursor.i >= s.gravacao.decisoes.length && !s.m.resultado) s.m = { ...s.m, resultado: 'fim_gravacao' };
+        contarSupervisor();
+        desenhar(dt);
+        if (t - s.ultimoUI > 100) { s.ultimoUI = t; actualizarLampadas(); actualizarHud(); actualizarContadores(); actualizarMapa(); actualizarSom(); }
+        if (s.m.resultado && !s.fim) mostrarFim();
+        return;
+      }
       if (s.m.piloto.tipo === 'humano') aplicarHumano();
       else if (s.jev) {
         aoVivoMs += dt * 1000;
@@ -381,7 +429,15 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     cancelAnimationFrame(s.raf);
     cancelarPedidosJev();
     s.jev = null;
-    s.m = criarVooLivre(semente, { piloto: 'humano' });
+    s.gravado = null;
+    let gravacao = null;
+    if (piloto === 'jev-gravado') {
+      try { gravacao = await carregarGravacao(); } catch { piloto = 'humano'; }
+      if (gen !== s.geracao) return;
+    }
+    s.m = gravacao ? iniciarReproducao(gravacao) : criarVooLivre(semente, { piloto: 'humano' });
+    s.cursor = { i: 0, lido: false };
+    if (gravacao) s.gravado = { decisoes: 0, custoUsd: 0, latencias: [] };
     s.fim = false; s.trilho = []; s.supervisor = 0; s.ultimoSupervisor = null; s.ultimoFoco = -Infinity;
     $('sim-julgamentos').replaceChildren(document.createTextNode('Com «Humano» aos comandos o JEV não decide. Escolhe «JEV» em cima para ele pilotar.'));
     $('sim-julgamentos').classList.add('sim-vazio');
@@ -390,7 +446,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     s.teclas.clear(); s.toque.clear();
     definirPausa(false);
     $('sim-fim').hidden = true;
-    marcarPiloto('humano');
+    marcarPiloto(gravacao ? 'jev-gravado' : 'humano');
     if (piloto === 'jev') entregarAoJev();
     mostrar('sim');
     largarMundo();
@@ -465,8 +521,8 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   $('sim-sair').addEventListener('click', sair);
   $('sim-fim-sair').addEventListener('click', sair);
   $('sim-repetir').addEventListener('click', () => { ligarSomAgora(); void iniciar({ semente: (s.m?.semente ?? 222) + 1, piloto: s.m?.piloto.tipo ?? 'humano' }); });
-  $('sim-piloto-humano').addEventListener('click', () => { if (s.m?.piloto.tipo === 'jev') pararJev('O humano retomou os comandos.'); });
-  $('sim-piloto-jev').addEventListener('click', () => { if (s.m?.piloto.tipo !== 'jev') entregarAoJev(); });
+  $('sim-piloto-humano').addEventListener('click', () => { if (s.m && s.m.piloto.tipo !== 'humano') pararJev('O humano retomou os comandos.'); });
+  $('sim-piloto-jev').addEventListener('click', () => { if (s.m?.piloto.tipo === 'humano') entregarAoJev(); });
   const darOrdens = (texto) => {
     s.ordens = limparOrdens(texto);
     $('sim-ordens').value = s.ordens;
