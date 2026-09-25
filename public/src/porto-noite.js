@@ -207,16 +207,24 @@ function texturaFachadas() {
 
 /**
  * Casario da Ribeira e do cais de Gaia: fileiras contínuas de fachadas
- * estreitas viradas ao rio, do cais encosta acima (a jusante da ponte); em
- * Gaia, a primeira fileira são os armazéns compridos das caves.
+ * estreitas viradas ao rio, do cais encosta acima, mais compridas junto à
+ * água; a jusante da ponte a Ribeira e as caves de Gaia (a primeira fileira
+ * são armazéns compridos), a montante os Guindais.
  */
 function criarCasario(perfil, pistas, leve) {
   const { centro, montante, norte } = eixosDoRio(perfil.rio, LUIS_I.x);
   const rnd = aleatorio(19);
   const fileiras = [];
-  for (let k = 0; k < (leve ? 5 : 8); k++) fileiras.push({ sinal: 1, lado: 100 + k * 17, ate: 950 - k * 40, armazem: false });
-  for (let k = 0; k < (leve ? 2 : 4); k++) fileiras.push({ sinal: -1, lado: 100 + k * 20, ate: 700 - k * 60, armazem: k === 0 });
-  const maximo = fileiras.reduce((n, f) => n + Math.ceil(f.ate / 5), 0);
+  const juntar = (sinal, n, lado0, passo, ate0, encurta, sentido, armazens = false) => {
+    for (let k = 0; k < n; k++) {
+      fileiras.push({ sinal, sentido, lado: lado0 + k * passo, inicio: 45 + rnd() * 50, ate: ate0 - k * encurta + (rnd() - 0.5) * 120, armazem: armazens && k === 0 });
+    }
+  };
+  juntar(1, leve ? 5 : 8, 100, 17, 760, 55, -1);
+  juntar(1, leve ? 2 : 4, 100, 18, 300, 45, 1);
+  juntar(-1, leve ? 2 : 4, 100, 20, 600, 70, -1, true);
+  juntar(-1, leve ? 1 : 2, 105, 22, 220, 60, 1);
+  const maximo = fileiras.reduce((n, f) => n + Math.ceil(Math.max(0, f.ate) / 5), 0);
   const geo = new THREE.BoxGeometry(1, 1, 1);
   // Faces: +x, −x, +y, −y, +z, −z (4 vértices cada). Paredes na metade das
   // janelas; telhado e chão num ponto da metade negra.
@@ -225,24 +233,29 @@ function criarCasario(perfil, pistas, leve) {
     if (k >= 8 && k < 16) uv.setXY(k, 0.75, 0.5);
     else uv.setX(k, uv.getX(k) * 0.5);
   }
-  const casas = new THREE.InstancedMesh(
-    geo,
-    new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveMap: texturaFachadas(), emissiveIntensity: 0 }),
-    maximo,
-  );
-  const cores = [0xb86b4b, 0xd9a55a, 0x6c7fa0, 0xc9c2b0, 0x8f4a45, 0xd6c28a, 0x5f7f73, 0xe2d6c0];
+  const material = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveMap: texturaFachadas(), emissiveIntensity: 0 });
+  // A fachada acesa ganha a cor da casa; as janelas (a parte clara do mapa) ficam quentes.
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      #ifdef USE_COLOR
+        float janela = smoothstep(0.35, 0.7, max(totalEmissiveRadiance.r, totalEmissiveRadiance.g));
+        totalEmissiveRadiance *= mix(vColor.rgb * 1.7, vec3(1.0), janela);
+      #endif`);
+  };
+  const casas = new THREE.InstancedMesh(geo, material, maximo);
+  const cores = [0xb86b4b, 0xd9a55a, 0x6c7fa0, 0xc9c2b0, 0x8f4a45, 0xd6c28a, 0x5f7f73, 0xe2d6c0, 0xc27a8a];
   const m4 = new THREE.Matrix4();
   const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(montante.x, montante.z));
   const cor = new THREE.Color();
   let i = 0;
   for (const f of fileiras) {
-    // «ao» conta ao longo do rio a partir da ponte; negativo é a jusante.
-    let ao = -45;
-    while (-ao < f.ate && i < maximo) {
+    // «ao» conta ao longo do rio a partir da ponte (sentido −1: a jusante).
+    let ao = f.inicio;
+    while (ao < f.ate && i < maximo) {
       const largura = f.armazem ? 22 + rnd() * 16 : 5 + rnd() * 4;
-      const meio = ao - largura / 2;
-      ao -= largura + 0.4;
-      if (rnd() < 0.05) { ao -= 6; continue; }
+      const meio = f.sentido * (ao + largura / 2);
+      ao += largura + 0.4;
+      if (rnd() < 0.05) { ao += 6; continue; }
       const lado = f.sinal * (f.lado + rnd() * 4);
       const x = centro.x + montante.x * meio + norte.x * lado;
       const z = centro.z + montante.z * meio + norte.z * lado;
@@ -264,33 +277,35 @@ function criarCasario(perfil, pistas, leve) {
 /**
  * Luzes da cidade (Porto, Gaia, Matosinhos) ao longo de ruas: cada rua é uma
  * fila de candeeiros de sódio ou LED numa malha que roda devagar de bairro para
- * bairro; mais ruas perto da Ribeira, nenhuma na água (a rua acaba no cais).
+ * bairro; uma em oito é uma avenida, mais comprida e mais clara. Mais ruas
+ * perto da Ribeira, nenhuma na água (a rua acaba no cais).
  */
 function criarCidade(perfil, pistas, leve) {
   const rnd = aleatorio(31);
-  const n = leve ? 8000 : 22000;
+  const n = leve ? 12000 : 34000;
   const pos = [];
   const cor = [];
   for (let tentativa = 0; pos.length / 3 < n && tentativa < n; tentativa++) {
     const x0 = -4000 + rnd() * 14000;
     const z0 = 138000 + rnd() * 24000;
     const r = Math.hypot(x0 - LUIS_I.x, z0 - 152700);
-    if (rnd() > 0.15 + 0.85 * Math.exp(-r / 3500)) continue;
+    if (rnd() > 0.12 + 0.88 * Math.exp(-r / 3000)) continue;
     const malha = 0.6 * Math.sin(x0 / 2300) + 0.5 * Math.cos(z0 / 1900);
     const rumo = malha + (rnd() < 0.5 ? 0 : Math.PI / 2) + (rnd() - 0.5) * 0.12;
     const [dx, dz] = [Math.sin(rumo), Math.cos(rumo)];
-    const sodio = rnd() < 0.6;
-    const passo = 16 + rnd() * 8;
-    const candeeiros = 4 + Math.floor(rnd() * 9);
+    const avenida = rnd() < 0.125;
+    const sodio = avenida || rnd() < 0.6;
+    const passo = avenida ? 22 : 12 + rnd() * 6;
+    const candeeiros = avenida ? 15 + Math.floor(rnd() * 25) : 4 + Math.floor(rnd() * 9);
     for (let k = 0; k < candeeiros; k++) {
       const x = x0 + dx * passo * k;
       const z = z0 + dz * passo * k;
       const h = alturaTerreno(perfil, x, z, pistas);
       if (h < 2) break;
-      const b = 0.75 + 0.25 * rnd();
+      const b = avenida ? 1 : 0.6 + 0.3 * rnd();
       pos.push(x, h + 5, z);
-      if (sodio) cor.push(b, 0.68 * b, 0.34 * b);
-      else cor.push(0.82 * b, 0.88 * b, b);
+      if (sodio) cor.push(b, 0.7 * b, 0.36 * b);
+      else cor.push(0.8 * b, 0.86 * b, b);
     }
     // Uma janela acesa solta de vez em quando, entre as ruas.
     if (rnd() < 0.25) {
