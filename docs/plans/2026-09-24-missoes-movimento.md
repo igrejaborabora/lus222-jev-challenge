@@ -308,6 +308,46 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
 - O gravador corre as tarefas no modelo puro, em Node, e o browser reproduz com as latências gravadas.
 - Texto fixo: «O JEV não vê píxeis: lê a descrição estruturada do ecrã e escolhe a próxima acção. O cursor executa-a.»
 
+## Fase D — «Pilota tu, o JEV é o copiloto» (PR 4, depois da B)
+
+Aprovada a 2026-09-25. Reaproveita as ameaças, as categorias, o ciclo táctico e o supervisor da fase B.
+
+**D1. Comandos.**
+- Teclado: setas ou WASD para rolamento e arfagem, Shift/Ctrl para a potência.
+- Toque: um joystick virtual.
+- Comando: a Gamepad API.
+- O visitante dá intenções, não mexe em superfícies de controlo: os comandos viram alvos de rumo e altitude em `passoFisico`, os mesmos alvos da B4.
+
+**D2. Copiloto JEV.** A cada segundo, na janela táctica, o JEV recebe o estado táctico da B3 com a manobra do visitante como candidata «tua» e responde:
+- `aprovacaoManobra`: choice entre seguir, cautela e perigo, no padrão de guarda do eve;
+- `manobraSugerida`: a mesma choice táctica;
+- `urgencia`.
+
+O JEV só aconselha: não tira o controlo ao visitante.
+
+**D3. Quem tem o controlo.**
+- Por omissão, o visitante.
+- O supervisor determinístico toma a manobra quando há conflito previsto (seta vermelha, «O supervisor assumiu») e devolve-a quando o conflito passa.
+
+**D4. HUD.**
+- Aviso do copiloto com a confiança, por exemplo «Cautela · helicóptero a convergir pela direita · 0,82».
+- Seta da manobra sugerida.
+- Estado do controlo.
+
+**D5. Debrief.** Visitante contra JEV:
+- separações mínimas;
+- avisos seguidos e ignorados;
+- tempo de reacção;
+- vezes que o supervisor assumiu.
+
+**Custos e limites.** Iguais aos da B: um pedido por segundo, só na janela táctica.
+
+**Replay.** O modo é só ao vivo, porque o voo é humano. Sem Gateway ou com o limite atingido, mostra uma demonstração gravada do copiloto, identificada.
+
+**Verificação.**
+- Teclado e toque a 390 px; comando, se houver um disponível.
+- Testes das funções puras que convertem comandos em alvos e que decidem o controlo.
+
 ## Custos (a partir de 25/09)
 
 - **Tokens por pedido:** ~2 mil no táctico, ~3,1 mil no estratégico e ~2 mil na consola.
@@ -356,7 +396,7 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
 
 ## Execução
 
-- Passo 0, depois um PR por fase, pela ordem A → B → C.
+- Passo 0, depois um PR por fase, pela ordem A → B → C → D.
 - Um commit por mudança lógica; os refactors (B1, B9) ficam à parte.
 - Cada tarefa segue implementador → revisão de especificação → revisão de qualidade, com TDD nas funções puras.
 - Nada vai para `main` sem confirmação. A Vercel e as gravações ao vivo são pedidas antes.
