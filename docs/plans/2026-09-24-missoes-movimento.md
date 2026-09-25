@@ -111,6 +111,86 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
   - nada com o separador escondido.
 - **Vercel** (com confirmação): regra WAF de rate limit em `/api/jev`, 600 pedidos por 60 s por IP, se o plano da conta a incluir.
 
+## Reorientação de 2026-09-25: simulador LUS-222, piloto humano ou JEV
+
+A referência passa a ser o «JEV plays DOOM».
+- O mundo corre sempre e o modelo decide várias vezes por segundo a partir de um estado em texto.
+- Vê-se o que o modelo lê, os julgamentos com barras e confiança, a acção acesa, a latência, as decisões por segundo e o custo, e uma caixa de ordens.
+- No LUS-222, **o JEV substitui o piloto humano**. Tem de ser dinâmico, nunca estático.
+
+**Decisões do Fernando:**
+- actuação directa como no DOOM;
+- voo livre com um «director» de ameaças, e as missões como cenários;
+- comparação lado a lado mais tarde;
+- 25 USD/mês, com 5 min de voo JEV ao vivo por visita e voos gravados para o resto.
+
+**O que já serve de base (feito):**
+- B0: formato táctico validado, 14/14 nos casos tácticos;
+- B1: relógio de passo fixo com desenho interpolado;
+- B2: ameaças em movimento no mundo.
+
+### Marcos
+
+**M1. Simulador jogável** (modo novo; as missões actuais ficam intactas)
+- **Actuação comum aos dois pilotos:**
+  - lateral: esquerda / nivelar / direita;
+  - vertical: subir / manter / descer;
+  - potência: mais / manter / menos.
+- **Controlador de intenção em `passoFisico`:**
+  - rolamento até ±25°;
+  - razão de subida até ±4 m/s;
+  - acelerador por incrementos.
+  - Sem ordem nova durante 0,6 s, volta a nivelar e a manter a altitude.
+- **Piloto humano:** teclado (setas/WASD, Shift/Ctrl), botões de toque e comando.
+- **Voo livre sobre o Porto no São João:**
+  - circuito de pontos de passagem (Foz, Ponte D. Luís I, Ribeira, Matosinhos, Sá Carneiro);
+  - um **director** com semente vai lançando 1–3 ameaças de cada vez (tráfego que cruza ou vira, balões, aves, células), com dificuldade crescente.
+- **Supervisor determinístico:**
+  - tipo TCAS: conflito previsto em 30 s → a manobra segura manda, com luz vermelha;
+  - tipo GPWS: perto do terreno → subir.
+- **Painel ao estilo DOOM:**
+  - 3D à esquerda;
+  - à direita, julgamentos, actuação acesa, «o que o JEV lê», contadores e ordens;
+  - mini-mapa com o circuito, as ameaças e o rasto;
+  - no telemóvel, empilhado.
+
+**M2. O JEV pilota** (a ~3 Hz, uma chamada com 6 julgamentos em paralelo)
+- **Julgamentos:**
+  - `plano`: seguir rota / evitar ameaça / ganhar altitude / poupar combustível / aterrar;
+  - `manobra`: as 7 candidatas;
+  - `potencia`;
+  - `ameacaPrioritaria`;
+  - `urgencia`;
+  - `foraDoEnvelope`.
+- **Estado em categorias:** rota (à esquerda / em frente / à direita, desvio), perfil de altitude, velocidade, ameaças e consequências por candidata.
+  - A candidata é aplicada 8 s e depois mantida, na previsão a 30 s.
+  - Entram também as **ordens do comandante**: texto até 120 caracteres, com atalhos como «poupa combustível», «evita as nuvens», «voa baixo».
+- **Instruções em inglês.**
+- **Servidor:** `momento: 'piloto'`, com filtro de enums e das ordens.
+- **Ciclo:** o pipeline de 2 pedidos da prova contínua, com cadência e retenção em passos. O relógio fica a 1× com o JEV aos comandos.
+- **Contadores:** ms, decisões/s, USD acumulado, separação mínima.
+
+**M3. Voos gravados e limites**
+- **Gravação:** o gravador em Node voa o JEV no mesmo motor e grava as decisões com o passo em que foram aplicadas (formato v5 do B8).
+- **Reprodução:** o site reproduz-as quando não há Gateway, quando o limite chega ou depois dos 5 min ao vivo por visita.
+
+**M4. Porto reconhecível no São João**
+- Vale do Douro, Ponte D. Luís I e Ribeira iluminada.
+- Luzes da cidade e lanternas a subir do rio, a derivar com o vento.
+
+**M5. Missões com o JEV aos comandos**
+- Os 4 cenários passam a ser voados em contínuo:
+  - com o estado estratégico em categorias (B3b);
+  - com escalada ao PIC quando o `plano` muda com pouca confiança;
+  - com aterragem assistida abaixo de 15 m, identificada.
+- A comparação lado a lado com um fantasma (regra ou humano) e a consola (fase C) vêm depois.
+
+**Custos.**
+- Cada chamada tem ~3 mil tokens, a 3 Hz: ~0,02 USD por minuto, ~0,11 USD por 5 minutos.
+- 25 USD/mês chegam para ~220 voos ao vivo de 5 min.
+
+A secção B abaixo fica como referência técnica: B3, B4, B5, B7 e B8 são absorvidos pelos marcos M1–M3.
+
 ## Fase B — Ameaças em movimento e reflexos tácticos (PR 2)
 
 **B0. Banco de casos** (`scripts/avaliar-jev.mjs` e `evidence/casos-jev.json`, novos)
