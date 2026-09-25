@@ -38,6 +38,11 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
 - Em paralelo, o «JEV operações» preenche formulários da Torre, do hospital ou do MRCC com um cursor visível.
 - Ouvem-se os motores.
 
+**Narrativa do post (decidida a 2026-09-25):** o LinkedIn da Pixelgrammar mostra um caso espectacular.
+- **O Claude Opus 5.5 desenvolveu a aplicação** — plano, código, revisões, testes e verificação — e não é chamado dentro dela.
+- **O JEV opera:** decide com probabilidades e *scores*, não com texto.
+- O LUS-222 é tecnologia portuguesa em construção. O simulador («Pilota tu») reforça essa ligação.
+
 ## Princípios
 
 1. **O ecrã mostra o que o JEV recebe.**
@@ -221,7 +226,7 @@ As missões parecem estáticas e escondem o que distingue o JEV. Diagnóstico so
 
 | Cenário | O que se move |
 |---|---|
-| São João / Porto | Lanternas a subir e derivar no corredor (km 32). Helicóptero pela direita que vira para o LUS-222 a meio (km 60). Partida de frente a subir do Porto (km 85; ambos à direita). Gaivotas na final (km 151). |
+| São João / Porto | Porto reconhecível (Ponte D. Luís I, Ribeira iluminada, foz do Douro), trazido da fase 2 do desenho de cenários. Lanternas a subir do Douro e a derivar no corredor (km 32). Helicóptero pela direita que vira para o LUS-222 a meio (km 60). Partida de frente a subir do Porto (km 85; ambos à direita). Gaivotas na final (km 151). |
 | MEDEVAC Açores | Célula da frente a atravessar o corredor. Tráfego inter-ilhas. O relevo costeiro fica fixo. |
 | Carga Ponte de Sor | Cegonhas com vagueio perto do Alqueva. Tráfego militar rápido e baixo perto de Beja (TCPA curto). |
 | SAR costa | Contacto a derivar (a consola reporta a posição). Tráfego civil a cruzar o sector. |
@@ -414,11 +419,11 @@ O JEV só aconselha: não tira o controlo ao visitante.
 
 ## Execução
 
-- Passo 0, depois um PR por fase, pela ordem A → B → C → D.
+- Passo 0, depois um PR por fase, pela ordem A → B (com o Porto reconhecível) → D → C (ordem revista a 2026-09-25).
 - Um commit por mudança lógica; os refactors (B1, B9) ficam à parte.
 - Cada tarefa segue implementador → revisão de especificação → revisão de qualidade, com TDD nas funções puras.
 - Nada vai para `main` sem confirmação. A Vercel e as gravações ao vivo são pedidas antes.
-- Marco para o LinkedIn: A + B (São João) já mostram movimento; C completa o «computer use».
+- Marco para o LinkedIn: A + B (São João) já mostram movimento; D dá o simulador e C completa o «computer use».
 
 ## Verificação
 
