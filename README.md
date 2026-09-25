@@ -24,7 +24,7 @@ O botão **Voar o LUS-222** abre um simulador de voo livre sobre o Porto, na noi
   O servidor só aceita valores das listas. Seis perguntas correm em paralelo numa chamada: plano, manobra (escolhida por eliminação), potência, ameaça prioritária, urgência e fora do envelope.
 - **Limites:** 5 minutos de voo JEV ao vivo por visita; depois, sem Gateway ou com o orçamento esgotado, o JEV pilota um **voo gravado**. Esse voo é real: o `scripts/gravar-voo-jev.mjs` voa o JEV no mesmo motor e guarda, por decisão, o passo em que foi pedida, o passo em que foi aplicada e a resposta. O site reproduz-o passo a passo, exacto com qualquer ritmo de frames, e identifica-o como gravado.
 - **Endereços úteis para vídeo:** `?voo=gravado` força o voo gravado (sempre igual e sem custo) e `?desde=110` começa-o nesse segundo, perto da Foz, com contadores e mapa como se o voo tivesse sido visto desde o início.
-- **Custo:** cerca de 3 mil tokens por chamada, ou seja ~0,02 USD por minuto de voo JEV ao vivo.
+- **Custo:** cerca de 2,6 mil tokens por chamada, ou seja ~0,016 USD por minuto de voo JEV ao vivo.
 
 ## O que se observa nas missões
 
