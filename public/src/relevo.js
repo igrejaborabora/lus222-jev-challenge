@@ -64,6 +64,8 @@ const PERFIS = {
       // arco de 172 m e as margens sobem depressa, para o tabuleiro superior assentar nelas.
       escarpa: { x: 2200, z: 152700, raioM: 1800, transicaoM: 1400, alturaM: 32, larguraM: 160, margemM: 90 },
     },
+    // Manchas urbanas (Porto e Gaia à volta da Ribeira, Matosinhos): de noite o chão brilha.
+    cidade: [{ x: 2200, z: 152700, raioM: 4200 }, { x: 6200, z: 157800, raioM: 1800 }],
   },
   sar: { agua: 'costa', costaX: -6000, recorteM: 1500, amplitude: 120, escala: 1 / 2200, seed: 23 },
   carga: { agua: 'terra', amplitude: 45, escala: 1 / 4200, seed: 31 },
@@ -226,6 +228,21 @@ function folgaRampa(d, raio) {
 export function alcanceRampaM(pista) {
   if (typeof pista.baseM !== 'number') throw new TypeError('alcanceRampaM: pista sem baseM; usar prepararPistas');
   return (pista.raioPlanoM ?? 1200) + Math.abs(pista.baseM - PLANO_PISTA_M) / RAMPA_MAX + ARREDONDAR_M;
+}
+
+/**
+ * Quanto de cidade há em (x, z), de 0 a 1: manchas gaussianas do perfil,
+ * recortadas em bairros e jardins pelo ruído; nada na água (h < 1).
+ */
+export function urbanoEm(perfil, x, z, h) {
+  if (!perfil?.cidade || h < 1) return 0;
+  let u = 0;
+  for (const c of perfil.cidade) {
+    const d = Math.hypot(x - c.x, z - c.z) / c.raioM;
+    u = Math.max(u, Math.exp(-d * d));
+  }
+  // Bairros acesos e jardins escuros, com contraste.
+  return u * entre01((fbm(x / 450, z / 450, 71, 3) - 0.3) / 0.45);
 }
 
 /**

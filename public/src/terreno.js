@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { alturaTerreno, perfilComAgua, prepararPistas } from './relevo.js';
+import { alturaTerreno, perfilComAgua, prepararPistas, urbanoEm } from './relevo.js';
 import { mosaicosAManter, mosaicosNecessarios, planearMosaicos, TAMANHO_MOSAICO_M } from './mosaicos.js';
 
 // Paleta dessaturada (identidade preto e branco): o relevo lê-se pela luz.
@@ -90,7 +90,36 @@ function geometriaMosaico(t, i, j) {
     }
   }
   geo.setAttribute('color', new THREE.BufferAttribute(cores, 3));
+  if (t.urbano) {
+    const urbano = new Float32Array(pos.count);
+    for (let iy = 0; iy <= seg; iy++) {
+      for (let ix = 0; ix <= seg; ix++) {
+        urbano[iy * (seg + 1) + ix] = urbanoEm(t.perfil, x0 + ix * passo, z0 + iy * passo, alturas[(iy + 1) * n + (ix + 1)]);
+      }
+    }
+    geo.setAttribute('urbano', new THREE.BufferAttribute(urbano, 1));
+  }
   return { geo, cx, cz };
+}
+
+/**
+ * Com cidade no perfil, o chão ganha um brilho urbano quente de noite (atributo
+ * `urbano` por vértice, intensidade num uniforme); sem cidade, o material de sempre.
+ */
+function materialDoTerreno(perfil) {
+  const material = new THREE.MeshLambertMaterial({ vertexColors: true });
+  if (!perfil?.cidade) return { material, urbano: null };
+  const urbano = { value: 0 };
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.brilhoUrbano = urbano;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float urbano;\nvarying float vUrbano;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvUrbano = urbano;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vUrbano;\nuniform float brilhoUrbano;')
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0, 0.6, 0.25) * pow(vUrbano, 1.6) * brilhoUrbano;');
+  };
+  return { material, urbano };
 }
 
 export function criarTerreno({ perfil, pistas = [], leve = false }) {
@@ -102,6 +131,7 @@ export function criarTerreno({ perfil, pistas = [], leve = false }) {
   const mar = new THREE.Mesh(new THREE.PlaneGeometry(lado, lado), new THREE.MeshLambertMaterial({ color: COR_MAR }));
   mar.rotation.x = -Math.PI / 2;
   grupo.add(mar);
+  const { material, urbano } = materialDoTerreno(perfil);
   return {
     grupo,
     mar,
@@ -111,7 +141,8 @@ export function criarTerreno({ perfil, pistas = [], leve = false }) {
     praia: perfilComAgua(perfil),
     raio,
     segmentos: leve ? 24 : 48,
-    material: new THREE.MeshLambertMaterial({ vertexColors: true }),
+    material,
+    urbano,
     mosaicos: new Map(),
     // Célula (mosaico) onde o avião estava no último plano; NaN obriga a planear.
     celulaI: NaN,
@@ -172,6 +203,7 @@ export function actualizarTerreno(t, x, z, orcamento = 1) {
 export function escurecerTerreno(t, luzes) {
   t.material.color.setScalar(1 - 0.6 * luzes);
   t.mar.material.color.copy(COR_MAR).multiplyScalar(1 - 0.4 * luzes);
+  if (t.urbano) t.urbano.value = 0.1 * luzes;
 }
 
 export function largarTerreno(t) {
