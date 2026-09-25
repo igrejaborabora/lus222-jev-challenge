@@ -51,7 +51,17 @@ export function fbm(x, z, seed = 1, oitavas = 4) {
 // Posições do mundo (x já espelhado). Açores: ilhas afastadas da rota para
 // o relevo não subir ao corredor de cruzeiro.
 const PERFIS = {
-  porto: { agua: 'costa', costaX: 7000, recorteM: 1800, amplitude: 90, escala: 1 / 2600, seed: 11 },
+  // O Douro corta a costa do Porto: da foz (mar a +X) até montante da Ponte D. Luís I
+  // (pontos do mundo, x = −xM da missão). A física e o 3D lêem o mesmo vale.
+  porto: {
+    agua: 'costa', costaX: 7000, recorteM: 1800, amplitude: 90, escala: 1 / 2600, seed: 11,
+    rio: {
+      pontos: [[9500, 151800], [6800, 151900], [5200, 152200], [3700, 152450], [2200, 152700], [900, 152850], [-800, 152600], [-2600, 152100], [-5000, 151500]],
+      larguraM: 240,
+      margemM: 220,
+      fundoM: -4,
+    },
+  },
   sar: { agua: 'costa', costaX: -6000, recorteM: 1500, amplitude: 120, escala: 1 / 2200, seed: 23 },
   carga: { agua: 'terra', amplitude: 45, escala: 1 / 4200, seed: 31 },
   medevac: {
@@ -74,7 +84,39 @@ export function perfilComAgua(perfil) {
   return perfil?.agua === 'costa' || perfil?.agua === 'ilhas';
 }
 
+/** Distância de (x, z) à linha do rio (segmentos), sem alocações: chamado por vértice. */
+export function distanciaAoRio(rio, x, z) {
+  const pts = rio.pontos;
+  let melhor = Infinity;
+  for (let i = 1; i < pts.length; i++) {
+    const ax = pts[i - 1][0];
+    const az = pts[i - 1][1];
+    const bx = pts[i][0] - ax;
+    const bz = pts[i][1] - az;
+    const t = Math.min(1, Math.max(0, ((x - ax) * bx + (z - az) * bz) / (bx * bx + bz * bz)));
+    const dx = x - (ax + bx * t);
+    const dz = z - (az + bz * t);
+    const d = dx * dx + dz * dz;
+    if (d < melhor) melhor = d;
+  }
+  return Math.sqrt(melhor);
+}
+
+/** Leito do rio abaixo do nível da água, margens a subir suavemente até ao relevo natural. */
+function cavarRio(rio, x, z, h) {
+  const meia = rio.larguraM / 2;
+  const d = distanciaAoRio(rio, x, z);
+  if (d >= meia + rio.margemM) return h;
+  if (d <= meia) return Math.min(h, rio.fundoM);
+  return Math.min(h, rio.fundoM + (h - rio.fundoM) * suave((d - meia) / rio.margemM));
+}
+
 function alturaBase(perfil, x, z) {
+  const h = alturaBaseSemRio(perfil, x, z);
+  return perfil.rio ? cavarRio(perfil.rio, x, z, h) : h;
+}
+
+function alturaBaseSemRio(perfil, x, z) {
   const relevo = fbm(x * perfil.escala, z * perfil.escala, perfil.seed);
   if (perfil.agua === 'costa') {
     const costa = perfil.costaX + perfil.recorteM * ruido2(z / 7000, 3.7, perfil.seed + 5);
