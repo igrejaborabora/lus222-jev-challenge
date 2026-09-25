@@ -17,6 +17,8 @@ import { actualizarPortoNoite, criarPortoNoite } from './porto-noite.js';
 // é quase rígida para não largar a cauda na subida/descida do dodge.
 const K_CAMARA = 3.4;
 const K_VERTICAL = 7;
+// No modo cinema os planos encadeiam-se devagar, como uma panorâmica (~2,5 s).
+const K_CINEMA = 1.2;
 // Folga mínima da câmara acima do relevo (ou do mar, a y = 0).
 const FOLGA_CHAO_M = 5;
 
@@ -506,6 +508,8 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     camara: novaCamara(performance.now() / 1000, { abertura: apresentacao && !reduzido }),
     // Foco do evento em coordenadas ABSOLUTAS: sobrevive a recentrarOrigem.
     focoEvento: null,
+    // Marco do modo cinema (próximo ponto do circuito), em coordenadas ABSOLUTAS.
+    marcoCinema: null,
     // Desvios da câmara e da mira em relação ao avião (não precisam de recentrar).
     desvioCamara: null,
     desvioMira: null,
@@ -680,10 +684,12 @@ function limitarAoChao(mundo) {
   if (cam.position.y < chao) cam.position.y = chao;
 }
 
+function paraLocal(mundo, p) {
+  return p ? { x: p.x - mundo.origemVisual.x, y: p.y, z: p.z - mundo.origemVisual.z } : null;
+}
+
 function focoLocal(mundo) {
-  const f = mundo.focoEvento;
-  if (!f) return null;
-  return { x: f.x - mundo.origemVisual.x, y: f.y, z: f.z - mundo.origemVisual.z };
+  return paraLocal(mundo, mundo.focoEvento);
 }
 
 /**
@@ -723,7 +729,8 @@ function enquadrar(mundo, modo, pose, dt) {
   const cam = mundo.camera;
   // Ecrã estreito (telemóvel em pé): afasta a câmara para a asa caber no quadro.
   const fit = Math.min(1, Math.max(0.42, (cam.aspect || 1) / 1.2));
-  const alvo = alvoCamara(modo, pose, { fit, foco: modo === 'evento' ? focoLocal(mundo) : null });
+  const foco = modo === 'evento' ? focoLocal(mundo) : modo === 'cinema' ? paraLocal(mundo, mundo.marcoCinema) : null;
+  const alvo = alvoCamara(modo, pose, { fit, foco, agoraS: performance.now() / 1000 });
   if (modo === 'cauda' && mundo.alvoLook) puxarMiraParaAmeaca(alvo.mira, pose, mundo.alvoLook, fit);
   const cx = alvo.pos.x - pose.x;
   const cy = alvo.pos.y - pose.y;
@@ -738,8 +745,8 @@ function enquadrar(mundo, modo, pose, dt) {
     mundo.desvioMira = { x: mx, y: my, z: mz };
   } else {
     const t = Math.min(dt, 0.08);
-    const k = 1 - Math.exp(-K_CAMARA * t);
-    const ky = 1 - Math.exp(-K_VERTICAL * t);
+    const k = 1 - Math.exp(-(modo === 'cinema' ? K_CINEMA : K_CAMARA) * t);
+    const ky = 1 - Math.exp(-(modo === 'cinema' ? K_CINEMA : K_VERTICAL) * t);
     dc.x += (cx - dc.x) * k;
     dc.y += (cy - dc.y) * ky;
     dc.z += (cz - dc.z) * k;
@@ -784,7 +791,16 @@ export function focarEvento(mundo, foco) {
   mundo.camara = registarEvento(mundo.camara, performance.now() / 1000);
 }
 
-/** Botão do dock: cauda → lado → livre. Devolve o novo modo preferido. */
+/**
+ * Marco que o modo cinema enquadra com o avião (coordenadas ABSOLUTAS do
+ * mundo), ou null. O simulador passa o próximo ponto do circuito quando está
+ * perto e à frente.
+ */
+export function definirMarcoCinema(mundo, marco) {
+  if (mundo) mundo.marcoCinema = marco ? { x: marco.x, y: marco.y, z: marco.z } : null;
+}
+
+/** Botão do dock: cauda → lado → cinema → livre. Devolve o novo modo preferido. */
 export function alternarCamara(mundo) {
   mundo.camara = alternarPreferido(mundo.camara);
   return mundo.camara.preferido;

@@ -248,6 +248,22 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     };
   }
 
+  /**
+   * O próximo ponto do circuito, entre 300 m e 2,5 km e à frente do nariz, em
+   * coordenadas do mundo: o modo cinema enquadra-o com o avião (a ponte ao chegar).
+   */
+  function marcoCinema(voo) {
+    const alvo = s.m.destinos.find((d) => d.id === s.m.destinoId);
+    if (!alvo) return null;
+    const dx = alvo.xM - voo.xM;
+    const dz = alvo.zM - voo.zM;
+    const d = Math.hypot(dx, dz);
+    const erro = Math.atan2(dx, dz) - voo.rumoRad;
+    if (d < 300 || d > 2500 || Math.cos(erro) < 0.35) return null;
+    const x = -alvo.xM;
+    return { x, y: Math.max(0, alturaTerreno(perfilTerreno(s.m.cenario), x, alvo.zM)) + 40, z: alvo.zM };
+  }
+
   function desenhar(dt) {
     const { api, mundo } = s;
     if (!mundo) return;
@@ -263,6 +279,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
         const g = mundo.malhasAmeacas.get(novas.at(-1));
         if (g) { api.focarEvento(mundo, { x: g.position.x, y: g.position.y, z: g.position.z }); s.ultimoFoco = s.m.voo.tempoS; }
       }
+      api.definirMarcoCinema(mundo, marcoCinema(voo));
       api.actualizarCamara(mundo, pose, dt);
       api.actualizarCena(mundo, { pose: absoluta, poseLocal: pose, ambiente: s.m.ambiente, marcas: marcas(voo) }, s.pausa ? 0 : dt);
       mundo.renderer.render(mundo.scene, mundo.camera);

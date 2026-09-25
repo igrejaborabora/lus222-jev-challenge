@@ -65,7 +65,7 @@ O mundo 3D só desenha o estado da simulação; nada do que lá aparece é envia
   - lanternas a subir do rio com o vento e fogo de artifício.
 
   As lanternas e o fogo ficam abaixo dos 300 m e são só cenário: as ameaças vêm do director e da física. Cada peça é uma chamada de desenho.
-- **Câmara:** depois da abertura lateral, segue a cauda sem ficar para trás a 8×. Arrastar, pinçar ou usar a roda do rato orbita a vista à volta do avião (sem deslocar o centro); 4 s depois de largar, volta à cauda. No instante da decisão sobre os balões, enquadra avião e ameaça durante 2,6 s, com a ameaça perto do centro vertical para o selo não a tapar. O botão `Câmara` alterna entre cauda, lado e livre. A câmara nunca desce abaixo de 5 m acima do relevo ou do mar. Com movimento reduzido não há abertura. Ao sair da missão, as geometrias, texturas e sombras da cena são libertadas da GPU.
+- **Câmara:** depois da abertura lateral, segue a cauda sem ficar para trás a 8×. Arrastar, pinçar ou usar a roda do rato orbita a vista à volta do avião (sem deslocar o centro); 4 s depois de largar, volta à cauda. No instante da decisão sobre os balões, enquadra avião e ameaça durante 2,6 s, com a ameaça perto do centro vertical para o selo não a tapar. O botão `Câmara` alterna entre cauda, lado, cinema e livre. O modo cinema, pensado para vídeo, encadeia planos de 7 s em panorâmica: perseguição alta, lado, frente e órbita. No simulador, perto do próximo ponto do circuito, enquadra o avião e o ponto, por exemplo a ponte ao chegar. A câmara nunca desce abaixo de 5 m acima do relevo ou do mar. Com movimento reduzido não há abertura. Ao sair da missão, as geometrias, texturas e sombras da cena são libertadas da GPU.
 
 ## Cenários e rubricagem
 
