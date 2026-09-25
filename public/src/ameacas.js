@@ -59,6 +59,7 @@ export function nascerAmeacas(defs, voo, { tempoS = voo?.tempoS ?? 0, semente = 
       vyMs: Number(d.velocidade?.subidaMs) || 0,
       raioProtecaoM: Number(d.raioProtecaoM) || 30,
       membros: Number(d.membros) || 1,
+      cilindro: Boolean(d.cilindro),
       dispersaoM: Number(d.dispersaoM) || 0,
       nascidaS: tempoS,
       vidaS: Number(d.vidaS) || 180,
@@ -120,7 +121,9 @@ export function velocidadeSolo(voo, vento = { x: 0, z: 0 }) {
   };
 }
 
+/** Distância ao centro; uma célula é um cilindro (subir não a evita), só conta a horizontal. */
 export function distanciaM(voo, a) {
+  if (a.cilindro) return Math.hypot(a.xM - voo.xM, a.zM - voo.zM);
   return Math.hypot(a.xM - voo.xM, a.zM - voo.zM, a.altitudeM - voo.altitudeM);
 }
 
@@ -140,13 +143,13 @@ export function cpa(voo, a, vento = { x: 0, z: 0 }) {
   const tcpaS = w2 > 1e-6 && aproxima ? -(rx * wx + rz * wz) / w2 : 0;
   const hx = rx + wx * tcpaS;
   const hz = rz + wz * tcpaS;
-  const vertical = (a.altitudeM + a.vyMs * tcpaS) - (voo.altitudeM + v.y * tcpaS);
+  const vertical = a.cilindro ? 0 : (a.altitudeM + a.vyMs * tcpaS) - (voo.altitudeM + v.y * tcpaS);
   return {
     tcpaS,
     horizontalM: Math.hypot(hx, hz),
     verticalM: vertical,
     distanciaCpaM: Math.hypot(hx, hz, vertical),
-    distanciaAgoraM: Math.hypot(rx, rz, a.altitudeM - voo.altitudeM),
+    distanciaAgoraM: distanciaM(voo, a),
     movimento: aproxima ? 'converge' : 'afasta',
   };
 }
