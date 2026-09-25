@@ -3,7 +3,7 @@
  * /api/jev (momento piloto), para quem abre o site sem voo ao vivo.
  *
  *   node scripts/gravar-voo-jev.mjs [url-base] [semente] [segundos]
- *   (por omissão http://localhost:43200, semente 222, 240 s)
+ *   (por omissão http://localhost:43123, o `npm run preview`; semente 222, 240 s)
  *
  * Cada decisão guarda o passo em que foi pedida, o passo em que foi aplicada
  * (com a latência medida) e a resposta; a reprodução refaz tudo o resto.
@@ -13,7 +13,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { gravarVoo } from '../public/src/voo-gravado.js';
 import { POTENCIAS } from '../public/src/piloto-sim.js';
 
-const base = process.argv[2] ?? 'http://localhost:43200';
+const base = process.argv[2] ?? 'http://localhost:43123';
 const semente = Number(process.argv[3] ?? 222);
 const duracaoS = Number(process.argv[4] ?? 240);
 
