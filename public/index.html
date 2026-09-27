@@ -8,7 +8,7 @@
 <title>JEV / Mesa de missão</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./styles.css">
 <script>if (new URLSearchParams(location.search).get('lus222') === 'turntable') location.replace('./turntable.html');</script>
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }</script>
@@ -32,6 +32,11 @@
       <div class="hero-actions"><button type="button" class="button button-accent" id="btn-sim-abrir">Voar o LUS-222 <span aria-hidden="true">↗</span></button><button type="button" class="button button-outline" id="btn-open">Escolher missão <span aria-hidden="true">↗</span></button><span class="gateway-status" id="gateway-status" role="status">A verificar o Gateway…</span></div>
       <p class="hero-foot">typesafe-ai/jev via AI Gateway · dados estruturados, não imagens · física ilustrativa, não certificável · render do LUS-222: EEA Aircraft</p>
     </main>
+    <a class="px-brand" href="https://www.pixelgrammar.com/" target="_blank" rel="noopener noreferrer" aria-label="Pixelgrammar — estúdio criador, abre num novo separador">
+      <span class="px-credit">CRIADO PELA</span>
+      <span class="px-mark"><span class="px-fallback" aria-hidden="true">PX</span><canvas id="px-particles" role="img" aria-label="PX — Pixelgrammar"></canvas></span>
+      <span class="px-wordmark">PIXELGRAMMAR <span aria-hidden="true">↗</span></span>
+    </a>
     <div class="hero-index">QUATRO CENÁRIOS · PORTO EM DESTAQUE</div>
   </section>
 
@@ -152,16 +157,19 @@
         <p class="sim-aviso-voo" id="sim-aviso-voo" data-instrumento="aviso" role="status" hidden></p>
       </section>
       <p class="sim-objetivo" id="sim-objetivo">—</p>
-      <details class="sim-ajuda"><summary>Como pilotar</summary><div><b>Com o piloto Humano seleccionado</b><p>↑ / W subir · ↓ / S descer<br>← / A esquerda · → / D direita<br>E / Shift mais potência · Q / Ctrl menos</p><p>Segura uma tecla ou um botão. Ao largar, o avião nivela e mantém a altitude. O supervisor pode intervir para proteger o voo.</p><p>P pausa · C muda a câmara</p></div></details>
+      <details class="sim-ajuda"><summary>Como pilotar</summary><div><b>Uma ordem manual assume o voo</b><p>↑ / W subir · ↓ / S descer<br>← / A esquerda · → / D direita<br>E / Shift mais potência · Q / Ctrl menos</p><p>Clica em Subir ou Descer para manter esse comando. Clica em Nivelar (ou repete o botão activo) para manter a altitude. As setas/WASD actuam enquanto premidas e nivelam ao largar. Laterais e potência: mantém o botão premido. O supervisor continua a proteger o voo.</p><p>P pausa · C muda a câmara</p></div></details>
       <div class="sim-comandos">
-        <div class="sim-actuacao" id="sim-actuacao" role="group" aria-label="Actuação: carrega para pilotar; com o JEV aos comandos acende o que ele escolheu">
+        <div class="sim-manual"><p id="sim-comando-manual" class="sim-comando-manual">Clica num comando para assumir o voo.</p>
+        <div class="sim-actuacao" id="sim-actuacao" role="group" aria-label="Comandos de voo: clicar em Subir, Nivelar ou Descer; segurar os comandos laterais e de potência">
           <button type="button" class="sim-lampada" data-eixo="lateral" data-valor="esquerda" aria-label="Esquerda">◀ ESQ</button>
-          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="subir" aria-label="Subir">▲ SUBIR</button>
-          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="descer" aria-label="Descer">▼ DESCER</button>
+          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="subir" aria-label="Subir" aria-pressed="false" title="Clique para subida contínua; repetir ou Nivelar termina">▲ SUBIR</button>
+          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="manter" aria-label="Nivelar" aria-pressed="false" title="Terminar subida ou descida e manter a altitude">═ NIVELAR</button>
+          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="descer" aria-label="Descer" aria-pressed="false" title="Clique para descida contínua; repetir ou Nivelar termina">▼ DESCER</button>
           <button type="button" class="sim-lampada" data-eixo="lateral" data-valor="direita" aria-label="Direita">DIR ▶</button>
           <button type="button" class="sim-lampada" data-eixo="potencia" data-valor="mais" aria-label="Mais potência">POT +</button>
           <button type="button" class="sim-lampada" data-eixo="potencia" data-valor="menos" aria-label="Menos potência">POT −</button>
           <span class="sim-lampada sim-supervisor" id="sim-supervisor">SUPERVISOR</span>
+        </div>
         </div>
         <div class="sim-botoes">
           <button type="button" class="control-button" id="sim-pausa">Pausar</button>
@@ -202,6 +210,7 @@
   <div class="overlay" id="map-overlay" hidden><div class="overlay-card map-overlay-card"><p class="kicker">GOOGLE MAPS / IMAGEM REAL</p><h2>Pista do Porto.</h2><p>Vista de satélite do Aeroporto Francisco Sá Carneiro. A imagem não representa a noite de São João nem acompanha a posição simulada.</p><iframe title="Vista de satélite da pista do Porto no Google Maps" data-src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2812.334669533097!2d-8.6806638!3d41.2473992!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd246f64614a2bad%3A0x151a578a6d6039d1!2sAeroporto%20Francisco%20S%C3%A1%20Carneiro!5e1!3m2!1spt-PT!2spt!4v1790075229286!5m2!1spt-PT!2spt" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe><button type="button" class="button button-outline" id="btn-map-close">Fechar mapa</button></div></div>
 </div>
 <script type="module" src="./src/ambient.js"></script>
+<script type="module" src="./src/px-particles.js"></script>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
