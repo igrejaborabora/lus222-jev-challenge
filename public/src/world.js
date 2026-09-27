@@ -10,7 +10,7 @@ import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
 import { actualizarHelices, actualizarSuperficies, actualizarLuzes, criarLus222 } from './lus222.js';
 import { offsetLateral, pontoAmeaca } from './decisao.js';
 import { alturaAteFolga, indiceAmeacaAEnquadrar, posicaoVisualBaloes } from './ameaca-visual.js';
-import { actualizarTerreno, criarTerreno, escurecerTerreno, largarTerreno } from './terreno.js';
+import { definirFotoTerreno, actualizarTerreno, criarTerreno, escurecerTerreno, largarTerreno } from './terreno.js';
 import { alturaTerreno, perfilTerreno } from './relevo.js';
 import { TAMANHO_MOSAICO_M } from './mosaicos.js';
 import { actualizarCeu, criarCeu } from './ceu.js';
@@ -462,7 +462,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   if (pose) actualizarTerreno(terreno, pose.x, pose.z, Infinity);
   // Porto na noite de São João: pontes, Ribeira, luzes da cidade, lanternas e fogo.
   const portoNoite = cenario === 'porto' ? criarPortoNoite(geografia, { perfil: terreno.perfil, pistas: terreno.pistas, leve }) : null;
-  if (cenario === 'porto') criarPortoDetalhe(geografia, { perfil: terreno.perfil, pistas: terreno.pistas, leve });
+  const portoDetalhe=cenario === 'porto' ? criarPortoDetalhe(geografia, { perfil: terreno.perfil, pistas: terreno.pistas, leve }) : null;
   // Todas as referências derivam das mesmas pistas usadas pelo relevo/física.
   const pistasVisuais = criarPistasVisuais(geografia, pistas, { leve });
   scene.add(geografia);
@@ -504,6 +504,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     geografia,
     terreno,
     portoNoite,
+    portoDetalhe,
     pistasVisuais,
     molduraCockpit,
     marcas,
@@ -1105,4 +1106,11 @@ export function sincronizarAmeacas(mundo, ameacas, { atrasoS = 0, dt = 0 } = {})
   }
   actualizarTrajectos(mundo, ameacas, atrasoS);
   return novas;
+}
+
+/** The photo option changes only the ground material, never flight state. */
+export async function definirFotoPorto(mundo,activa) {
+  const estado=await definirFotoTerreno(mundo?.terreno,activa);
+  if(mundo?.portoDetalhe)mundo.portoDetalhe.visible=estado!=='ready';
+  return estado;
 }

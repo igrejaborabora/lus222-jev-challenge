@@ -1,3 +1,4 @@
+import { criarAssinaturaUI } from './flight-signature-ui.js';
 import { criarFlightLabUI } from './flight-lab-ui.js';
 import { criarCockpitUI } from './cockpit-ui.js';
 import { painelGuardado, guardarPainel, desvioDoPainel } from './cockpit-model.js';
@@ -111,6 +112,20 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   $('sim-instrumentos-toggle').setAttribute('aria-expanded',String(instrumentosVisiveis));
   const comandos = criarComandosUI({ estado: () => s, assumir: assumirComandos, iniciar, avisar });
   const lab = criarFlightLabUI({ estado:()=>s, assumir:assumirComandos, iniciar, pause:definirPausa, panelVisible:()=>instrumentosVisiveis, sound:som, liveAvailable:()=>gatewayDisponivel()&&aoVivoMs<LIMITE_AO_VIVO_MS });
+  const assinatura=criarAssinaturaUI($('sim-signature'),$('sim-signature-enabled'));
+  let pedidoFoto=0;
+  async function aplicarFoto() {
+    const pedido=++pedidoFoto,mundo=s.mundo;
+    $('sim-aerial-credit').hidden=true;
+    if(!mundo)return;
+    const activa=$('sim-ground').value==='aerial';
+    $('sim-ground-status').textContent=activa?'Loading Porto aerial imagery…':'Illustrated terrain.';
+    const estado=await s.api.definirFotoPorto(mundo,activa);
+    if(pedido!==pedidoFoto||s.mundo!==mundo)return;
+    $('sim-ground-status').textContent=estado==='ready'?'DGT / IFAP 2025 photo active · adapted to illustrative geography.':estado==='error'?'Photo unavailable. Illustrated terrain remains active; select again to retry.':'Illustrated terrain.';
+    $('sim-aerial-credit').hidden=estado!=='ready';
+  }
+  $('sim-ground').addEventListener('change',()=>{void aplicarFoto();});
   let painelManual = false;
   // O tempo de voo ao vivo do JEV conta por visita (página), não por voo.
   let aoVivoMs = 0;
@@ -507,6 +522,8 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     s.raf = requestAnimationFrame(quadro);
     const dt = Math.min(0.1, lab.remaining(), Math.max(0, (t - s.ultimo) / 1000));
     const previousFlight=s.m.voo;
+    const agl=previousFlight.altitudeM-alturaTerreno(perfilTerreno(s.m.cenario),-previousFlight.xM,previousFlight.zM);
+    assinatura.actualizar(dt,{activa:!s.pausa&&!s.m.resultado,ocupado:previousFlight.stall||s.m.ameacaAtiva!=null||(!previousFlight.emSolo&&agl<120)||(previousFlight.emSolo&&previousFlight.velocidadeMs>10)||previousFlight.fonteActuacao==='supervisor'});
     s.ultimo = t;
     if (!s.pausa && !s.m.resultado) {
       if (s.m.piloto.tipo === 'jev-gravado') comandos.gamepad();
@@ -568,6 +585,8 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   }
 
   function largarMundo() {
+    ++pedidoFoto;
+    $('sim-aerial-credit').hidden=true;
     try { if (s.mundo) s.api?.largarCena(s.mundo); } catch { /* sair nunca falha por causa da GPU */ }
     s.mundo = null;
   }
@@ -616,6 +635,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
       if(comparacao&&(!gatewayDisponivel()||aoVivoMs>=LIMITE_AO_VIVO_MS)) { comparacao=false; avisar('Live AI is unavailable. You have the controls.'); }
       else entregarAoJev();
     }
+    assinatura.reiniciar();
     lab.iniciar(s.m,{primeiroVoo,guiaVisual,comparacao});
     mostrar('sim');
     cockpit.iniciar();
@@ -636,6 +656,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
         periodo: s.m.ambiente.periodo,
       });
       ajustar();
+      void aplicarFoto();
     } catch {
       s.mundo = null;
       $('sim-canvas').style.background = 'linear-gradient(155deg,#090b0e,#20262c 55%,#454d55)';
@@ -646,6 +667,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   }
 
   function sair() {
+    assinatura.reiniciar();
     cockpit.parar();
     cancelarPedidosJev();
     ++s.geracao;
