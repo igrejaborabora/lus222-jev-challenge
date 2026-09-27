@@ -73,3 +73,11 @@ The 12-second, silent WebM and JPEG poster were captured from the actual simulat
 4. The approved multi-feature scope exceeds the change-size guideline. Stage reviewable commits in dependency order: independent engines, pure training/observations, visual flight references, then landing/UI integration. No API/schema changes or new dependencies were introduced.
 
 The original checkout's unrelated strategic-JEV edits were left untouched.
+
+## Pending follow-up — PX in “From the Lab”
+
+Requested by Fernando on 27 September 2026 through the browser annotation on `#lab-about > .lab-about-mark`.
+
+Replace the static PX treatment in the “From the Lab” section with the same dynamic particle logo used by the header and BotFfett: formation, pointer response and light sweep. Reuse the shared particle implementation with separate canvas instances; retain the Pixelgrammar Lab caption, accessible fallback, reduced-motion support and pause when offscreen.
+
+Status: recorded for the next visual refinement; not implemented in the release above. This note does not request a different logo or changes to the surrounding copy.
