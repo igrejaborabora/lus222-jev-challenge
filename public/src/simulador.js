@@ -3,6 +3,7 @@ import { ambienteMeteorologico } from './meteorologia.js';
 import { novoTreino } from './treino.js';
 import { PERFIL } from './simulacao.js';
 import { novoPiloto } from './piloto-sim.js';
+import { calcularMotores } from './engine-model.js';
 
 /**
  * Voo livre sobre o Porto na noite de São João: circuito de pontos de
@@ -74,6 +75,7 @@ export function criarVooProgressivo(semente = 222, { exercicio = 'livre', tempo 
     voo = { ...voo, xM: 0, zM: 159900, rumoRad: 0, altitudeM: 195, altitudeAlvoM: 195, velocidadeMs: 64, acelerador: 0.5, potencia: 0.5, flaps: 0.65 };
     Object.assign(controlos, { flaps: 0.65, luzesAterragem: true });
   }
+  voo = { ...voo, motores: calcularMotores(voo, controlos, PERFIL) };
   return { ...m, perfil: PERFIL_PROGRESSIVO, controlos, treino, voo,
     ambiente: ambienteMeteorologico(tempo, ambiente),
     pistas: m.pistas.map((p) => ({ ...p, raioPlanoM: 2000 })),
