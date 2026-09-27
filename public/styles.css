@@ -453,3 +453,30 @@ button:disabled{opacity:.42;cursor:not-allowed}
 @keyframes px-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 @media(max-width:760px){.px-brand{top:calc(68px + var(--safe-t));bottom:auto;right:18px;width:146px}.px-credit{font-size:7px}.px-wordmark{font-size:8px;letter-spacing:.18em}#hero-particles{display:none}}
 @media(prefers-reduced-motion:reduce){.px-brand{animation:none}}
+
+/* Controlos de treino: painel lateral com navegação por teclado e labels visíveis. */
+.sim-config{display:grid;gap:10px}.sim-config label{display:grid;gap:6px;font:10px/1.4 var(--mono);color:#cbd5dc}
+.sim-config input,.sim-config select{min-width:0;width:100%;border:1px solid #49515a;border-radius:3px;background:#11191e;color:#f4f6f8;padding:8px;font:12px var(--mono);color-scheme:dark}
+.sim-config input[type=range]{padding:4px 0;accent-color:#78d0ce;min-height:28px}.sim-config input:focus-visible,.sim-config select:focus-visible{outline:2px solid #78d0ce;outline-offset:2px}
+.sim-config output{color:#78d0ce}.sim-config-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:end}
+.sim-config .sim-check{display:flex;align-items:center;gap:6px;min-height:32px}.sim-check input{width:16px;height:16px;margin:0;accent-color:#78d0ce}
+.sim-config .control-button{white-space:normal;min-height:38px}.sim-config input:disabled{opacity:.4}.sim-config .sim-nota{margin:0;color:#a9bac6;font:10px/1.6 var(--mono)}
+.sim-config button[aria-pressed=true]{border-color:#78d0ce;background:#173032}.sim-config #sim-treino-avaliacao:not(:empty){padding:10px;border-left:2px solid #78d0ce;background:#14252a;color:#d0edeb}
+
+/* Escolha do piloto e decisão da IA ficam no palco, mesmo com o painel fechado. */
+.sim-piloto #sim-piloto-jev{border-color:#8a79e8;background:#332659;color:#e9e2ff;display:flex;align-items:center;gap:8px;font-weight:600}
+.sim-piloto #sim-piloto-jev[aria-pressed=true]{background:#b9a2ff;color:#1b1136;border-color:#dccfff;box-shadow:0 0 0 2px #b9a2ff38}
+.sim-piloto small{font:9px var(--mono);opacity:.8}.sim-decisao{position:absolute;z-index:3;top:76px;right:16px;width:min(295px,40%);padding:12px 14px;background:#171326eb;border:1px solid #a58ad1;border-left:3px solid #b9a2ff;color:#efe8ff;box-shadow:0 5px 20px #0004}
+.sim-decisao>span{font:9px var(--mono);letter-spacing:.08em;color:#c7b6f4}.sim-decisao strong{display:block;font:600 19px var(--display);margin:6px 0}.sim-decisao p{font:11px/1.5 var(--mono);margin:0 0 6px}.sim-decisao small{font:9px/1.4 var(--mono);color:#c5bbd6}
+@media(max-width:760px){.sim-piloto #sim-piloto-jev{font-size:10px;gap:4px;padding:8px 7px}.sim-piloto small{display:none}.sim-topo .flight-identity small{display:none}.sim-topo .flight-identity b{font-size:10px}.sim-decisao{top:185px;left:8px;right:8px;width:auto;padding:8px 10px}.sim-decisao strong{font-size:15px;margin:3px 0}.sim-decisao p{font-size:9px;margin:0 0 3px}.sim-decisao>span,.sim-decisao small{font-size:8px}}
+@media(max-height:720px){.sim-decisao{padding:6px 9px}.sim-decisao strong{font-size:14px;margin:2px 0}.sim-decisao p{font-size:9px;margin:0}.sim-decisao small{font-size:8px}}
+
+.sim-voltar-voo{display:none}@media(max-width:760px){.sim-voltar-voo{display:block;position:sticky;top:0;z-index:5;background:#152127;min-height:42px;border-color:#78d0ce}}
+
+/* Movimento medido: cor e símbolo acompanham sempre a trajectória real. */
+.sim-atitude-valores{flex-wrap:wrap;row-gap:4px}
+.sim-trajectoria-valor{color:#82e5c2}
+.sim-instrumentos[data-movimento="subir"] .sim-leitura-vsi b,.sim-instrumentos[data-movimento="subir"] [data-instrumento="movimento"]{color:#82e5c2}
+.sim-instrumentos[data-movimento="descer"] .sim-leitura-vsi b,.sim-instrumentos[data-movimento="descer"] [data-instrumento="movimento"]{color:#8fc9ff}
+.sim-instrumentos[data-movimento="subir"] [data-instrumento="movimento"]::before{content:"↑ "}
+.sim-instrumentos[data-movimento="descer"] [data-instrumento="movimento"]::before{content:"↓ "}

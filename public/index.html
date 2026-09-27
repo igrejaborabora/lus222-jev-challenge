@@ -111,8 +111,8 @@
       <header class="sim-topo">
         <div class="flight-identity"><span class="brand-mark small">J<span>·</span>EV</span><div><b>Simulador LUS-222</b><small id="sim-fonte">Voo livre · Porto · noite de São João</small></div></div>
         <div class="sim-piloto" role="group" aria-label="Quem pilota o LUS-222">
-          <button type="button" id="sim-piloto-jev" aria-pressed="false" title="Entregar os comandos ao JEV">JEV</button>
-          <button type="button" id="sim-piloto-humano" aria-pressed="true">Humano</button>
+          <button type="button" id="sim-piloto-jev" aria-pressed="false" title="A inteligência artificial JEV assume os comandos">Controlo por IA <small>JEV</small></button>
+          <button type="button" id="sim-piloto-humano" aria-pressed="true">Eu piloto</button>
         </div>
         <button type="button" class="flight-sound" id="sim-som" aria-pressed="true" aria-label="Som dos motores" title="Som dos motores"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="som-ondas" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="som-mudo" d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
         <button type="button" class="flight-exit" id="sim-sair">Sair</button>
@@ -136,13 +136,14 @@
                     <path d="M-22 -25H22 M-30 -50H30 M-22 25H22 M-30 50H30 M-12 -12.5H12 M-12 12.5H12"/>
                     <g stroke="none"><text x="-35" y="-22">10</text><text x="35" y="-22">10</text><text x="-42" y="-47">20</text><text x="42" y="-47">20</text><text x="-35" y="28">10</text><text x="35" y="28">10</text><text x="-42" y="53">20</text><text x="42" y="53">20</text></g>
                   </g>
+                  <g id="sim-trajectoria" fill="none" stroke="#82e5c2" stroke-width="1.8"><circle r="4"/><path d="M-13 0h9 M4 0h9 M0 -4v-5"/></g>
                 </g>
               </g>
               <g fill="none" stroke="#c9d2d8"><path d="M-47 -36A59 59 0 0 1 47 -36" opacity=".6"/><path d="M0 -59v6 M-30 -51l3 5 M30 -51l-3 5 M-42 -42l4 4 M42 -42l-4 4"/></g>
               <path d="M0 -49l-4 7h8z M-47 0h25v6 M47 0H22v6 M-5 0h10" fill="none" stroke="#ffe0a0" stroke-width="2.5"/>
               <circle r="2" fill="#ffe0a0"/>
             </svg>
-            <div class="sim-atitude-valores"><span>NARIZ <b data-instrumento="pitch">0°</b></span><span>ASA <b data-instrumento="bank">0°</b></span></div>
+            <div class="sim-atitude-valores"><span>NARIZ <b data-instrumento="pitch">0°</b></span><span>ASA <b data-instrumento="bank">0°</b></span><span class="sim-trajectoria-valor">TRAJ <b data-instrumento="trajectoria">0°</b></span></div>
           </div>
           <div class="sim-leituras">
             <div class="sim-leitura"><span>VELOCIDADE</span><div><b id="sim-vel" data-instrumento="velocidade">—</b><small>kt</small></div><em>no ar · simulada</em></div>
@@ -157,7 +158,8 @@
         <p class="sim-aviso-voo" id="sim-aviso-voo" data-instrumento="aviso" role="status" hidden></p>
       </section>
       <p class="sim-objetivo" id="sim-objetivo">—</p>
-      <details class="sim-ajuda"><summary>Como pilotar</summary><div><b>Uma ordem manual assume o voo</b><p>↑ / W subir · ↓ / S descer<br>← / A esquerda · → / D direita<br>E / Shift mais potência · Q / Ctrl menos</p><p>Clica em Subir ou Descer para manter esse comando. Clica em Nivelar (ou repete o botão activo) para manter a altitude. As setas/WASD actuam enquanto premidas e nivelam ao largar. Laterais e potência: mantém o botão premido. O supervisor continua a proteger o voo.</p><p>P pausa · C muda a câmara</p></div></details>
+      <aside class="sim-decisao" id="sim-decisao" aria-label="Decisão actual da inteligência artificial" hidden><span id="sim-decisao-fonte">CONTROLO POR IA · JEV</span><strong id="sim-decisao-manobra">A aguardar decisão…</strong><p id="sim-decisao-detalhe">O JEV selecciona manobra e potência.</p><small id="sim-decisao-estado">O supervisor pode intervir.</small></aside>
+      <details class="sim-ajuda"><summary>Como pilotar</summary><div><b>Uma ordem manual assume o voo</b><p>↑ / W subir · ↓ / S descer<br>← / A esquerda · → / D direita<br>E / Shift mais potência · Q / Ctrl menos</p><p>Clica em Subir ou Descer para manter esse comando. Clica em Nivelar (ou repete o botão activo) para manter a altitude. As setas/WASD actuam enquanto premidas e nivelam ao largar. Laterais e potência: mantém o botão premido. O supervisor continua a proteger o voo. Confirma ALTITUDE e VERTICAL: a câmara acompanha o avião. No horizonte, o círculo verde mostra a trajectória; o símbolo amarelo mostra o nariz.</p><p>P pausa · C muda a câmara · B trava<br>Z / X leme em modo avançado. Voo / Ambiente / JEV abre alvos, potência, sistemas e treino.</p></div></details>
       <div class="sim-comandos">
         <div class="sim-manual"><p id="sim-comando-manual" class="sim-comando-manual">Clica num comando para assumir o voo.</p>
         <div class="sim-actuacao" id="sim-actuacao" role="group" aria-label="Comandos de voo: clicar em Subir, Nivelar ou Descer; segurar os comandos laterais e de potência">
@@ -174,12 +176,53 @@
         <div class="sim-botoes">
           <button type="button" class="control-button" id="sim-pausa">Pausar</button>
           <button type="button" class="control-button" id="sim-camara">Câmara: cauda</button>
-          <button type="button" class="control-button" id="sim-painel-toggle" aria-expanded="true" aria-controls="sim-painel">JEV / Sistemas</button>
+          <button type="button" class="control-button" id="sim-painel-toggle" aria-expanded="true" aria-controls="sim-painel">Voo / Ambiente / JEV</button>
         </div>
       </div>
       <div class="overlay" id="sim-fim" hidden><div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="sim-fim-titulo"><p class="kicker" id="sim-fim-kicker">FIM DO VOO</p><h2 id="sim-fim-titulo">—</h2><p id="sim-fim-texto">—</p><div class="overlay-actions"><button type="button" class="button button-accent" id="sim-repetir">Voar outra vez</button><button type="button" class="button button-outline" id="sim-fim-sair">Sair</button></div></div></div>
     </div>
     <aside class="sim-painel" id="sim-painel" aria-label="Painel do JEV e sistemas">
+      <button type="button" class="control-button sim-voltar-voo" id="sim-voltar-voo">Voltar ao voo ↑</button>
+      <section class="sim-bloco sim-config" aria-labelledby="sim-config-titulo">
+        <h2 class="sim-h" id="sim-config-titulo">COMANDOS <span>PERFIL DE TREINO</span></h2>
+        <label>Potência <output id="sim-potencia-out">55%</output><input id="sim-potencia-range" type="range" min="0" max="100" step="1" value="55"></label>
+        <form id="sim-alvos" class="sim-config-grid">
+          <label>Modo vertical<select id="sim-modo-vertical"><option value="livre">Manter / manual</option><option value="altitude">Capturar altitude</option><option value="vertical">Razão vertical</option></select></label>
+          <label>Altitude · ft<input id="sim-alvo-alt" type="number" min="40" max="11480" step="10" value="1800" required></label>
+          <label>Vertical · ft/min<input id="sim-alvo-vs" type="number" min="-1500" max="1500" step="50" value="600" required></label>
+          <label>Rumo · °<input id="sim-alvo-rumo" type="number" min="0" max="359" step="1" value="90" required></label>
+          <label class="sim-check"><input id="sim-seguir-rumo" type="checkbox"> Capturar rumo</label>
+          <button class="control-button" type="submit">Aplicar alvos</button>
+        </form>
+        <p id="sim-alvos-estado" class="sim-nota">Sem alvos seleccionados.</p>
+        <div class="sim-config-grid">
+          <label>Flaps · ilustrativos<select id="sim-flaps"><option value="0">Recolhidos</option><option value="0.35">Descolagem</option><option value="0.65">Aproximação</option><option value="1">Máximos</option></select></label>
+          <label>Assistência<select id="sim-modo-voo"><option value="assistido">Assistido</option><option value="avancado">Avançado · trim / leme</option></select></label>
+          <label>Trim <input id="sim-trim" type="range" min="-100" max="100" value="0" disabled></label>
+          <label>Leme <input id="sim-leme" type="range" min="-100" max="100" value="0" disabled></label>
+          <label class="sim-check"><input id="sim-travao" type="checkbox"> Travões / B</label>
+          <label class="sim-check"><input id="sim-luzes-nav" type="checkbox" checked> Navegação</label>
+          <label class="sim-check"><input id="sim-luzes-pista" type="checkbox"> Faróis</label>
+        </div>
+        <p id="sim-gamepad" class="sim-nota">Gamepad standard: ligar e mover um eixo. Z / X: leme no modo avançado.</p>
+      </section>
+      <section class="sim-bloco sim-config" aria-labelledby="sim-treino-titulo">
+        <h2 class="sim-h" id="sim-treino-titulo">VOO E TREINO</h2>
+        <label>Início / exercício<select id="sim-exercicio"><option value="livre">Voo livre sobre o Porto</option><option value="solo">Na pista · descolagem</option><option value="aproximacao">Final · aterragem manual</option><option value="altitude">Manter 1800 ft · 60 s</option><option value="rumo">Manter rumo 090° · 60 s</option></select></label>
+        <button type="button" class="control-button" id="sim-iniciar-exercicio">Iniciar novo voo</button>
+        <div class="sim-config-grid"><button type="button" class="control-button" id="sim-aproximacao" aria-pressed="false">Guiar aproximação</button><button type="button" class="control-button" id="sim-borrego">Borrego</button></div>
+        <p id="sim-treino-estado" class="sim-nota">Subir para rodar na descolagem; reduzir potência e travar após o toque. Aproximação guiada disponível alinhado com a pista.</p>
+        <p id="sim-treino-avaliacao" class="sim-nota" role="status"></p>
+      </section>
+      <section class="sim-bloco sim-config" aria-labelledby="sim-ambiente-titulo">
+        <h2 class="sim-h" id="sim-ambiente-titulo">PORTO · AMBIENTE</h2>
+        <div class="sim-config-grid">
+          <label>Luz<select id="sim-periodo"><option value="anoitecer">Anoitecer</option><option value="dia">Dia</option><option value="noite">Noite</option></select></label>
+          <label>Meteorologia<select id="sim-tempo"><option value="limpo">Céu limpo</option><option value="poucas_nuvens" selected>Poucas nuvens</option><option value="nublado">Encoberto</option><option value="chuva">Chuva</option><option value="tempestade">Tempestade</option></select></label>
+        </div>
+        <label>Nuvens <output id="sim-nuvens-out">30%</output><input id="sim-nuvens" type="range" min="0" max="100" value="30"></label>
+        <p class="sim-nota">Meteorologia simulada. Chuva reduz a travagem; tempestade acrescenta rajadas. Porto ilustrativo, sem fotografia aérea.</p>
+      </section>
       <section class="sim-bloco"><h2 class="sim-h">SISTEMAS <span>SIMULAÇÃO</span></h2><dl class="sim-contadores sim-sistemas">
         <div><dt>VELOCIDADE NO SOLO</dt><dd><b data-instrumento="solo">—</b> <small>kt</small></dd></div>
         <div><dt>CONSUMO ACTUAL</dt><dd><b data-instrumento="consumo">—</b> <small>kg/h</small></dd></div>
