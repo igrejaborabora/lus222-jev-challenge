@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="./cockpit.css">
 <link rel="stylesheet" href="./lab.css">
 <link rel="stylesheet" href="./flight-lab.css">
+<link rel="stylesheet" href="./flight-surface.css">
 <script>if (new URLSearchParams(location.search).get('lus222') === 'turntable') location.replace('./turntable.html');</script>
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }</script>
 </head>
@@ -211,6 +212,8 @@
           <button type="button" class="control-button" id="sim-painel-toggle" aria-expanded="true" aria-controls="sim-painel">Flight / Weather / JEV</button>
         </div>
       </div>
+      <small id="sim-aerial-credit" class="sim-aerial-credit" hidden>PHOTO © <a href="https://www.dgterritorio.gov.pt/atividades/cartografia/cartografia-topografica/ortofotos/ortofotos-digitais" target="_blank" rel="noopener noreferrer">DGT / IFAP · 2025 ↗</a> · ILLUSTRATIVE TERRAIN</small>
+      <div id="sim-signature" class="sim-signature" hidden><a href="https://www.pixelgrammar.com/" target="_blank" rel="noopener noreferrer" aria-label="Developed by Pixelgrammar — opens in a new tab"><canvas aria-hidden="true"></canvas><span aria-hidden="true">PX · DEVELOPED BY PIXELGRAMMAR.COM</span></a></div>
       <div class="overlay" id="sim-fim" hidden><div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="sim-fim-titulo"><p class="kicker" id="sim-fim-kicker">FLIGHT ENDED</p><h2 id="sim-fim-titulo">—</h2><p id="sim-fim-texto">—</p><div class="flight-lab-report" id="lab-final-report"></div><div class="overlay-actions"><button type="button" class="button button-accent" id="sim-repetir">Fly again</button><button type="button" class="button button-outline" id="sim-fim-sair">Exit</button></div></div></div>
     </div>
     <aside class="sim-painel" id="sim-painel" aria-label="JEV and aircraft systems">
@@ -257,7 +260,10 @@
           <label>Weather<select id="sim-tempo"><option value="limpo">Clear skies</option><option value="poucas_nuvens" selected>Few clouds</option><option value="nublado">Overcast</option><option value="chuva">Rain</option><option value="tempestade">Storm</option></select></label>
         </div>
         <label>Cloud cover <output id="sim-nuvens-out">30%</output><input id="sim-nuvens" type="range" min="0" max="100" value="30"></label>
-        <p class="sim-nota">Simulated weather. Rain reduces braking; storms add gusts. Porto is an illustrative 3D scene, not aerial imagery.</p>
+        <label>Ground surface<select id="sim-ground"><option value="illustrated">Illustrated Porto</option><option value="aerial">Aerial photo · experiment</option></select></label>
+        <p id="sim-ground-status" class="sim-nota" role="status">Illustrated terrain. Choose aerial photo to try real Porto imagery.</p>
+        <p class="sim-nota">The photo is adapted to this scene. Heights, coastline, buildings and flight physics remain illustrative. Rain reduces braking; storms add gusts.</p>
+        <label class="sim-check"><input id="sim-signature-enabled" type="checkbox" checked> Pixelgrammar signature · every 30 seconds</label>
       </section>
       <section class="sim-bloco"><h2 class="sim-h">SYSTEMS <span>SIMULATION</span></h2><dl class="sim-contadores sim-sistemas">
         <div><dt>GROUND SPEED</dt><dd><b data-instrumento="solo">—</b> <small>kt</small></dd></div>

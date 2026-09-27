@@ -2,6 +2,12 @@ import { access, readFile } from 'node:fs/promises';
 
 const root = new URL('../', import.meta.url);
 const requiredAssets = [
+  'public/flight-surface.css',
+  'public/src/porto-aerial.js',
+  'public/src/flight-signature-ui.js',
+  'public/src/flight-signature.js',
+  'public/terrain/porto/ortho-2025-2048.jpg',
+  'public/terrain/porto/ortho-2025-4096.jpg',
   'public/src/lus222.js',
   'public/src/turntable.js',
   'public/src/world.js',

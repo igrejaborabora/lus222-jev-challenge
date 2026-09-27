@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FOTO_PORTO, coordenadasFotoPorto, pesoFotoPorto } from './porto-aerial.js';
 import { alturaTerreno, perfilComAgua, prepararPistas, urbanoEm, ruido2, distanciaAoRio } from './relevo.js';
 import { mosaicosAManter, mosaicosNecessarios, planearMosaicos, TAMANHO_MOSAICO_M } from './mosaicos.js';
 
@@ -97,6 +98,14 @@ function geometriaMosaico(t, i, j) {
     }
   }
   geo.setAttribute('color', new THREE.BufferAttribute(cores, 3));
+  if (t.foto) {
+    const uvPeso = new Float32Array(pos.count * 3);
+    for (let k=0;k<pos.count;k++) {
+      const x=cx+pos.getX(k),z=cz+pos.getZ(k),{u,v}=coordenadasFotoPorto(x,z);
+      uvPeso.set([u,v,pesoFotoPorto(x,z,pos.getY(k),t.pistas)],k*3);
+    }
+    geo.setAttribute('fotoUVPeso',new THREE.BufferAttribute(uvPeso,3));
+  }
   if (t.urbano) {
     const urbano = new Float32Array(pos.count);
     for (let iy = 0; iy <= seg; iy++) {
@@ -117,16 +126,25 @@ function materialDoTerreno(perfil) {
   const material = new THREE.MeshLambertMaterial({ vertexColors: true });
   if (!perfil?.cidade) return { material, urbano: null };
   const urbano = { value: 0 };
+  const foto = { mapa:{value:null}, intensidade:{value:0}, pedida:false, textura:null, loading:null, libertada:false };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.brilhoUrbano = urbano;
+    shader.uniforms.fotoPorto = foto.mapa;
+    shader.uniforms.pesoFoto = foto.intensidade;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float urbano;\nvarying float vUrbano;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvUrbano = urbano;');
+      .replace('#include <common>', '#include <common>\nattribute float urbano;\nvarying float vUrbano;\nattribute vec3 fotoUVPeso;\nvarying vec3 vFoto;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvUrbano = urbano; vFoto = fotoUVPeso;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying float vUrbano;\nuniform float brilhoUrbano;')
+      .replace('#include <common>', '#include <common>\nvarying float vUrbano;\nuniform float brilhoUrbano;\nvarying vec3 vFoto;\nuniform sampler2D fotoPorto;\nuniform float pesoFoto;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        if (pesoFoto > 0.0 && vFoto.z > 0.0) {
+          vec3 foto = texture2D(fotoPorto, clamp(vFoto.xy, 0.0, 1.0)).rgb;
+          float coberta = 1.0 - smoothstep(0.91, 0.99, min(foto.r, min(foto.g, foto.b)));
+          diffuseColor.rgb = mix(diffuseColor.rgb, foto, vFoto.z * pesoFoto * coberta);
+        }`)
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0, 0.6, 0.25) * pow(vUrbano, 1.6) * brilhoUrbano;');
   };
-  return { material, urbano };
+  return { material, urbano, foto };
 }
 
 export function criarTerreno({ perfil, pistas = [], leve = false }) {
@@ -138,7 +156,7 @@ export function criarTerreno({ perfil, pistas = [], leve = false }) {
   const mar = new THREE.Mesh(new THREE.PlaneGeometry(lado, lado), new THREE.MeshLambertMaterial({ color: COR_MAR }));
   mar.rotation.x = -Math.PI / 2;
   grupo.add(mar);
-  const { material, urbano } = materialDoTerreno(perfil);
+  const { material, urbano, foto } = materialDoTerreno(perfil);
   return {
     grupo,
     mar,
@@ -150,6 +168,8 @@ export function criarTerreno({ perfil, pistas = [], leve = false }) {
     segmentos: leve ? 24 : 48,
     material,
     urbano,
+    foto,
+    leve,
     mosaicos: new Map(),
     // Célula (mosaico) onde o avião estava no último plano; NaN obriga a planear.
     celulaI: NaN,
@@ -213,7 +233,29 @@ export function escurecerTerreno(t, luzes) {
   if (t.urbano) t.urbano.value = 0.1 * luzes;
 }
 
+/** Lazy and bounded: returning to illustrated ground never waits for a texture. */
+export async function definirFotoTerreno(t, activa) {
+  const f=t?.foto;
+  if (!f || f.libertada) return 'off';
+  f.pedida=activa;
+  f.intensidade.value=activa && f.textura ? 1 : 0;
+  if (!activa) return 'off';
+  if (!f.textura && !f.loading) {
+    f.loading=new THREE.TextureLoader().loadAsync(t.leve?FOTO_PORTO.mobile:FOTO_PORTO.desktop)
+      .then(texture=>{
+        if(f.libertada){texture.dispose();return;}
+        texture.colorSpace=THREE.SRGBColorSpace;
+        texture.anisotropy=4;
+        f.textura=texture;f.mapa.value=texture;
+        f.intensidade.value=f.pedida?1:0;
+      }).finally(()=>{f.loading=null;});
+  }
+  try { await f.loading; } catch { return f.pedida?'error':'off'; }
+  return f.libertada||!f.pedida?'off':'ready';
+}
+
 export function largarTerreno(t) {
+  if(t.foto){t.foto.libertada=true;t.foto.textura?.dispose();t.foto.mapa.value=null;}
   for (const mesh of t.mosaicos.values()) {
     t.grupo.remove(mesh);
     mesh.geometry.dispose();

@@ -40,3 +40,15 @@ Files: `public/src/flight-signature.js`, `public/src/flight-signature-ui.js`, `l
 - Browser plugin/skill is absent; use existing Playwright runtime. Check landing -> simulator -> choose photo -> load actual surface -> switch back. Verify desktop and mobile, failed image load, banner scheduling and reduced motion. No paid AI calls.
 - Review screenshots and console; record actual limitations and asset costs.
 - Commit focused changes, push, PR, attach artifact, merge with CI green, verify production.
+
+## Implementation and verification
+
+Implemented the opt-in aerial surface and the simulator signature. The photo hides the generic extra city/road layer while retaining the simulated river, bridges and runway. No height or flight model changed. Packaged WMS JPEG responses: 2048 px / 1,249,430 bytes and 4096 px / 4,290,658 bytes. The larger version uses approximately 64 MiB of base RGBA texture storage before mipmaps; mobile requests only the smaller version. Source pixels are adapted to two scene anchors and fade outside coverage, near the simulated runway, below the shoreline and at blank source pixels.
+
+QA: 367 Node tests passed, plus ESLint, static asset build and diff check. Playwright Chromium/WebGL (software renderer), 1440×1000 and 390×844: page identity and meaningful rendering, zero runtime/shader errors, lazy image load, mobile asset selection, on/off/reuse, permanent attribution, failure fallback, pause/hide/exit, reduced motion and no mobile overflow. The actual banner UI was also driven through 29/30/34/38/60 seconds to verify timing and critical-state deferral. Screenshots were inspected; no paid AI calls were made. Browser plugin/skill was absent; existing Playwright was used.
+
+Limits: this remains a photographic surface experiment. The existing world is not georeferenced; aerial features do not all align with the simulated coastline/river or buildings, and detail becomes soft near ground level. True elevation, geographically placed buildings and streaming high-resolution tiles are future work. Hardware GPU performance and Safari have not been validated.
+
+## Follow-up raised during this work — AI landing objective
+
+Fernando asked why handing control to JEV does not mean a gentle landing at Porto. Current AI selects manoeuvres for the route and hazards; the deterministic assisted approach is separate. Proposed next step: explicit `AI: fly the route` / `AI: land at Porto` objectives, a visible phase sequence, JEV approach/hold/go-around judgements, continuous deterministic flight control and immediate manual takeover. This release does not implement or claim JEV autoland.
