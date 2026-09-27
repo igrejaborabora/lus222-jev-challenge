@@ -1,3 +1,4 @@
+import { criarInstrumentosUI } from './instrumentos-ui.js';
 import { poseMissao } from './escala.js';
 import { avancarMissao, PERFIL, vooInterpolado } from './simulacao.js';
 import { criarVooLivre, NOMES_CIRCUITO } from './simulador.js';
@@ -74,6 +75,8 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     ultimoFoco: -Infinity, geracao: 0, mapa: null,
     ordens: '', jev: null, aviso: null, gravacao: null, cursor: null,
   };
+  const instrumentos = criarInstrumentosUI($('screen-sim'));
+  let painelManual = false;
   // O tempo de voo ao vivo do JEV conta por visita (página), não por voo.
   let aoVivoMs = 0;
 
@@ -92,6 +95,9 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   }
 
   function marcarPiloto(tipo) {
+    s.teclas.clear();
+    s.toque.clear();
+    if (!painelManual) definirPainel(tipo !== 'humano');
     $('sim-piloto-humano').setAttribute('aria-pressed', String(tipo === 'humano'));
     $('sim-piloto-jev').setAttribute('aria-pressed', String(tipo !== 'humano'));
     const data = s.gravacao?.gravadoEm ? new Date(s.gravacao.gravadoEm).toLocaleDateString('pt-PT') : '';
@@ -266,9 +272,10 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
 
   function desenhar(dt) {
     const { api, mundo } = s;
+    const voo = vooInterpolado(s.m);
+    instrumentos.atitude(voo);
     if (!mundo) return;
     try {
-      const voo = vooInterpolado(s.m);
       const absoluta = poseMissao(voo, null);
       const pose = api.recentrarOrigem(mundo, absoluta);
       api.aplicarPose(mundo, pose);
@@ -308,11 +315,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
 
   function actualizarHud() {
     const v = s.m.voo;
-    $('sim-vel').textContent = Math.round(v.velocidadeMs * 1.94384);
-    $('sim-alt').textContent = Math.round(v.altitudeM * 3.28084).toLocaleString('pt-PT');
-    $('sim-rumo').textContent = String(Math.round(((v.rumoRad * 180) / Math.PI % 360 + 360) % 360)).padStart(3, '0');
-    $('sim-pot').textContent = Math.round((v.acelerador ?? 0.55) * 100);
-    $('sim-fuel').textContent = Math.round(v.combustivelKg);
+    instrumentos.actualizar(s.m, vooInterpolado(s.m));
     const d = s.m.destinos.find((x) => x.id === s.m.destinoId);
     const km = Math.hypot(d.xM - v.xM, d.zM - v.zM) / 1000;
     $('sim-objetivo').textContent = `Próximo: ${NOMES_CIRCUITO[d.id] ?? d.id} · ${km.toFixed(1).replace('.', ',')} km · ${s.m.pontosPassados.length} pontos passados`;
@@ -458,9 +461,19 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   }
 
   function ajustar() {
-    if (!s.mundo) return;
     const r = $('sim-canvas').getBoundingClientRect();
-    if (r.width > 1 && r.height > 1) s.api.redimensionar(s.mundo, Math.round(r.width), Math.round(r.height));
+    if (r.width <= 1 || r.height <= 1) return;
+    const instrumentosEl = $('sim-instrumentos');
+    const comandos = $('screen-sim').querySelector('.sim-comandos').getBoundingClientRect();
+    instrumentosEl.style.bottom = `${Math.max(0, r.bottom - comandos.top) + 16}px`;
+    if (!s.mundo) return;
+    const w = Math.round(r.width);
+    const h = Math.round(r.height);
+    s.api.redimensionar(s.mundo, w, h);
+    // Reserva a parte inferior para instrumentos sem esconder o avião atrás deles.
+    const painel = $('sim-instrumentos').getBoundingClientRect();
+    const deslocamento = Math.min(h * 0.28, Math.max(0, r.bottom - painel.top) * (h < 700 ? 0.55 : 0.4));
+    s.mundo.camera.setViewOffset(w, h, 0, deslocamento, w, h);
   }
 
   function largarMundo() {
@@ -469,6 +482,8 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   }
 
   function definirPausa(p) {
+    s.teclas.clear();
+    s.toque.clear();
     s.pausa = Boolean(p);
     $('sim-pausa').textContent = s.pausa ? 'Continuar' : 'Pausar';
   }
@@ -540,13 +555,13 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
 
   // Teclado: só com o ecrã do simulador à vista.
   addEventListener('keydown', (e) => {
-    if (!activo() || e.target?.closest?.('input, textarea')) return;
-    if (TECLAS.has(e.code)) { s.teclas.add(e.code); e.preventDefault(); }
+    if (!activo() || e.target?.closest?.('input, textarea, select, [contenteditable="true"], summary')) return;
+    if (TECLAS.has(e.code)) { if (!s.pausa && !s.fim) s.teclas.add(e.code); e.preventDefault(); }
     else if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); if (!s.fim) definirPausa(!s.pausa); }
     else if (e.code === 'KeyC') $('sim-camara').click();
   });
   addEventListener('keyup', (e) => { s.teclas.delete(e.code); });
-  addEventListener('blur', () => s.teclas.clear());
+  addEventListener('blur', () => { s.teclas.clear(); s.toque.clear(); });
   addEventListener('resize', ajustar);
   document.addEventListener('visibilitychange', () => { if (document.hidden && activo()) definirPausa(true); });
 
@@ -554,7 +569,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   for (const b of document.querySelectorAll('#sim-actuacao [data-eixo]')) {
     const largar = () => { if (s.toque.get(b.dataset.eixo) === b.dataset.valor) s.toque.delete(b.dataset.eixo); };
     b.addEventListener('pointerdown', (e) => {
-      if (s.m?.piloto.tipo !== 'humano') return;
+      if (s.m?.piloto.tipo !== 'humano' || s.pausa || s.fim) return;
       e.preventDefault();
       b.setPointerCapture?.(e.pointerId);
       s.toque.set(b.dataset.eixo, b.dataset.valor);
@@ -563,6 +578,18 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     b.addEventListener('pointercancel', largar);
     b.addEventListener('lostpointercapture', largar);
   }
+
+  function definirPainel(aberto) {
+    $('sim-painel').hidden = !aberto;
+    $('screen-sim').classList.toggle('sem-painel', !aberto);
+    $('sim-painel-toggle').setAttribute('aria-expanded', String(aberto));
+    requestAnimationFrame(ajustar);
+  }
+
+  $('sim-painel-toggle').addEventListener('click', () => {
+    painelManual = true;
+    definirPainel($('sim-painel').hidden);
+  });
 
   $('sim-pausa').addEventListener('click', () => { if (!s.fim) definirPausa(!s.pausa); });
   $('sim-camara').addEventListener('click', () => {

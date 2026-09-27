@@ -112,14 +112,47 @@
         <button type="button" class="flight-sound" id="sim-som" aria-pressed="true" aria-label="Som dos motores" title="Som dos motores"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="som-ondas" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="som-mudo" d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
         <button type="button" class="flight-exit" id="sim-sair">Sair</button>
       </header>
-      <div class="sim-hud" aria-label="Instrumentos">
-        <div><span>VEL</span><b id="sim-vel">—</b><small>kt</small></div>
-        <div><span>ALT</span><b id="sim-alt">—</b><small>ft</small></div>
-        <div><span>RUMO</span><b id="sim-rumo">—</b><small>°</small></div>
-        <div><span>POT</span><b id="sim-pot">—</b><small>%</small></div>
-        <div><span>FUEL</span><b id="sim-fuel">—</b><small>kg</small></div>
+      <div class="sim-modos" aria-label="Assistências de voo">
+        <span>PILOTO <b data-instrumento="piloto">Humano</b></span>
+        <span>A ACTUAR <b data-instrumento="autoridade">Estabilizador</b></span>
       </div>
-      <p class="sim-objetivo" id="sim-objetivo" aria-live="polite">—</p>
+      <section class="sim-instrumentos" id="sim-instrumentos" aria-label="Painel de instrumentos de voo">
+        <header class="sim-instrumentos-topo"><span>LUS-222 <b>FLIGHT DISPLAY</b></span><span>PERFIL ILUSTRATIVO</span></header>
+        <div class="sim-instrumentos-corpo">
+          <div class="sim-atitude">
+            <svg viewBox="-85 -70 170 140" role="img" aria-label="Horizonte artificial; atitude numérica indicada abaixo">
+              <defs><clipPath id="sim-horizonte-clip"><rect x="-78" y="-55" width="156" height="110" rx="5"/></clipPath></defs>
+              <g clip-path="url(#sim-horizonte-clip)">
+                <g id="sim-horizonte-movel">
+                  <rect x="-220" y="-300" width="440" height="300" fill="#274354"/>
+                  <rect x="-220" y="0" width="440" height="300" fill="#554936"/>
+                  <path d="M-220 0H220" stroke="#e3e9df" stroke-width="1.5"/>
+                  <g fill="#f4f6f8" stroke="#f4f6f8" stroke-width="1" font-size="8" text-anchor="middle">
+                    <path d="M-22 -25H22 M-30 -50H30 M-22 25H22 M-30 50H30 M-12 -12.5H12 M-12 12.5H12"/>
+                    <g stroke="none"><text x="-35" y="-22">10</text><text x="35" y="-22">10</text><text x="-42" y="-47">20</text><text x="42" y="-47">20</text><text x="-35" y="28">10</text><text x="35" y="28">10</text><text x="-42" y="53">20</text><text x="42" y="53">20</text></g>
+                  </g>
+                </g>
+              </g>
+              <g fill="none" stroke="#c9d2d8"><path d="M-47 -36A59 59 0 0 1 47 -36" opacity=".6"/><path d="M0 -59v6 M-30 -51l3 5 M30 -51l-3 5 M-42 -42l4 4 M42 -42l-4 4"/></g>
+              <path d="M0 -49l-4 7h8z M-47 0h25v6 M47 0H22v6 M-5 0h10" fill="none" stroke="#ffe0a0" stroke-width="2.5"/>
+              <circle r="2" fill="#ffe0a0"/>
+            </svg>
+            <div class="sim-atitude-valores"><span>NARIZ <b data-instrumento="pitch">0°</b></span><span>ASA <b data-instrumento="bank">0°</b></span></div>
+          </div>
+          <div class="sim-leituras">
+            <div class="sim-leitura"><span>VELOCIDADE</span><div><b id="sim-vel" data-instrumento="velocidade">—</b><small>kt</small></div><em>no ar · simulada</em></div>
+            <div class="sim-leitura"><span>ALTITUDE</span><div><b id="sim-alt" data-instrumento="altitude">—</b><small>ft</small></div><em>nível do mar</em></div>
+            <div class="sim-leitura sim-leitura-vsi"><span>VERTICAL</span><div><b data-instrumento="vertical">—</b><small>ft/min</small></div><em data-instrumento="movimento">Nivelado</em><div class="sim-vsi" aria-hidden="true"><span>+</span><i id="sim-vsi-agulha"></i><span>−</span></div></div>
+            <div class="sim-leitura"><span>RUMO</span><div><b id="sim-rumo" data-instrumento="rumo">—</b><small>°</small></div><em>referência simulada</em></div>
+            <div class="sim-leitura"><span>AO TERRENO</span><div><b data-instrumento="agl">—</b><small>ft</small></div><em>altura AGL</em></div>
+            <div class="sim-leitura"><span>POTÊNCIA</span><div><b id="sim-pot" data-instrumento="potencia">—</b><small>%</small></div><em>E / Q · aumentar / reduzir</em></div>
+          </div>
+        </div>
+        <footer class="sim-instrumentos-base"><span>PEDIDO <b data-instrumento="intencao">Manter altitude</b></span><span>ALT ALVO <b data-instrumento="alvo">—</b></span><span>FUEL <b id="sim-fuel" data-instrumento="combustivel">—</b> kg</span></footer>
+        <p class="sim-aviso-voo" id="sim-aviso-voo" data-instrumento="aviso" role="status" hidden></p>
+      </section>
+      <p class="sim-objetivo" id="sim-objetivo">—</p>
+      <details class="sim-ajuda"><summary>Como pilotar</summary><div><b>Com o piloto Humano seleccionado</b><p>↑ / W subir · ↓ / S descer<br>← / A esquerda · → / D direita<br>E / Shift mais potência · Q / Ctrl menos</p><p>Segura uma tecla ou um botão. Ao largar, o avião nivela e mantém a altitude. O supervisor pode intervir para proteger o voo.</p><p>P pausa · C muda a câmara</p></div></details>
       <div class="sim-comandos">
         <div class="sim-actuacao" id="sim-actuacao" role="group" aria-label="Actuação: carrega para pilotar; com o JEV aos comandos acende o que ele escolheu">
           <button type="button" class="sim-lampada" data-eixo="lateral" data-valor="esquerda" aria-label="Esquerda">◀ ESQ</button>
@@ -133,11 +166,18 @@
         <div class="sim-botoes">
           <button type="button" class="control-button" id="sim-pausa">Pausar</button>
           <button type="button" class="control-button" id="sim-camara">Câmara: cauda</button>
+          <button type="button" class="control-button" id="sim-painel-toggle" aria-expanded="true" aria-controls="sim-painel">JEV / Sistemas</button>
         </div>
       </div>
       <div class="overlay" id="sim-fim" hidden><div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="sim-fim-titulo"><p class="kicker" id="sim-fim-kicker">FIM DO VOO</p><h2 id="sim-fim-titulo">—</h2><p id="sim-fim-texto">—</p><div class="overlay-actions"><button type="button" class="button button-accent" id="sim-repetir">Voar outra vez</button><button type="button" class="button button-outline" id="sim-fim-sair">Sair</button></div></div></div>
     </div>
-    <aside class="sim-painel" aria-label="Painel do JEV">
+    <aside class="sim-painel" id="sim-painel" aria-label="Painel do JEV e sistemas">
+      <section class="sim-bloco"><h2 class="sim-h">SISTEMAS <span>SIMULAÇÃO</span></h2><dl class="sim-contadores sim-sistemas">
+        <div><dt>VELOCIDADE NO SOLO</dt><dd><b data-instrumento="solo">—</b> <small>kt</small></dd></div>
+        <div><dt>CONSUMO ACTUAL</dt><dd><b data-instrumento="consumo">—</b> <small>kg/h</small></dd></div>
+        <div><dt>AUTONOMIA ESTIMADA</dt><dd><b data-instrumento="autonomia">—</b> <small>min</small></dd></div>
+        <div><dt>MASSA TOTAL</dt><dd><b data-instrumento="massa">—</b> <small>kg</small></dd></div>
+      </dl><p class="sim-nota">Autonomia ao consumo actual, sem reserva operacional.</p></section>
       <section class="sim-bloco"><h2 class="sim-h">JEV · JULGAMENTOS <span id="sim-meta"></span></h2><div id="sim-julgamentos" class="sim-vazio">Com «Humano» aos comandos o JEV não decide. Escolhe «JEV» em cima para ele pilotar.</div></section>
       <section class="sim-bloco"><h2 class="sim-h">O QUE O JEV LÊ</h2><pre id="sim-estado" class="sim-estado">—</pre></section>
       <section class="sim-bloco"><h2 class="sim-h">ORDENS DO COMANDANTE</h2><form id="sim-ordens-form" class="sim-ordens"><input id="sim-ordens" maxlength="120" autocomplete="off" placeholder="Ex.: poupa combustível e evita as nuvens" aria-label="Ordem ao JEV"><button type="submit">Dar</button></form><div class="sim-atalhos" id="sim-atalhos"><button type="button">Poupa combustível</button><button type="button">Evita as nuvens</button><button type="button">Voa baixo</button><button type="button">Chega depressa</button></div><p class="sim-ordem-activa" id="sim-ordem-activa">Sem ordens.</p></section>
