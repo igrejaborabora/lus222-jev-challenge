@@ -155,6 +155,19 @@ export function criarSomMotor() {
       fade(1.5);
       return true;
     },
+    /** Brief mechanical feedback through the existing, mute-aware audio graph. */
+    clicar() {
+      if (!ctx || !grafo || !ligado || silenciado || ctx.state !== 'running') return;
+      const tone = ctx.createOscillator(), gain = ctx.createGain(), t = ctx.currentTime;
+      tone.type = 'triangle';
+      tone.frequency.setValueAtTime(900, t);
+      tone.frequency.exponentialRampToValueAtTime(220, t + 0.025);
+      gain.gain.setValueAtTime(0.22, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+      tone.connect(gain).connect(grafo.mestre);
+      tone.onended = () => { tone.disconnect(); gain.disconnect(); };
+      tone.start(t); tone.stop(t + 0.035);
+    },
     actualizar(voo) {
       ultimo = parametrosSom(voo);
       if (!ctx || !ligado) return;

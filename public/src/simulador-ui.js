@@ -1,3 +1,5 @@
+import { criarCockpitUI } from './cockpit-ui.js';
+import { painelGuardado, guardarPainel, desvioDoPainel } from './cockpit-model.js';
 import { criarComandosUI } from './comandos-ui.js';
 import { PERFIL_PROGRESSIVO, novosControlos, protecaoActiva } from './voo-progressivo.js';
 import { criarInstrumentosUI } from './instrumentos-ui.js';
@@ -99,7 +101,13 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     ultimoFoco: -Infinity, geracao: 0, mapa: null,
     decisaoVisivel: null, ordens: '', jev: null, aviso: null, gravacao: null, cursor: null,
   };
+  const storage = { getItem:key=>localStorage.getItem(key), setItem:(key,value)=>localStorage.setItem(key,value) };
+  let instrumentosVisiveis = painelGuardado(storage);
+  const cockpit = criarCockpitUI($('sim-instrumentos'), { onLayout:()=>requestAnimationFrame(ajustar), onInteract:()=>som.clicar() });
   const instrumentos = criarInstrumentosUI($('screen-sim'));
+  cockpit.setVisible(instrumentosVisiveis);
+  $('sim-instrumentos-toggle').textContent=instrumentosVisiveis?'Hide panel':'Show panel';
+  $('sim-instrumentos-toggle').setAttribute('aria-expanded',String(instrumentosVisiveis));
   const comandos = criarComandosUI({ estado: () => s, assumir: assumirComandos, iniciar, avisar });
   let painelManual = false;
   // O tempo de voo ao vivo do JEV conta por visita (página), não por voo.
@@ -317,7 +325,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   function desenhar(dt) {
     const { api, mundo } = s;
     const voo = vooInterpolado(s.m);
-    instrumentos.atitude(voo);
+    if(instrumentosVisiveis)instrumentos.atitude(voo);
     if (!mundo) return;
     try {
       const absoluta = poseMissao(voo, null);
@@ -387,6 +395,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     const v = s.m.voo;
     instrumentos.actualizar(s.m, vooInterpolado(s.m));
     comandos.actualizar();
+    cockpit.actualizar(s.m);
     const d = s.m.destinos.find((x) => x.id === s.m.destinoId);
     const km = Math.hypot(d.xM - v.xM, d.zM - v.zM) / 1000;
     $('sim-objetivo').textContent = `Next: ${textoUI(NOMES_CIRCUITO[d.id] ?? d.id)} · ${km.toFixed(1)} km · ${s.m.pontosPassados.length} waypoints passed`;
@@ -539,14 +548,16 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     const instrumentosEl = $('sim-instrumentos');
     const comandos = $('screen-sim').querySelector('.sim-comandos').getBoundingClientRect();
     instrumentosEl.style.bottom = `${Math.max(0, r.bottom - comandos.top) + 16}px`;
+    cockpit.resize();
     if (!s.mundo) return;
     const w = Math.round(r.width);
     const h = Math.round(r.height);
     s.api.redimensionar(s.mundo, w, h);
     // Reserva a parte inferior para instrumentos sem esconder o avião atrás deles.
     const painel = $('sim-instrumentos').getBoundingClientRect();
-    const deslocamento = Math.min(h * 0.28, Math.max(0, r.bottom - painel.top) * (h < 700 ? 0.55 : 0.4));
-    s.mundo.camera.setViewOffset(w, h, 0, deslocamento, w, h);
+    const deslocamento = desvioDoPainel({visible:instrumentosVisiveis,viewportHeight:h,coveredHeight:r.bottom-painel.top});
+    if(instrumentosVisiveis) s.mundo.camera.setViewOffset(w,h,0,deslocamento,w,h);
+    else s.mundo.camera.clearViewOffset();
   }
 
   function largarMundo() {
@@ -566,6 +577,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
 
   async function iniciar({ semente = 222, piloto = 'humano', desdeS = 0, exercicio = 'livre', tempo = 'poucas_nuvens', ambiente = {} } = {}) {
     const gen = ++s.geracao;
+    cockpit.parar();
     cancelAnimationFrame(s.raf);
     cancelarPedidosJev();
     s.jev = null;
@@ -594,6 +606,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     if (gravacao && desdeS > 0) saltarGravacao(Math.min(desdeS, (gravacao.duracaoS ?? 0) - 5));
     if (piloto === 'jev') entregarAoJev();
     mostrar('sim');
+    cockpit.iniciar();
     largarMundo();
     try {
       const api = await carregarMundo();
@@ -621,6 +634,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   }
 
   function sair() {
+    cockpit.parar();
     cancelarPedidosJev();
     ++s.geracao;
     cancelAnimationFrame(s.raf);
@@ -648,6 +662,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     }
     else if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); if (!s.fim) definirPausa(!s.pausa); }
     else if (e.code === 'KeyC') $('sim-camara').click();
+    else if (e.code === 'KeyI' && !e.repeat) { e.preventDefault(); definirInstrumentos(!instrumentosVisiveis); }
   });
   addEventListener('keyup', (e) => { s.teclas.delete(e.code); });
   addEventListener('blur', () => { s.teclas.clear(); s.toque.clear(); s.verticalSeleccionada = 'manter'; comandos.limpar(); if(s.m?.piloto.tipo === 'humano') s.m = { ...s.m, piloto: { ...s.m.piloto, ateS: 0 } }; });
@@ -688,6 +703,16 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     b.addEventListener('pointercancel', largar);
     b.addEventListener('lostpointercapture', largar);
   }
+
+  function definirInstrumentos(visivel) {
+    instrumentosVisiveis=visivel;
+    cockpit.setVisible(visivel);
+    guardarPainel(storage,visivel);
+    $('sim-instrumentos-toggle').textContent=visivel?'Hide panel':'Show panel';
+    $('sim-instrumentos-toggle').setAttribute('aria-expanded',String(visivel));
+    requestAnimationFrame(ajustar);
+  }
+  $('sim-instrumentos-toggle').addEventListener('click',()=>definirInstrumentos(!instrumentosVisiveis));
 
   function definirPainel(aberto) {
     $('sim-painel').hidden = !aberto;

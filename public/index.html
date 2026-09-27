@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="./cockpit.css">
 <script>if (new URLSearchParams(location.search).get('lus222') === 'turntable') location.replace('./turntable.html');</script>
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }</script>
 </head>
@@ -158,9 +159,10 @@
         <footer class="sim-instrumentos-base"><span>COMMAND <b data-instrumento="intencao">Hold altitude</b></span><span>ALT TARGET <b data-instrumento="alvo">—</b></span><span>FUEL <b id="sim-fuel" data-instrumento="combustivel">—</b> kg</span></footer>
         <p class="sim-aviso-voo" id="sim-aviso-voo" data-instrumento="aviso" role="status" hidden></p>
       </section>
+      <p id="sim-aviso-compacto" class="sim-aviso-compacto" data-instrumento="aviso" role="status" hidden></p>
       <p class="sim-objetivo" id="sim-objetivo">—</p>
       <aside class="sim-decisao" id="sim-decisao" aria-label="Current AI decision" hidden><span id="sim-decisao-fonte">AI PILOT · JEV</span><strong id="sim-decisao-manobra">Waiting for a decision…</strong><p id="sim-decisao-detalhe">JEV selects a manoeuvre and power setting.</p><small id="sim-decisao-estado">Automatic protection may intervene.</small></aside>
-      <details class="sim-ajuda"><summary>Flight controls</summary><div><b>You have full control in manual mode</b><p>↑ / W raises the nose · ↓ / S lowers it<br>Hold a key to increase the angle. Release to keep that attitude. Click Climb / Descend for a 5° adjustment. Level explicitly stops the climb or descent. Dive points the nose down 65°.</p><p>← / A and → / D turn · E / Q change power<br>P pauses · C changes camera · B brakes. Use the Nose target slider for fine landing adjustments. Reduce speed on final, ease the descent before touchdown and brake on the runway.</p><p>Protection is OFF by default: terrain impacts end the flight. You can enable it above. Assisted mode holds altitude when controls are released. The AI pilot always uses protection.</p><p>The green marker shows the flight path; the yellow symbol shows the nose. Watch ALTITUDE, VERTICAL and HEIGHT AGL.</p></div></details>
+      <details class="sim-ajuda"><summary>Flight controls</summary><div><b>You have full control in manual mode</b><p>↑ / W raises the nose · ↓ / S lowers it<br>Hold a key to increase the angle. Release to keep that attitude. Click Climb / Descend for a 5° adjustment. Level explicitly stops the climb or descent. Dive points the nose down 65°.</p><p>← / A and → / D turn · E / Q change power<br>P pauses · C changes camera · I shows or hides the panel · B brakes. Use the Nose target slider for fine landing adjustments. Reduce speed on final, ease the descent before touchdown and brake on the runway.</p><p>Protection is OFF by default: terrain impacts end the flight. You can enable it above. Assisted mode holds altitude when controls are released. The AI pilot always uses protection.</p><p>The green marker shows the flight path; the yellow symbol shows the nose. Watch ALTITUDE, VERTICAL and HEIGHT AGL.</p></div></details>
       <div class="sim-comandos">
         <div class="sim-manual"><p id="sim-comando-manual" class="sim-comando-manual">Use any flight control to take over.</p>
         <div class="sim-actuacao" id="sim-actuacao" role="group" aria-label="Flight controls: Climb and Descend adjust pitch; Level levels the aircraft; hold lateral and power controls">
@@ -178,6 +180,7 @@
         <div class="sim-botoes">
           <button type="button" class="control-button" id="sim-pausa">Pause</button>
           <button type="button" class="control-button" id="sim-camara">Camera: chase</button>
+          <button type="button" class="control-button" id="sim-instrumentos-toggle" aria-expanded="true" aria-controls="sim-instrumentos" title="Show or hide cockpit / I">Hide panel</button>
           <button type="button" class="control-button" id="sim-painel-toggle" aria-expanded="true" aria-controls="sim-painel">Flight / Weather / JEV</button>
         </div>
       </div>

@@ -30,3 +30,14 @@ Modify `public/src/simulador-ui.js`: mount cockpit, initialise with each flight,
 
 ## Task 5 — Validate and ship
 Run `npm test`, `npm run lint`, `npm run build`, `git diff --check`. Browser checks: three screens respond to real flight; descend/Level/takeover work; cockpit can be hidden/shown by button/key, survives camera/restart/reload; desktop and mobile no clipping, shell failure falls back to readable UI; no extra AI requests. Inspect WebGL screenshots and functional controls. Review final diff, focused commits, push, PR, green CI, merge and production smoke.
+
+## Implementation and local verification
+- Tasks 1–4 implemented, with CSS/WebGL fallback, target validation in the visible controls and click feedback through the existing mute-aware audio graph.
+- `npm test`: 307 passed. `npm run lint`, `npm run build` and `git diff --check` passed.
+- Chromium WebGL smoke: three screens, 1440/1280/1024/390/360 widths, real descent and throttle, expansion, camera changes, keyboard/button toggling and preference after reload; no page errors.
+- Functional smoke: invalid targets focus the visible input, ALT/HDG/VS and knob input, manual/assisted mode, trim/Level, flap transit on approach, lights, brakes, dimmer, map and live checklist.
+- Lifecycle smoke: exit/re-enter, 844×390 landscape, sidebar width, recorded JEV decision visible when cockpit hidden, takeover, no new model requests.
+- Separate shell validation: context loss/restoration, resize, hide/show and disposal. Map compactness and north/heading-up transforms covered.
+- PR/CI/production verification follows this local gate.
+
+Final review corrections: release flight keys after focusing target knobs, keep annunciations outside mobile tabs, derive brake indication/checklist from effective keyboard/gamepad/guided commands. Regression checks cover all three cases.
