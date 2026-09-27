@@ -209,3 +209,7 @@ A cartografia é esquemática. A potência é conjunta: não há indicadores inv
 ## Validação da aterragem com JEV
 
 `node --env-file=.env scripts/avaliar-aterragem-jev.mjs` exercita o endpoint local e a física com decisões reais. Requer a chave configurada no ambiente e faz até 100 chamadas pagas, fora da suite automática. O relatório inclui estados, respostas e contacto na pista, sem credenciais. A simulação é acelerada: este ensaio não mede o comportamento da rede durante um voo contínuo no navegador. Ver `evidence/aterragem-jev-2026-09-28.json`.
+
+## Identidade e descoberta
+
+O HTML inicial inclui canonical, descrição, Open Graph, Twitter Card e dados estruturados factuais. `public/robots.txt` e `public/sitemap.xml` apontam para o domínio de produção. Os ícones PX e a imagem de partilha 1200 × 630 são ficheiros estáticos; podem ser regenerados com `PLAYWRIGHT_MODULE=/caminho/para/playwright/index.mjs node scripts/render-social-assets.mjs`, sem dependências no deploy. A indexação e a apresentação nos motores de pesquisa dependem do respectivo crawler.

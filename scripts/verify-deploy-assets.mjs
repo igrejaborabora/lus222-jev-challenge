@@ -2,6 +2,13 @@ import { access, readFile } from 'node:fs/promises';
 
 const root = new URL('../', import.meta.url);
 const requiredAssets = [
+  'public/favicon.svg',
+  'public/favicon.ico',
+  'public/favicon-96.png',
+  'public/apple-touch-icon.png',
+  'public/og-flight-experiment.png',
+  'public/robots.txt',
+  'public/sitemap.xml',
   'public/lab-choice.css',
   'public/ai-landing.css',
   'public/src/ai-landing.js',
