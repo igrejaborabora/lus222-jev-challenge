@@ -1,3 +1,4 @@
+import { lerEstadoAterragem, PERGUNTAS_ATERRAGEM, respostaAterragemValida } from '../public/src/landing-contract.js';
 import { experimental_evaluate as evaluate } from 'ai';
 import { decisaoGeometrica, estadoParaJev, MODELO_JEV } from '../lib/decisao.mjs';
 import { PERGUNTAS_BRIEFING, PERGUNTAS_INCIDENTE, perguntasPara, perguntasPiloto } from '../lib/perguntas.mjs';
@@ -82,14 +83,16 @@ export async function POST(request) {
     return Response.json({ fonte: 'bloqueio', erro: 'momento_desconhecido' }, { status: 400 });
   }
   // O JEV piloto (simulador) tem estado e perguntas próprios; o resto é a missão.
+  const aterragem = momento === 'aterragem';
   const simulador = momento === 'piloto';
-  const estado = simulador ? lerEstadoPiloto(body?.estado) : estadoParaJev(body?.estado ?? body);
+  const estado = aterragem ? lerEstadoAterragem(body?.estado) : simulador ? lerEstadoPiloto(body?.estado) : estadoParaJev(body?.estado ?? body);
   // Sem duas manobras a pergunta seria uma escolha de uma opção: o Gateway recusava-a e o erro parecia do Gateway.
   if (simulador && !estadoPilotoCompleto(estado)) {
     return Response.json({ fonte: 'bloqueio', erro: 'estado_invalido', mensagem: 'O estado do piloto precisa de pelo menos duas manobras candidatas.' }, { status: 400 });
   }
-  const questions = simulador ? perguntasPiloto(estado) : perguntasPara(momento, estado);
-  const piloto = simulador || estado?.voo?.fase === 'piloto_continuo';
+  if (aterragem && !estado) return Response.json({fonte:'bloqueio',erro:'estado_invalido'}, {status:400});
+  const questions = aterragem ? PERGUNTAS_ATERRAGEM : simulador ? perguntasPiloto(estado) : perguntasPara(momento, estado);
+  const piloto = aterragem || simulador || estado?.voo?.fase === 'piloto_continuo';
   const inicio = Date.now();
 
   try {
@@ -102,7 +105,7 @@ export async function POST(request) {
       abortSignal: AbortSignal.timeout(piloto ? TIMEOUT_PILOTO_MS : TIMEOUT_MS),
       maxRetries: piloto ? 0 : 2,
     });
-    const contrato = simulador ? validarRespostasDinamicas(resultado.answers, questions) : validarRespostas(momento, resultado.answers);
+    const contrato = aterragem ? {ok:respostaAterragemValida(resultado.answers),erro:'Invalid landing judgement'} : simulador ? validarRespostasDinamicas(resultado.answers, questions) : validarRespostas(momento, resultado.answers);
     if (!contrato.ok) {
       return Response.json(
         { fonte: 'bloqueio', erro: 'contrato_invalido', mensagem: `Resposta JEV inválida: ${contrato.erro}` },

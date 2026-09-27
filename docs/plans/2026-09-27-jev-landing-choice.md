@@ -41,3 +41,10 @@ Files: public/src/landing-contract.js, api/jev.js, lib/limites-api.mjs, lib/land
 - Browser desktop/mobile: modal keyboard/focus/Escape, no auto-start on open, human start, AI unavailable, live fixture contract, phase progression, manual takeover, stale response rejection, hide instrument panel.
 - Exercise the real live endpoint with a bounded request if available; report model/service limitations truthfully.
 - Focused commits, push, PR attach, green CI merge and production smoke under existing ship authorization.
+
+## Delivery evidence — 28 September 2026
+
+- Entry modal, explicit landing/route goals, continuous landing controller and live decision contract implemented. No dependencies added.
+- Spec and quality reviews completed; fixed the old five-minute cutoff, expired traffic protection state, runway heading wrapping and mismatched stability thresholds. Live budget now counts 900 actual requests per visit; exhausted/unavailable AI pauses safely in human mode.
+- 379 tests, ESLint and deploy-asset build passed. Browser checks cover modal keyboard/focus, live availability/retry/replay, actual entry options, pause/resume, go-around, delayed-response rejection after takeover, desktop/mobile layout and hidden instruments.
+- Actual JEV evaluation (not fixtures): 39 calls, landing and stop after 227.4 simulated seconds; touchdown vertical speed -0.557 m/s and lateral offset 0.837 m. Full synthetic state/response evidence in `evidence/aterragem-jev-2026-09-28.json`; rerun with `scripts/avaliar-aterragem-jev.mjs`. Accelerated simulation does not validate real-time browser/network timing. Nine additional physical entry/weather cases passed in independent review.

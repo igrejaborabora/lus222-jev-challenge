@@ -12,8 +12,10 @@
 <link rel="stylesheet" href="./styles.css">
 <link rel="stylesheet" href="./cockpit.css">
 <link rel="stylesheet" href="./lab.css">
+<link rel="stylesheet" href="./lab-choice.css">
 <link rel="stylesheet" href="./flight-lab.css">
 <link rel="stylesheet" href="./flight-surface.css">
+<link rel="stylesheet" href="./ai-landing.css">
 <script>if (new URLSearchParams(location.search).get('lus222') === 'turntable') location.replace('./turntable.html');</script>
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }</script>
 </head>
@@ -34,7 +36,7 @@
         <div class="lab-hero-art" aria-hidden="true"><img src="./img/lus-222-hero.webp" alt="" fetchpriority="high"></div>
         <div class="lab-hero-content"><p class="lab-eyebrow"><span>FLIGHT EXPERIMENT</span> HUMAN × MACHINE</p>
           <h1 id="lab-title">Take control.<br><em>See how<br>AI decides.</em></h1>
-          <p class="lab-lead">Fly over Porto. Hand the controls to AI. Take them back.<br>An interactive flight experiment by Pixelgrammar Lab, featuring JEV by TypeSafe AI.</p>
+          <p class="lab-lead">Fly over Porto. Hand the controls to AI. Take them back.<br>An interactive LUS-222 flight simulator by Pixelgrammar Lab, featuring JEV by TypeSafe AI.</p>
           <div class="lab-actions"><button type="button" class="button lab-primary" id="btn-sim-abrir">Start flying <span aria-hidden="true">↗</span></button><button type="button" class="button lab-secondary" data-lab-start="ai">Watch JEV fly <span aria-hidden="true">▷</span></button></div>
           <p class="lab-action-note">Runs in your browser · No sign-up · Human control by default</p>
         </div>
@@ -47,14 +49,14 @@
         <div class="lab-paths">
           <article><span class="lab-path-number">01</span><div><h3>Find your bearings.</h3><p>A short first flight, with prompts for power, pitch and level flight. Learn by moving the aircraft.</p><button type="button" class="lab-link" data-lab-start="learn">Try your first flight ↗</button></div></article>
           <article><span class="lab-path-number">02</span><div><h3>Make the approach.</h3><p>Start on final, line up with the runway and manage your descent. Review the touchdown afterwards.</p><button type="button" class="lab-link" data-lab-start="land">Practise landing ↗</button></div></article>
-          <article><span class="lab-path-number">03</span><div><h3>Let AI take a turn.</h3><p>Watch a recorded JEV flight, follow its decisions and take over whenever you want.</p><button type="button" class="lab-link" data-lab-start="ai">Watch the AI pilot ↗</button></div></article>
+          <article><span class="lab-path-number">03</span><div><h3>Let AI take a turn.</h3><p>Give JEV a goal: fly the route or land at Porto. Follow its decisions and take over whenever you want.</p><button type="button" class="lab-link" data-lab-start="ai">Choose an AI flight ↗</button></div></article>
         </div>
       </section>
       <section class="lab-observe lab-section" id="lab-observe" aria-labelledby="lab-observe-title">
-        <div class="lab-section-head"><p class="lab-eyebrow">02 / HUMAN + AI</p><h2 id="lab-observe-title">See the decision.<br><em>Then the difference.</em></h2><p>JEV is an AI model by TypeSafe. It receives structured flight data and selects a manoeuvre and power setting. The simulator applies the command; you can observe what changes.</p></div>
+        <div class="lab-section-head"><p class="lab-eyebrow">02 / HUMAN + AI</p><h2 id="lab-observe-title">See the decision.<br><em>Then the difference.</em></h2><p>JEV is an AI model by TypeSafe. It reads structured flight data and chooses actions for the route. During landing, it decides whether to continue, hold or go around; flight guidance handles the approach and touchdown.</p></div>
         <div class="lab-decision-flow" aria-label="How a JEV flight decision works">
           <article><span>01 / OBSERVE</span><h3>The flight state.</h3><p>Position, altitude, speed, wind and nearby hazards become the data JEV reads.</p><div class="lab-flow-symbol" aria-hidden="true">↗ <span>+ ≋</span></div></article>
-          <article><span>02 / DECIDE</span><h3>A visible choice.</h3><p>JEV selects from the available manoeuvres. Live and recorded decisions are clearly identified.</p><div class="lab-flow-symbol lab-violet" aria-hidden="true">JEV <span>→</span></div></article>
+          <article><span>02 / DECIDE</span><h3>A visible choice.</h3><p>JEV selects from the available actions. Live and recorded decisions are clearly identified.</p><div class="lab-flow-symbol lab-violet" aria-hidden="true">JEV <span>→</span></div></article>
           <article><span>03 / OBSERVE AGAIN</span><h3>A measurable change.</h3><p>Follow altitude, speed and separation. Take control, repeat the scenario and compare the results.</p><div class="lab-flow-symbol" aria-hidden="true">↘ <span>↗</span></div></article>
         </div>
         <div class="lab-mission-link"><div><span>GO FURTHER</span><p>Urgency. Payload. Uncertainty.<br>Explore four AI mission briefings.</p></div><button type="button" class="button lab-secondary" id="btn-open">Explore AI missions <span aria-hidden="true">↗</span></button></div>
@@ -66,6 +68,23 @@
       <footer class="lab-footer"><span>PX / PIXELGRAMMAR LAB</span><p>Independent experiment · JEV by TypeSafe AI · LUS-222 aircraft render by EEA Aircraft.<br>Illustrative physics and scenery. Not certified flight training or an official aircraft product.</p><a href="#lab-main">BACK TO TOP ↑</a></footer>
     </main>
   </section>
+
+  <dialog id="lab-flight-choice" class="lab-choice" aria-labelledby="lab-choice-title" aria-describedby="lab-choice-intro">
+    <button type="button" class="lab-choice-close" id="lab-choice-close" aria-label="Close flight choice">×</button>
+    <header class="lab-choice-heading"><p class="lab-choice-eyebrow">PIXELGRAMMAR LAB / CHOOSE YOUR FLIGHT</p><h2 id="lab-choice-title">Who has the controls?</h2><p id="lab-choice-intro">Same aircraft. Two ways to experience the flight.</p></header>
+    <fieldset class="lab-choice-modes"><legend class="lab-sr-only">Choose your pilot</legend>
+      <label class="lab-choice-card"><input type="radio" name="lab-pilot-choice" value="humano" checked><span class="lab-choice-card-top"><span>01 / YOU FLY</span><span class="lab-choice-radio" aria-hidden="true"></span></span><strong>Flight simulator</strong><span class="lab-choice-description">Take the controls over Porto. Explore, practise and learn at your own pace.</span><small>Keyboard · touch · gamepad</small></label>
+      <label class="lab-choice-card lab-choice-ai"><input type="radio" name="lab-pilot-choice" value="jev"><span class="lab-choice-card-top"><span>02 / AI FLIES</span><span class="lab-choice-radio" aria-hidden="true"></span></span><strong>AI Pilot <em>· JEV</em></strong><span class="lab-choice-description">Give the AI a goal. Watch its decisions and take control whenever you want.</span><small>Live decisions · visible flight phases</small></label>
+    </fieldset>
+    <div id="lab-choice-human" class="lab-choice-detail"><p>You have full control. First-time pilots get a short guide to power, pitch and level flight.</p></div>
+    <div id="lab-choice-ai-detail" class="lab-choice-detail" hidden>
+      <fieldset class="lab-choice-goals"><legend>Give JEV a goal</legend><label><input type="radio" name="lab-ai-goal" value="aterrar" checked><span><strong>Land at Porto</strong><small>Approach, land and stop on the runway.</small></span></label><label><input type="radio" name="lab-ai-goal" value="rota"><span><strong>Fly the route</strong><small>Follow the circuit and respond to hazards.</small></span></label></fieldset>
+      <p class="lab-choice-explanation">JEV chooses the plan. The flight controller executes the manoeuvres. You can take over at any time.</p>
+      <div class="lab-choice-availability"><p id="lab-choice-live-status" role="status">Checking live JEV…</p><button type="button" id="lab-choice-retry" hidden>Check again</button></div>
+    </div>
+    <footer class="lab-choice-actions"><button type="button" class="lab-choice-start" id="lab-choice-start">Start flight <span aria-hidden="true">↗</span></button><div class="lab-choice-replay" id="lab-choice-replay" hidden><button type="button" id="lab-choice-recorded">Watch a recorded route <span aria-hidden="true">▷</span></button><small>Previously recorded JEV decisions. No live AI or landing.</small></div></footer>
+    <p class="lab-choice-footnote">An illustrative experiment, not certified flight training.</p>
+  </dialog>
 
   <section class="screen" id="screen-commander">
     <div class="exlibris" aria-hidden="true"><img src="./img/lus-222-hero.webp" alt=""></div>
@@ -185,11 +204,12 @@
         <footer class="sim-instrumentos-base"><span>COMMAND <b data-instrumento="intencao">Hold altitude</b></span><span>ALT TARGET <b data-instrumento="alvo">—</b></span><span>FUEL <b id="sim-fuel" data-instrumento="combustivel">—</b> kg</span></footer>
         <p class="sim-aviso-voo" id="sim-aviso-voo" data-instrumento="aviso" role="status" hidden></p>
       </section>
+      <p id="sim-notice" class="sim-notice" role="status" hidden></p>
       <p id="sim-aviso-compacto" class="sim-aviso-compacto" data-instrumento="aviso" role="status" hidden></p>
       <p class="sim-objetivo" id="sim-objetivo">—</p>
       <aside class="flight-lab-note" id="lab-tutorial" hidden aria-label="First flight"><strong id="lab-tutorial-title"></strong><p id="lab-tutorial-text"></p><button type="button" id="lab-tutorial-skip">Skip</button></aside>
       <aside class="flight-lab-note" id="lab-approach" hidden aria-label="Visual approach advice"><button type="button" id="lab-guide-hide" aria-label="Hide visual approach guide">×</button><strong id="lab-approach-title"></strong><p id="lab-approach-reading"></p><p id="lab-approach-text"></p><small>Read-only reference · you have the controls</small></aside>
-      <aside class="sim-decisao" id="sim-decisao" aria-label="Current AI decision" hidden><span id="sim-decisao-fonte">AI PILOT · JEV</span><small id="lab-ai-situation"></small><strong id="sim-decisao-manobra">Waiting for a decision…</strong><p id="sim-decisao-detalhe">JEV selects a manoeuvre and power setting.</p><small id="sim-decisao-estado">Automatic protection may intervene.</small><small id="lab-observed-effect"></small></aside>
+      <aside class="sim-decisao" id="sim-decisao" aria-label="Current AI decision" hidden><span id="sim-decisao-fonte">AI PILOT · JEV</span><small id="lab-ai-situation"></small><strong id="sim-decisao-manobra">Waiting for a decision…</strong><p id="sim-decisao-detalhe">JEV selects a manoeuvre and power setting.</p><small id="sim-decisao-estado">Automatic protection may intervene.</small><small id="lab-observed-effect"></small><div id="sim-ai-actions" hidden><button type="button" class="control-button" id="sim-ai-go-around">Go around</button><button type="button" class="control-button" id="sim-ai-takeover">I take control</button></div></aside>
       <details class="sim-ajuda"><summary>Flight controls</summary><div><b>You have full control in manual mode</b><p>↑ / W pushes the nose down · ↓ / S pulls the nose up<br>Hold a key to increase the angle. Release to keep that attitude. Click Climb / Descend for a 5° adjustment. Level explicitly stops the climb or descent. Dive points the nose down 65°.</p><p>← / A and → / D turn · E / Q change power<br>L levels · P pauses · C changes camera · I shows or hides the panel · hold B to brake. Z / X control rudder. Use the Nose target slider for fine landing adjustments. Reduce speed on final, ease the descent before touchdown and brake on the runway.</p><p>Protection is OFF by default: terrain impacts end the flight. You can enable it above. Assisted mode holds altitude when controls are released. The AI pilot always uses protection.</p><p>The green marker shows the flight path; the yellow symbol shows the nose. Watch ALTITUDE, VERTICAL and HEIGHT AGL.</p></div></details>
       <div class="sim-comandos">
         <div class="sim-manual"><p id="sim-comando-manual" class="sim-comando-manual">Use any flight control to take over.</p>
@@ -218,6 +238,7 @@
     </div>
     <aside class="sim-painel" id="sim-painel" aria-label="JEV and aircraft systems">
       <button type="button" class="control-button sim-voltar-voo" id="sim-voltar-voo">Back to flight ↑</button>
+      <section class="sim-bloco sim-config sim-ai-objective"><h2 class="sim-h">AI PILOT · JEV</h2><label>Flight objective<select id="sim-ai-objective"><option value="aterrar">Land at Porto</option><option value="rota">Fly the route</option></select></label><p class="sim-nota">JEV selects the intent. Continuous guidance aligns, descends and brakes. Weather or an unstable final can trigger a go-around. You can take over at any time.</p><button type="button" class="control-button" id="sim-ai-start">Engage live AI</button></section>
       <section class="sim-bloco sim-config" aria-labelledby="sim-config-titulo">
         <h2 class="sim-h" id="sim-config-titulo">CONTROLS <span>SIMULATION PROFILE</span></h2>
         <label>Power <output id="sim-potencia-out">55%</output><input id="sim-potencia-range" type="range" min="0" max="100" step="1" value="55"></label>

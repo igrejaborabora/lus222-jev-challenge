@@ -22,9 +22,10 @@ O botão **Take the controls** abre um simulador de voo livre sobre o Porto, ao 
   - as ordens do comandante (texto livre até 120 caracteres).
 
   O servidor só aceita valores das listas. Seis perguntas correm em paralelo numa chamada: plano, manobra (escolhida por eliminação), potência, ameaça prioritária, urgência e fora do envelope.
-- **Limites:** 5 minutos de voo JEV ao vivo por visita; depois, sem Gateway ou com o orçamento esgotado, o JEV pilota um **voo gravado**. Esse voo é real: o `scripts/gravar-voo-jev.mjs` voa o JEV no mesmo motor e guarda, por decisão, o passo em que foi pedida, o passo em que foi aplicada e a resposta. O site reproduz-o passo a passo, exacto com qualquer ritmo de frames, e identifica-o como gravado.
+- **Entrada e objectivo:** Start flying abre a escolha entre voo humano e AI Pilot · JEV. O objectivo da IA é explícito: seguir o circuito ou aterrar no Porto. Na aterragem, JEV escolhe continuar, aguardar, borregar ou declarar que não consegue decidir; o controlador contínuo executa entrada, alinhamento, descida, flare e travagem. A fase, a decisão real e a acção do controlador ficam visíveis. O humano pode retomar os comandos em qualquer momento.
+- **Limites:** até 900 pedidos ao JEV por visita. A rota pede decisões a cada 330 ms; a aterragem a cada 1500 ms. Pausa, saída e controlo humano cancelam pedidos pendentes. O limite ou falhas persistentes pausam o voo e devolvem os comandos ao humano. Sem IA ao vivo, uma gravação só começa por escolha explícita. O `scripts/gravar-voo-jev.mjs` guarda as decisões reais e o site reproduz o voo passo a passo, identificado como gravado.
 - **Endereços úteis para vídeo:** `?voo=gravado` força o voo gravado (sempre igual e sem custo) e `?desde=110` começa-o nesse segundo, perto da Foz, com contadores e mapa como se o voo tivesse sido visto desde o início.
-- **Custo:** cerca de 2,6 mil tokens por chamada, ou seja ~0,016 USD por minuto de voo JEV ao vivo.
+- **Custo da rota:** cerca de 2,6 mil tokens por chamada, ou seja ~0,016 USD por minuto ao ritmo nominal; a aterragem usa um contrato menor e uma cadência inferior.
 
 ## O que se observa nas missões
 
@@ -184,8 +185,8 @@ node scripts/gravar-voo-jev.mjs http://localhost:43123 222 300
 - Não é uma simulação aeronáutica certificada, nem um sistema Detect and Avoid ou um plano de voo.
 - Coordenadas, tráfego, meteorologia e performance alternativos são assumidos para demonstrar decisões causais.
 - O Google Maps e a renderização 3D não são enviados ao JEV; só segue o estado estruturado visível no registo.
-- No simulador, o JEV voa ao vivo até 5 minutos por visita; a seguir, e sempre que não há Gateway, voa o voo gravado, identificado como tal.
-- O modo ao vivo tem limites de custo: só o próprio site chama `/api/jev` (Origin exacto), cada IP tem 600 pedidos/min por instância, cada missão 300 pedidos, e a chave do AI Gateway tem orçamento mensal próprio. Um limite atingido passa a sessão ao replay gravado, identificado no cabeçalho; com o separador escondido o voo pausa e não faz pedidos.
+- No simulador, o limite por visita é de 900 pedidos; atingido o limite, o voo pausa em modo humano. A gravação é sempre uma escolha explícita.
+- O modo ao vivo tem limites de custo: só o próprio site chama `/api/jev` (Origin exacto), cada IP tem 600 pedidos/min por instância, cada missão 300 pedidos, e a chave do AI Gateway tem orçamento mensal próprio. Nas missões, um limite pode passar a sessão ao replay identificado; no simulador, pausa o voo em modo humano. Com o separador escondido o voo pausa e não faz pedidos.
 - Os registos devem ser revistos antes de serem partilhados; esta demonstração usa apenas dados sintéticos, sem clientes ou passageiros reais.
 
 MIT — ver [LICENSE](./LICENSE).
@@ -204,3 +205,7 @@ O cockpit tem três ecrãs: instrumentos de voo (atitude, velocidade, altitude, 
 - As decisões JEV e os avisos continuam disponíveis com o cockpit oculto. Ocultar o painel suspende o desenho da moldura e do mapa.
 
 A cartografia é esquemática. A potência é conjunta: não há indicadores inventados de temperatura, óleo ou motores independentes. Estes exigem um modelo de sistemas adicional.
+
+## Validação da aterragem com JEV
+
+`node --env-file=.env scripts/avaliar-aterragem-jev.mjs` exercita o endpoint local e a física com decisões reais. Requer a chave configurada no ambiente e faz até 100 chamadas pagas, fora da suite automática. O relatório inclui estados, respostas e contacto na pista, sem credenciais. A simulação é acelerada: este ensaio não mede o comportamento da rede durante um voo contínuo no navegador. Ver `evidence/aterragem-jev-2026-09-28.json`.

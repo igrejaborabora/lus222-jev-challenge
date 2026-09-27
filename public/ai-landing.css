@@ -1,0 +1,17 @@
+.sim-ai-objective{border-color:#b9a2ff55;background:#1b1630}
+.sim-ai-objective .sim-h{color:#cbbaff}
+#sim-ai-actions:not([hidden]){display:flex;gap:6px;margin-top:10px}
+#sim-ai-actions .control-button{flex:1;font-size:10px;padding:8px 5px}
+#sim-ai-takeover{border-color:#a4eddf;color:#a4eddf}
+.sim-decisao[data-landing-phase] strong{font-size:17px}
+@media(max-width:760px){
+ .sim-decisao[data-landing-phase] #lab-observed-effect,.sim-decisao[data-landing-phase] #lab-ai-situation{display:none}
+ .sim-decisao[data-landing-phase] strong{font-size:14px}
+ .sim-decisao[data-landing-phase] #sim-decisao-estado{display:block;line-height:1.4;max-height:2.8em;overflow:auto}
+ #sim-ai-actions:not([hidden]){margin-top:5px}
+ #sim-ai-actions .control-button{min-height:36px;padding:6px 5px}
+}
+
+.sim-notice{position:absolute;z-index:4;top:181px;left:16px;max-width:min(430px,48%);margin:0;padding:9px 12px;color:#f4dfab;background:#1c1b14ed;border:1px solid #d6af67;font:11px/1.5 var(--mono)}
+.sim-notice[hidden]{display:none}
+@media(max-width:760px){.sim-notice{top:139px;left:8px;right:8px;max-width:none;font-size:9px;padding:5px 8px}.sim:not(.sim-painel-aberto) .sim-notice{max-height:44px;overflow:auto}}

@@ -22,6 +22,7 @@ export const ROTULOS_PERGUNTAS = Object.freeze({
   riscoMeteorologico: 'Weather risk',
   precisaRevisaoPIC: 'Outside flight envelope',
   continuarVoo: 'Continue flight',
+  landingDecision:'Landing intent',
   plano: 'Plan',
   manobra: 'Manoeuvre',
   potencia: 'Power',

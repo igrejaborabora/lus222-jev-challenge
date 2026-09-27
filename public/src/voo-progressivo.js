@@ -132,7 +132,7 @@ export function passoProgressivo(m, a, dt, perfil, chao) {
   if (emSolo) {
     speed = Math.max(0, v.velocidadeMs + (thrust / aero.massa - 0.18 - 0.00025 * v.velocidadeMs ** 2 - travao * 4.5 * (1 - (m.ambiente.chuva ?? 0) * 0.35)) * dt);
     heading = v.rumoRad + (bankInput + leme) * Math.min(0.2, speed * 0.008) * dt;
-    if (c.aproximacao && pista) heading = v.rumoRad + clamp(clamp((pista.xM - v.xM) * 0.025, -0.15, 0.15) - v.rumoRad, -0.3 * dt, 0.3 * dt);
+    if (c.aproximacao && pista) heading = v.rumoRad + clamp(angulo(clamp((pista.xM - v.xM) * 0.025, -0.15, 0.15) - v.rumoRad), -0.3 * dt, 0.3 * dt);
     // Tyre contact damps asymmetric yaw as ground speed approaches zero.
     heading += motores.guinadaRadS * Math.min(1, speed / 25) * dt;
     vertical = 0;
