@@ -65,3 +65,11 @@ Sem valores de motor fictícios, sem novas chamadas JEV para desenhar instrument
 
 - Entrega 1: implementada e validada. 236 testes, lint e verificação de assets passam. Smoke Chromium: gravação → humano → subida/descida → pausa; painel aberto/fechado em 1440×1000, 1024×768, 768×1024, 390×844 e 360×640, sem sobreposição dos instrumentos com os comandos. Sem erros JavaScript; endpoint /api/jev indisponível no servidor estático, usando a gravação identificada. JEV ao vivo não foi exercitado.
 - Entregas 2–4: planeadas; não incluídas no PR de instrumentação.
+
+## Correcção de interacção vertical — 27/09/2026
+
+Relato de Fernando: «o avião nem desce nem sobe». Reprodução no browser mostrou dois casos: o voo inicia no JEV e ignora comandos manuais; um clique breve, mesmo no modo humano, termina antes de produzir deslocação visível. Uma tecla mantida funciona.
+
+Correcção: comandos verticais seleccionáveis por clique (Subir / Nivelar / Descer), com indicador de selecção, repetição do botão activo para cancelar e tomada de controlo automática. O teclado vertical cancela a selecção persistente e actua enquanto premido. Pausa, desfocagem e troca de piloto limpam a selecção. O supervisor continua prioritário. Respostas JEV pendentes são ignoradas após a passagem para humano, incluindo erros de cancelamento.
+
+Verificação: cinco novos testes de selecção, prioridades e altitude real; regressão de browser inicialmente falhou e passou após a correcção. No smoke: 1575 → 1632 ft a subir, 1577 ft após descer e estabilização em 1574 ft. Teclado/Espaço, pausa, tomadas de controlo com pedidos simulados pendentes, layout aberto/fechado e cena WebGL verificados. Esta correcção de entrada não antecipa a mudança de física da entrega 2.

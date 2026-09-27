@@ -2,7 +2,7 @@ import { criarInstrumentosUI } from './instrumentos-ui.js';
 import { poseMissao } from './escala.js';
 import { avancarMissao, PERFIL, vooInterpolado } from './simulacao.js';
 import { criarVooLivre, NOMES_CIRCUITO } from './simulador.js';
-import { actuacaoDeManobra, actuacaoEfectiva, darOrdem, ordemDeTeclas, POTENCIAS, RETENCAO_HUMANO_S, RETENCAO_JEV_S } from './piloto-sim.js';
+import { actuacaoDeManobra, actuacaoEfectiva, darOrdem, novoPiloto, ordemHumana, seleccionarVertical, POTENCIAS, RETENCAO_HUMANO_S, RETENCAO_JEV_S } from './piloto-sim.js';
 import { estadoPiloto, limparOrdens, textoEstado } from './estado-piloto.js';
 import { concluirPasso, deveDespacharPasso, falharPasso, metricasPiloto, novoPipelinePiloto, reservarPasso } from './piloto-corredor.js';
 import { actualizarPainel, decimal } from './painel-jev.js';
@@ -71,7 +71,7 @@ function respostaValida(answers, estado) {
 export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayDisponivel = () => false }) {
   const s = {
     m: null, api: null, mundo: null, raf: 0, ultimo: 0, ultimoUI: 0, pausa: false, fim: false,
-    teclas: new Set(), toque: new Map(), trilho: [], supervisor: 0, ultimoSupervisor: null,
+    teclas: new Set(), toque: new Map(), verticalSeleccionada: 'manter', trilho: [], supervisor: 0, ultimoSupervisor: null,
     ultimoFoco: -Infinity, geracao: 0, mapa: null,
     ordens: '', jev: null, aviso: null, gravacao: null, cursor: null,
   };
@@ -97,6 +97,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   function marcarPiloto(tipo) {
     s.teclas.clear();
     s.toque.clear();
+    s.verticalSeleccionada = 'manter';
     if (!painelManual) definirPainel(tipo !== 'humano');
     $('sim-piloto-humano').setAttribute('aria-pressed', String(tipo === 'humano'));
     $('sim-piloto-jev').setAttribute('aria-pressed', String(tipo !== 'humano'));
@@ -159,7 +160,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   /** Volta a pôr o humano aos comandos; o JEV deixa de receber pedidos. */
   function pararJev(motivo) {
     cancelarPedidosJev();
-    if (s.m) s.m = { ...s.m, piloto: { ...s.m.piloto, tipo: 'humano', fonte: 'humano' } };
+    if (s.m) s.m = { ...s.m, piloto: { ...novoPiloto('humano'), supervisor: s.m.piloto.supervisor } };
     marcarPiloto('humano');
     if (motivo) avisar(motivo);
   }
@@ -193,10 +194,10 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
       if (d.erro === 'limite' || r.status === 429) throw Object.assign(new Error('Limite de voo ao vivo atingido.'), { codigo: 'limite' });
       if (!r.ok || d.fonte !== 'jev') throw new Error(d.mensagem || 'O JEV não respondeu.');
       if (!respostaValida(d.answers, ticket.entrada.estado)) throw new Error('Resposta do JEV fora do contrato.');
-      if (gen !== s.geracao || jev !== s.jev) return;
+      if (gen !== s.geracao || jev !== s.jev || s.m?.piloto.tipo !== 'jev') return;
       aplicarJev(ticket, d);
     } catch (e) {
-      if (gen !== s.geracao || jev !== s.jev) return;
+      if (gen !== s.geracao || jev !== s.jev || s.m?.piloto.tipo !== 'jev') return;
       falharJev(ticket, e);
     } finally {
       clearTimeout(limite);
@@ -294,8 +295,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   }
 
   function aplicarHumano() {
-    const ordem = ordemDeTeclas(s.teclas);
-    for (const [eixo, valor] of s.toque) ordem[eixo] = valor;
+    const ordem = ordemHumana(s.teclas, s.verticalSeleccionada, s.toque);
     if (ordem.lateral === 'nivelar' && ordem.vertical === 'manter' && ordem.potencia === 'manter') return;
     s.m = { ...s.m, piloto: darOrdem(s.m.piloto, { ...ordem, fonte: 'humano' }, s.m.voo.tempoS, RETENCAO_HUMANO_S) };
   }
@@ -309,6 +309,16 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   function actualizarLampadas() {
     const a = actuacaoEfectiva(s.m.piloto, s.m.voo.tempoS);
     for (const b of document.querySelectorAll('#sim-actuacao [data-eixo]')) b.classList.toggle('is-on', a[b.dataset.eixo] === b.dataset.valor);
+    const pedido = ordemHumana(s.teclas, s.verticalSeleccionada, s.toque);
+    for (const b of document.querySelectorAll('#sim-actuacao [data-eixo="vertical"]')) {
+      const seleccionado = s.m.piloto.tipo === 'humano' && pedido.vertical === b.dataset.valor;
+      b.setAttribute('aria-pressed', String(seleccionado));
+      b.classList.toggle('is-selected', seleccionado);
+    }
+    $('sim-comando-manual').textContent = s.pausa ? 'Voo em pausa · Continuar para pilotar.'
+      : s.m.piloto.tipo !== 'humano' ? 'Clica num comando para assumir o voo.'
+        : s.verticalSeleccionada !== 'manter' ? `${s.verticalSeleccionada === 'subir' ? 'Subida' : 'Descida'} contínua · Nivelar para manter altitude.`
+          : 'Subir / Descer por clique · setas / WASD enquanto premidas.';
     $('sim-supervisor').classList.toggle('is-on', a.fonte === 'supervisor');
     $('sim-supervisor').textContent = a.fonte === 'supervisor' ? (a.motivo === 'terreno' ? 'SUPERVISOR · TERRENO' : 'SUPERVISOR · TCAS') : 'SUPERVISOR';
   }
@@ -484,6 +494,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   function definirPausa(p) {
     s.teclas.clear();
     s.toque.clear();
+    s.verticalSeleccionada = 'manter';
     s.pausa = Boolean(p);
     $('sim-pausa').textContent = s.pausa ? 'Continuar' : 'Pausar';
   }
@@ -555,21 +566,44 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
 
   // Teclado: só com o ecrã do simulador à vista.
   addEventListener('keydown', (e) => {
-    if (!activo() || e.target?.closest?.('input, textarea, select, [contenteditable="true"], summary')) return;
-    if (TECLAS.has(e.code)) { if (!s.pausa && !s.fim) s.teclas.add(e.code); e.preventDefault(); }
+    if (!activo() || e.metaKey || e.altKey || e.target?.closest?.('input, textarea, select, [contenteditable="true"], summary')) return;
+    if (TECLAS.has(e.code)) {
+      e.preventDefault();
+      if (!assumirComandos()) return;
+      if (['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'].includes(e.code)) s.verticalSeleccionada = 'manter';
+      s.teclas.add(e.code);
+    }
     else if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); if (!s.fim) definirPausa(!s.pausa); }
     else if (e.code === 'KeyC') $('sim-camara').click();
   });
   addEventListener('keyup', (e) => { s.teclas.delete(e.code); });
-  addEventListener('blur', () => { s.teclas.clear(); s.toque.clear(); });
+  addEventListener('blur', () => { s.teclas.clear(); s.toque.clear(); s.verticalSeleccionada = 'manter'; });
   addEventListener('resize', ajustar);
   document.addEventListener('visibilitychange', () => { if (document.hidden && activo()) definirPausa(true); });
 
-  // Toque e rato nas lâmpadas: carregar é segurar a ordem.
-  for (const b of document.querySelectorAll('#sim-actuacao [data-eixo]')) {
+  function assumirComandos() {
+    if (!activo() || s.pausa || s.fim) return false;
+    if (s.m.piloto.tipo !== 'humano') pararJev('O humano assumiu os comandos.');
+    return true;
+  }
+
+  // Clique (inclui toque, Enter e Espaço): selecciona uma intenção vertical persistente.
+  for (const b of document.querySelectorAll('#sim-actuacao [data-eixo="vertical"]')) {
+    b.addEventListener('click', () => {
+      if (!assumirComandos()) return;
+      s.verticalSeleccionada = seleccionarVertical(s.verticalSeleccionada, b.dataset.valor);
+      // Nivelar deve cancelar já a ordem anterior, sem aguardar a retenção.
+      s.m = { ...s.m, piloto: darOrdem(s.m.piloto, { ...ordemHumana(s.teclas, s.verticalSeleccionada, s.toque), fonte: 'humano' }, s.m.voo.tempoS, RETENCAO_HUMANO_S) };
+      actualizarLampadas();
+      actualizarHud();
+    });
+  }
+
+  // Lateral e potência continuam a actuar enquanto se segura o botão.
+  for (const b of document.querySelectorAll('#sim-actuacao [data-eixo]:not([data-eixo="vertical"])')) {
     const largar = () => { if (s.toque.get(b.dataset.eixo) === b.dataset.valor) s.toque.delete(b.dataset.eixo); };
     b.addEventListener('pointerdown', (e) => {
-      if (s.m?.piloto.tipo !== 'humano' || s.pausa || s.fim) return;
+      if (!assumirComandos()) return;
       e.preventDefault();
       b.setPointerCapture?.(e.pointerId);
       s.toque.set(b.dataset.eixo, b.dataset.valor);

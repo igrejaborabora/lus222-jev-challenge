@@ -73,3 +73,18 @@ export function actuacaoEfectiva(piloto, tempoS) {
   if (piloto && tempoS < piloto.ateS) return { lateral: piloto.lateral, vertical: piloto.vertical, potencia: piloto.potencia, fonte: piloto.fonte };
   return { lateral: 'nivelar', vertical: 'manter', potencia: 'manter', fonte: 'estabilizador' };
 }
+
+/** Clique vertical persistente: repetir o botão activo equivale a nivelar. */
+export function seleccionarVertical(actual, pedido) {
+  if (!VERTICAIS.includes(pedido) || pedido === actual) return 'manter';
+  return pedido;
+}
+
+/** Intenção humana: o teclado vertical tem prioridade sobre o botão seleccionado. */
+export function ordemHumana(teclas, vertical = 'manter', toque = new Map()) {
+  const ordem = ordemDeTeclas(teclas);
+  const temVertical = ['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'].some((t) => teclas.has(t));
+  if (!temVertical) ordem.vertical = um(vertical, VERTICAIS, 'manter');
+  for (const [eixo, valor] of toque) if (eixo === 'lateral' || eixo === 'potencia') ordem[eixo] = valor;
+  return ordem;
+}

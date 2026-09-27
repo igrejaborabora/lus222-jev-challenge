@@ -47,7 +47,7 @@ A faixa superior distingue **piloto seleccionado** de **quem está a actuar**: h
 
 **JEV / Sistemas** abre ou recolhe o painel lateral, com velocidade no solo, consumo, autonomia estimada ao consumo actual e massa, além dos julgamentos e mapa existentes. A autonomia não inclui reserva operacional. Por omissão o painel recolhe quando o humano assume; uma escolha manual de abertura/fecho é respeitada durante a sessão. O enquadramento reserva espaço para manter o avião visível acima dos instrumentos.
 
-**Como pilotar** explica setas/WASD, E/Q (ou Shift/Ctrl), P para pausa e C para câmara. Subir/descer continua a pedir até ±4 m/s (cerca de ±790 ft/min); largar estabiliza. Pausar, desfocar a janela ou mudar de piloto limpa as entradas de teclado/toque. Esta entrega não muda a física nem o formato dos voos gravados.
+**Como pilotar** explica setas/WASD, E/Q (ou Shift/Ctrl), P para pausa e C para câmara. Um clique em **Subir** ou **Descer** mantém a intenção vertical; **Nivelar**, ou repetir o botão activo, termina-a e captura a altitude. As teclas actuam enquanto premidas e estabilizam ao largar; laterais e potência por toque continuam a exigir pressão. Qualquer comando manual assume imediatamente o voo ao JEV, mantendo o supervisor. Respostas tardias/canceladas deixam de actuar depois da passagem para humano. Pausar, desfocar ou mudar de piloto termina a selecção vertical. A subida/descida continua limitada a ±4 m/s (cerca de ±790 ft/min), com a física e as gravações anteriores intactas.
 
 O plano completo e as entregas seguintes estão em [Experiência de simulador](docs/plans/2026-09-27-experiencia-simulador.md).
 
