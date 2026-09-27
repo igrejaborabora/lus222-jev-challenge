@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { alturaTerreno, perfilComAgua, prepararPistas, urbanoEm } from './relevo.js';
+import { alturaTerreno, perfilComAgua, prepararPistas, urbanoEm, ruido2, distanciaAoRio } from './relevo.js';
 import { mosaicosAManter, mosaicosNecessarios, planearMosaicos, TAMANHO_MOSAICO_M } from './mosaicos.js';
 
 // Paleta dessaturada (identidade preto e branco): o relevo lê-se pela luz.
@@ -11,7 +11,7 @@ const COR = {
   pista: new THREE.Color(0x3c4146),
 };
 // Plano da pista: asfalto esbatido no verde baixo, para não ser um disco preto.
-const COR_PLANO = COR.pista.clone().lerp(COR.baixo, 0.55);
+const COR_PLANO = COR.baixo.clone();
 const COR_MAR = new THREE.Color(0x263d48);
 const COR_CIDADE = new THREE.Color(0x9a9485);
 const FUNDO_VISIVEL_M = -6;
@@ -33,7 +33,11 @@ function noPlanoDaPista(pistas, x, z) {
 
 function corDe(h, x, z, t, alvo) {
   if (noPlanoDaPista(t.pistas, x, z)) return alvo.copy(COR_PLANO);
-  if (t.praia && h < PRAIA_ATE_M) return alvo.copy(COR.praia);
+  // Uma plataforma aeroportuária baixa no interior não é praia. A cor
+  // costeira acompanha a costa/vale, sem alterar as alturas da simulação.
+  const costa = t.perfil?.agua === 'costa';
+  const pertoDaAgua = !costa || x > t.perfil.costaX + t.perfil.recorteM * ruido2(z / 7000, 3.7, t.perfil.seed + 5) - 180 || (t.perfil.rio && distanciaAoRio(t.perfil.rio, x, z) < 240);
+  if (t.praia && h < PRAIA_ATE_M && pertoDaAgua) return alvo.copy(COR.praia);
   if (h < 160) alvo.copy(COR.baixo).lerp(COR.medio, h / 160);
   else alvo.copy(COR.medio).lerp(COR.alto, Math.min(1, (h - 160) / 500));
   if (t.perfil?.cidade) alvo.lerp(COR_CIDADE, urbanoEm(t.perfil, x, z, h) * 0.58);

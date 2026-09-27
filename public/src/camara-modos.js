@@ -109,16 +109,22 @@ export function alvoCamara(modo, pose, { fit = 1, foco = null, agoraS = 0, manua
   // Esquerda do piloto: +X com rumo 0 (ver escala.js).
   const esquerda = { x: frente.z, z: -frente.x };
   if (modo === 'cockpit') {
-    // pose.pitch é uma rotação de Three.js: negativo = nariz para cima.
-    // Vista frontal ilustrativa, horizonte world-up estável (sem roll da cabine).
+    // Mesma ordem YXZ usada pelo avião: o assento e o vector cima
+    // acompanham pitch E bank. Sem world-up artificial a esconder a curva.
     const pitch = Number.isFinite(pose.pitch) ? pose.pitch : 0;
+    const bank = Number.isFinite(pose.bank) ? pose.bank : 0;
     const direccao = { x: frente.x * Math.cos(pitch), y: -Math.sin(pitch), z: frente.z * Math.cos(pitch) };
-    const pos = {
-      x: pose.x + direccao.x * 4.4,
-      y: pose.y + 1.1 + direccao.y * 4.4,
-      z: pose.z + direccao.z * 4.4,
+    const up = {
+      x: -esquerda.x * Math.sin(bank) + frente.x * Math.sin(pitch) * Math.cos(bank),
+      y: Math.cos(pitch) * Math.cos(bank),
+      z: -esquerda.z * Math.sin(bank) + frente.z * Math.sin(pitch) * Math.cos(bank),
     };
-    return { pos, mira: { x: pos.x + direccao.x * 200, y: pos.y + direccao.y * 200, z: pos.z + direccao.z * 200 } };
+    const pos = {
+      x: pose.x + direccao.x * 4.4 + up.x * 1.1,
+      y: pose.y + direccao.y * 4.4 + up.y * 1.1,
+      z: pose.z + direccao.z * 4.4 + up.z * 1.1,
+    };
+    return { pos, up, mira: { x: pos.x + direccao.x * 200, y: pos.y + direccao.y * 200, z: pos.z + direccao.z * 200 } };
   }
   if (modo === 'cinema') return alvoCinema(pose, { fit, foco, agoraS, frente, esquerda });
   if (modo === 'abertura' || modo === 'lado') {

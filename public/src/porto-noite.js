@@ -7,7 +7,7 @@ import { alturaTerreno } from './relevo.js';
  * missão), dentro do grupo da geografia (recentrarOrigem desloca-o inteiro):
  * Ponte D. Luís I e Ponte da Arrábida sobre o Douro escavado no relevo,
  * casario da Ribeira e do cais de Gaia com janelas acesas, luzes da cidade,
- * balizagem da pista do Sá Carneiro, lanternas a subir do rio e fogo de
+ * lanternas a subir do rio e fogo de
  * artifício. As lanternas e o fogo ficam abaixo dos 300 m e são só cenário:
  * as ameaças vêm do director e da física. Tudo acende com a noite do céu.
  * Cada peça é uma só chamada de desenho (geometrias fundidas ou instâncias).
@@ -156,9 +156,15 @@ function criarPonte(perfil, pistas, p, { ferro, pedra, corLuz, leve }) {
   const grupo = new THREE.Group();
   grupo.position.set(centro.x, 0, centro.z);
   grupo.rotation.y = Math.atan2(norte.x, norte.z);
+  grupo.name = p.crescenteM ? 'porto-ponte-dom-luis-i' : 'porto-ponte-arrabida';
   const estrutura = new THREE.Mesh(mergeGeometries(partes), ferro);
   partes.forEach((g) => g.dispose());
   grupo.add(estrutura);
+  const piso = new THREE.Mesh(caixa(p.larguraM - 1, 0.15, sNorte - sSul, 0, topo + 1, (sNorte + sSul) / 2), new THREE.MeshLambertMaterial({ color: 0x71716b }));
+  grupo.add(piso);
+  const guardas = [-1, 1].map(lado => caixa(0.45, 1, sNorte - sSul, lado * (p.larguraM / 2 + 0.8), topo + 1.8, (sNorte + sSul) / 2));
+  grupo.add(new THREE.Mesh(mergeGeometries(guardas), ferro));
+  guardas.forEach(g => g.dispose());
   // Pilares de granito nos arranques do arco (só na D. Luís I).
   if (pedra) {
     const pilares = [-1, 1].map((sinal) => caixa(p.larguraM + 6, topo + 8, 10, 0, topo / 2 - 4, sinal * (p.vaoM / 2 + 5)));
@@ -375,20 +381,22 @@ export function criarPortoNoite(geografia, { perfil, pistas = [], leve = false }
   const arrabida = criarPonte(perfil, pistas, ARRABIDA, { ferro: betao, pedra: null, corLuz: [0.85, 0.9, 1], leve });
   const casario = criarCasario(perfil, pistas, leve);
   const cidade = criarCidade(perfil, pistas, leve);
-  const pista = criarPista(perfil, pistas, leve);
+  // Historical replays retain their terrain-following lights; the detailed strip needs the enlarged ground profile.
+  const pista = pistas.some(p=>(p.raioPlanoM??1200)>=1900) ? null : criarPista(perfil,pistas,leve);
   const lanternas = criarLanternas(leve);
   const fogo = criarFogo(leve);
   const grupo = new THREE.Group();
   grupo.name = 'porto-noite';
-  grupo.add(luisI.grupo, arrabida.grupo, casario, cidade, pista, lanternas.pontos, fogo.pontos);
+  grupo.add(luisI.grupo, arrabida.grupo, casario, cidade, lanternas.pontos, fogo.pontos);
+  if(pista)grupo.add(pista);
   geografia.add(grupo);
   return {
     grupo,
+    pista,
     pontes: [{ ...luisI, brilho: 0.55 }, { ...arrabida, brilho: 0.25 }],
     materiais: { pedra },
     casario,
     cidade,
-    pista,
     lanternas,
     fogo,
     eixos: eixosDoRio(perfil.rio, LUIS_I.x),
@@ -445,7 +453,7 @@ export function actualizarPortoNoite(porto, dt, { luzes = 1, vento = { x: 0, z: 
   porto.casario.material.emissiveIntensity = noite;
   porto.casario.material.color.setScalar(1 - 0.7 * noite);
   acender(porto.cidade, 0.95 * noite);
-  acender(porto.pista, noite);
+  if(porto.pista)acender(porto.pista,noite);
   acender(porto.lanternas.pontos, noite);
   porto.fogo.pontos.visible = noite > 0.01;
 

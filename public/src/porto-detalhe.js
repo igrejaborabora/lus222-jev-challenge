@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { alturaTerreno, distanciaAoRio } from './relevo.js';
 import { mulberry32 } from './decisao.js';
+import { amostrarCosta, amostrarMargens } from './porto-reference.js';
 
 /**
  * Porto ilustrativo no referencial já usado pelo Douro e pelas pontes.
@@ -202,6 +203,43 @@ function marcos(grupo, perfil, pistas) {
   }
 }
 
+/** Água e margens no mesmo perfil do terreno, em três chamadas de desenho. */
+function frentesDeAgua(grupo, perfil, pistas) {
+  const costa = amostrarCosta(perfil, pistas);
+  const surf = [];
+  const tri = (vertices, a, b, c, d) => vertices.push(...a, ...b, ...c, ...b, ...d, ...c);
+  for (let i = 1; i < costa.length; i++) {
+    const a = costa[i - 1], b = costa[i];
+    if (!a.aberta || !b.aberta) continue;
+    // Faixa fina do lado do mar: não pinta linhas através da foz.
+    tri(surf, [a.x + 7, a.y, a.z], [a.x + 23, a.y, a.z], [b.x + 7, b.y, b.z], [b.x + 23, b.y, b.z]);
+  }
+  const cais = [];
+  for (const margem of amostrarMargens(perfil, pistas)) {
+    for (let i = 1; i < margem.length; i++) {
+      const a = margem[i - 1], b = margem[i];
+      if (!a || !b || a.x < 900 || a.x > 5700 || b.x < 900 || b.x > 5700) continue;
+      const outer = p => [p.x + p.nx * 12, alturaTerreno(perfil, p.x + p.nx * 12, p.z + p.nz * 12, pistas) + 0.4, p.z + p.nz * 12];
+      tri(cais, [a.x, a.y, a.z], outer(a), [b.x, b.y, b.z], outer(b));
+    }
+  }
+  const agua = [];
+  const pts = perfil.rio.pontos;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    // A fita fica dentro do canal mais estreito (160m), abaixo das pontes.
+    const dx = b[0] - a[0], dz = b[1] - a[1], d = Math.hypot(dx, dz);
+    const nx = dz / d * 69, nz = -dx / d * 69;
+    tri(agua, [a[0] + nx, 0.035, a[1] + nz], [a[0] - nx, 0.035, a[1] - nz], [b[0] + nx, 0.035, b[1] + nz], [b[0] - nx, 0.035, b[1] - nz]);
+  }
+  for (const [nome, vertices, cor] of [['porto-atlantic-shore', surf, 0x8ea8a3], ['porto-river-quays', cais, 0xa89d85], ['porto-douro-water', agua, 0x345f62]]) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3)); geo.computeVertexNormals();
+    const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: cor, side: THREE.DoubleSide }));
+    mesh.name = nome; grupo.add(mesh);
+  }
+}
+
 export function criarPortoDetalhe(geografia, { perfil, pistas = [], leve = false } = {}) {
   const grupo = new THREE.Group();
   grupo.name = 'porto-detalhe';
@@ -210,6 +248,7 @@ export function criarPortoDetalhe(geografia, { perfil, pistas = [], leve = false
   vias(grupo, perfil, pistas);
   parques(grupo, perfil, pistas, leve);
   marcos(grupo, perfil, pistas);
+  frentesDeAgua(grupo, perfil, pistas);
   geografia.add(grupo);
   return grupo;
 }
