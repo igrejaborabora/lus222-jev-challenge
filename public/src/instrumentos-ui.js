@@ -1,4 +1,4 @@
-import { instrumentosDeVoo, transformacaoHorizonte } from './instrumentos.js';
+import { instrumentosDeVoo, transformacaoHorizonte, anguloTrajectoria } from './instrumentos.js';
 
 const numero = (n) => Math.round(n).toLocaleString('pt-PT');
 const assinado = (n) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${numero(Math.abs(n))}`;
@@ -7,6 +7,7 @@ const assinado = (n) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${numero(Math.abs(n)
 export function criarInstrumentosUI(raiz) {
   const campos = new Map([...raiz.querySelectorAll('[data-instrumento]')].map((e) => [e.dataset.instrumento, e]));
   const horizonte = raiz.querySelector('#sim-horizonte-movel');
+  const trajectoria = raiz.querySelector('#sim-trajectoria');
   const agulha = raiz.querySelector('#sim-vsi-agulha');
   const painel = raiz.querySelector('#sim-instrumentos');
   const aviso = raiz.querySelector('#sim-aviso-voo');
@@ -17,6 +18,7 @@ export function criarInstrumentosUI(raiz) {
   return {
     atitude(v) {
       horizonte.setAttribute('transform', transformacaoHorizonte(v.pitchRad * 180 / Math.PI, v.bankRad * 180 / Math.PI));
+      trajectoria.setAttribute('transform', `translate(0 ${-anguloTrajectoria(v) * 2.5})`);
     },
     actualizar(m, voo = m.voo) {
       const i = instrumentosDeVoo(m, voo);
@@ -37,6 +39,8 @@ export function criarInstrumentosUI(raiz) {
       texto('autoridade', i.autoridade);
       texto('intencao', i.intencao);
       texto('movimento', i.movimento);
+      texto('trajectoria', assinado(Math.round(i.trajectoriaGraus)) + '°');
+      painel.dataset.movimento = i.movimento === 'A subir' ? 'subir' : i.movimento === 'A descer' ? 'descer' : 'nivelado';
       texto('alvo', i.altitudeAlvoFt == null ? '—' : numero(i.altitudeAlvoFt) + ' ft');
       texto('aviso', i.aviso);
       painel.classList.toggle('tem-aviso', Boolean(i.aviso));

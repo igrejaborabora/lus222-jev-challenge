@@ -12,7 +12,8 @@ const COR = {
 };
 // Plano da pista: asfalto esbatido no verde baixo, para não ser um disco preto.
 const COR_PLANO = COR.pista.clone().lerp(COR.baixo, 0.55);
-const COR_MAR = new THREE.Color(0x1f2e38);
+const COR_MAR = new THREE.Color(0x263d48);
+const COR_CIDADE = new THREE.Color(0x9a9485);
 const FUNDO_VISIVEL_M = -6;
 // Chão abaixo disto (acima do mar) é praia, mas só num perfil com água: no
 // Alentejo e no corredor do piloto (2 a 8 m) é campo, não deserto.
@@ -33,8 +34,10 @@ function noPlanoDaPista(pistas, x, z) {
 function corDe(h, x, z, t, alvo) {
   if (noPlanoDaPista(t.pistas, x, z)) return alvo.copy(COR_PLANO);
   if (t.praia && h < PRAIA_ATE_M) return alvo.copy(COR.praia);
-  if (h < 160) return alvo.copy(COR.baixo).lerp(COR.medio, h / 160);
-  return alvo.copy(COR.medio).lerp(COR.alto, Math.min(1, (h - 160) / 500));
+  if (h < 160) alvo.copy(COR.baixo).lerp(COR.medio, h / 160);
+  else alvo.copy(COR.medio).lerp(COR.alto, Math.min(1, (h - 160) / 500));
+  if (t.perfil?.cidade) alvo.lerp(COR_CIDADE, urbanoEm(t.perfil, x, z, h) * 0.58);
+  return alvo;
 }
 
 /**
@@ -201,8 +204,8 @@ export function actualizarTerreno(t, x, z, orcamento = 1) {
  * as luzes das cidades se lerem; o avião e as nuvens ficam com a luz do céu.
  */
 export function escurecerTerreno(t, luzes) {
-  t.material.color.setScalar(1 - 0.6 * luzes);
-  t.mar.material.color.copy(COR_MAR).multiplyScalar(1 - 0.4 * luzes);
+  t.material.color.setScalar(1 - 0.42 * luzes);
+  t.mar.material.color.copy(COR_MAR).multiplyScalar(1 - 0.28 * luzes);
   if (t.urbano) t.urbano.value = 0.1 * luzes;
 }
 

@@ -1,9 +1,11 @@
+import { faseLuzes } from './luzes-voo.js';
+import { criarPortoDetalhe } from './porto-detalhe.js';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { alternarPreferido, alvoCamara, modoCamara, novaCamara, registarEvento, registarInteracao } from './camara-modos.js';
 import { criarAves, criarCanyon, criarGuerra } from './cenas.js';
-import { actualizarHelices, criarLus222 } from './lus222.js';
+import { actualizarHelices, actualizarSuperficies, actualizarLuzes, criarLus222 } from './lus222.js';
 import { offsetLateral, pontoAmeaca } from './decisao.js';
 import { alturaAteFolga, indiceAmeacaAEnquadrar, posicaoVisualBaloes } from './ameaca-visual.js';
 import { actualizarTerreno, criarTerreno, escurecerTerreno, largarTerreno } from './terreno.js';
@@ -398,7 +400,7 @@ function luzesNavegacao(aviao) {
   });
 }
 
-export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null, pistas = [], apresentacao = true, destinos = [], nomesDestinos = {}, luzDia = true } = {}) {
+export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null, pistas = [], apresentacao = true, destinos = [], nomesDestinos = {}, luzDia = true, periodo } = {}) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: !leve,
@@ -420,7 +422,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   scene.add(sun, sun.target);
   // Cúpula, nevoeiro, luz hemisférica, nuvens e rastos; o nevoeiro fecha
   // antes da orla dos mosaicos carregados.
-  const ceu = criarCeu(scene, { cenario, leve, alcanceTerrenoM: TAMANHO_MOSAICO_M * (leve ? 2 : 3), luzDia });
+  const ceu = criarCeu(scene, { cenario, leve, alcanceTerrenoM: TAMANHO_MOSAICO_M * (leve ? 2 : 3), luzDia, periodo });
 
   let ambienteRT = null;
   // Só o LUS-222 usa MeshStandardMaterial: o ambiente dá-lhe reflexos suaves
@@ -436,7 +438,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     pmrem.dispose();
     // Sombra própria do avião (asa sobre a fuselagem), com a câmara de sombra a seguir a pose.
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
     Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 140 });
@@ -456,6 +458,22 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   if (pose) actualizarTerreno(terreno, pose.x, pose.z, Infinity);
   // Porto na noite de São João: pontes, Ribeira, luzes da cidade, lanternas e fogo.
   const portoNoite = cenario === 'porto' ? criarPortoNoite(geografia, { perfil: terreno.perfil, pistas: terreno.pistas, leve }) : null;
+  if (cenario === 'porto') criarPortoDetalhe(geografia, { perfil: terreno.perfil, pistas: terreno.pistas, leve });
+  // Asfalto e marcações, no mesmo plano usado pela física de aterragem.
+  for (const p of pistas) {
+    if ((p.raioPlanoM ?? 0) < 1900) continue;
+    const pista = new THREE.Mesh(new THREE.PlaneGeometry(50, 3480), new THREE.MeshLambertMaterial({ color: 0x45494a }));
+    pista.rotation.x = -Math.PI / 2; pista.position.set(p.x, 2.08, p.z); geografia.add(pista);
+    const tinta = new THREE.MeshBasicMaterial({ color: 0xe6e1cf });
+    for(let z = -1680; z < 1700; z += 70) {
+      const traco = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 30), tinta);
+      traco.rotation.x = -Math.PI / 2; traco.position.set(p.x, 2.12, p.z + z); geografia.add(traco);
+    }
+    for (const sinal of [-1,1]) for(let x = -20; x <= 20; x += 8) {
+      const soleira = new THREE.Mesh(new THREE.PlaneGeometry(4, 35), tinta);
+      soleira.rotation.x = -Math.PI/2; soleira.position.set(p.x+x,2.12,p.z+sinal*1640);geografia.add(soleira);
+    }
+  }
   scene.add(geografia);
 
   const aviao = criarLus222({ leve });
@@ -468,6 +486,10 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     });
   }
   const luzesNav = luzesNavegacao(aviao);
+  const luzesSinal = [[0,1.6,-1,'beacon',0xff3020],[8,1.25,.5,'estrobo',0xffffff],[-8,1.25,.5,'estrobo',0xffffff]].map(([x,y,z,tipo,cor]) => {
+    const luz = new THREE.Mesh(new THREE.SphereGeometry(0.24,8,6), new THREE.MeshBasicMaterial({color:cor,toneMapped:false}));
+    luz.position.set(x,y,z);luz.userData.tipo = tipo;aviao.add(luz);return luz;
+  });
   scene.add(aviao);
 
   const ameaças = new THREE.Group();
@@ -498,7 +520,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     // Valores de dia: a noite escala-os (escurecerAviao) sem os perder.
     intensidadesDia: { ambiente: scene.environmentIntensity, fill: fill.intensity },
     ceu,
-    luzesNav,
+    luzesNav, luzesSinal, reduzido,
     origemVisual: { x: 0, z: 0 },
     alvoLook: null,
     tAmeaca: 0,
@@ -538,6 +560,7 @@ export function actualizarCena(mundo, visual, dt = 0) {
   if (!mundo?.terreno) return;
   actualizarTerreno(mundo.terreno, visual.pose.x, visual.pose.z, 1);
   if (mundo.ceu && visual.poseLocal && visual.ambiente) actualizarCeuEAviao(mundo, visual, dt);
+  if (mundo.camara.preferido === 'cockpit') mundo.aviao.traverse(o => { if(o.isMesh) o.visible = false; });
   // Depois do céu: os portais param no far do nevoeiro deste frame.
   if (mundo.marcas && visual.marcas) {
     actualizarMarcas(mundo.marcas, {
@@ -559,10 +582,14 @@ function actualizarCeuEAviao(mundo, visual, dt) {
     ambiente: visual.ambiente,
     pose: visual.poseLocal,
     origem: mundo.origemVisual,
-    dt,
+    dt, tempoS: visual.voo?.tempoS, semente: visual.semente,
   });
-  const acesas = pal.luzes > 0.05;
+  if (visual.voo) actualizarSuperficies(mundo.aviao, visual.voo);
+  actualizarLuzes(mundo.aviao, { luzesAterragem: visual.controlos?.luzesAterragem ?? false });
+  const acesas = visual.controlos?.luzesNav ?? pal.luzes > 0.05;
   for (const luz of mundo.luzesNav) luz.visible = acesas;
+  const fase = faseLuzes(visual.voo?.tempoS ?? (visual.pose.hélice ?? 0)/16, mundo.reduzido);
+  for(const luz of mundo.luzesSinal) luz.visible = acesas && fase[luz.userData.tipo];
   escurecerAviao(mundo, pal);
   escurecerTerreno(mundo.terreno, pal.luzes);
   if (mundo.portoNoite) {
@@ -771,7 +798,17 @@ function enquadrar(mundo, modo, pose, dt) {
  */
 export function actualizarCamara(mundo, pose, dt) {
   const modo = modoCamara(mundo.camara, performance.now() / 1000);
-  if (modo === 'livre' && mundo.alvoAnterior) seguirLivre(mundo, pose);
+  mundo.aviao.visible = true;
+  mundo.aviao.traverse(o => { if(o.isMesh) o.visible = modo !== 'cockpit'; });
+  mundo.controlos.enabled = modo !== 'cockpit';
+  if (modo === 'cockpit') {
+    const alvo = alvoCamara('cockpit', pose);
+    mundo.camera.position.set(alvo.pos.x, alvo.pos.y, alvo.pos.z);
+    mundo.camera.up.set(0, 1, 0);
+    mundo.camera.lookAt(alvo.mira.x, alvo.mira.y, alvo.mira.z);
+    mundo.desvioCamara = null; mundo.desvioMira = null;
+  }
+  else if (modo === 'livre' && mundo.alvoAnterior) seguirLivre(mundo, pose);
   else enquadrar(mundo, modo === 'livre' ? 'cauda' : modo, pose, dt);
   const ant = mundo.alvoAnterior ?? (mundo.alvoAnterior = { x: 0, y: 0, z: 0 });
   ant.x = pose.x;

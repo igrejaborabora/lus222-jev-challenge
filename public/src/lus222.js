@@ -50,6 +50,66 @@ function superficie(estacoes, perfil, material, plano, { tampaInicio = false, ta
   return malhaLoft(aneis, material, { tampaInicio, tampaFim });
 }
 
+/** Recorta um perfil fechado pela corda, preservando o contorno NACA dos dois lados. */
+function recortarPerfil(perfil, corte, posterior) {
+  const pts = perfil.slice(0, -1);
+  const recorte = [];
+  const dentro = ([c]) => posterior ? c >= corte : c <= corte;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    if (dentro(a)) recorte.push(a);
+    if (dentro(a) !== dentro(b)) {
+      const f = (corte - a[0]) / (b[0] - a[0]);
+      recorte.push([corte, a[1] + f * (b[1] - a[1])]);
+    }
+  }
+  return [...recorte, [...recorte[0]]];
+}
+
+/**
+ * Separa o bordo de fuga e coloca a articulação no eixo real do loft.
+ * Ângulos e divisões ilustrativos: não são especificações oficiais do LUS-222.
+ */
+function superficieArticulada(g, estacoes, perfil, material, plano, tipo, lado = 0, fraccao = 0.72) {
+  const fixo = recortarPerfil(perfil, fraccao - 0.004, false);
+  const movel = recortarPerfil(perfil, fraccao + 0.004, true);
+  g.add(superficie(estacoes, fixo, material, plano, { tampaInicio: true, tampaFim: true }));
+  const a = new THREE.Vector3(...plano(estacoes[0], fraccao, 0));
+  const b = new THREE.Vector3(...plano(estacoes[estacoes.length - 1], fraccao, 0));
+  const centro = a.clone().add(b).multiplyScalar(0.5);
+  const eixo = b.clone().sub(a).normalize();
+  // Todas as asas usam +X e a deriva +Y como orientação da articulação.
+  if ((tipo === 'rudder' ? eixo.y : eixo.x) < 0) eixo.negate();
+  const malha = superficie(estacoes, movel, material, plano, { tampaInicio: true, tampaFim: true });
+  malha.geometry.translate(-centro.x, -centro.y, -centro.z);
+  const articulacao = new THREE.Group();
+  articulacao.name = `${tipo}-${lado > 0 ? 'esquerda' : lado < 0 ? 'direita' : 'central'}`;
+  articulacao.position.copy(centro);
+  articulacao.add(malha);
+  g.add(articulacao);
+  g.userData.superficies.push({ articulacao, eixo, tipo, lado });
+}
+
+function criarLuzesAterragem(g) {
+  const luzes = [];
+  const geo = new THREE.SphereGeometry(0.095, 8, 6);
+  const material = new THREE.MeshBasicMaterial({ color: 0xfff2d2 });
+  for (const s of [-1, 1]) {
+    const lampada = new THREE.Mesh(geo, material);
+    lampada.name = `luz-aterragem-${s}`;
+    lampada.position.set(s * 1.55, 1.1, 1.48);
+    const feixe = new THREE.SpotLight(0xffeed1, 35, 220, Math.PI / 12, 0.55, 1);
+    feixe.position.copy(lampada.position);
+    feixe.target.position.set(s * 1.55, -14, 180);
+    g.add(lampada, feixe, feixe.target);
+    lampada.visible = false;
+    feixe.visible = false;
+    luzes.push(lampada, feixe);
+  }
+  g.userData.luzesAterragem = luzes;
+}
+
 function textoCanvas(texto, { w = 512, h = 128, fill = '#f4f6f8', size = 72 } = {}) {
   const c = document.createElement('canvas');
   c.width = w;
@@ -312,6 +372,7 @@ function geometriaPa() {
 export function criarLus222({ leve = false } = {}) {
   const g = new THREE.Group();
   g.name = 'LUS-222';
+  g.userData.superficies = [];
   const m = materiais(leve);
 
   const fus = aneisFuselagem({ nAneis: leve ? 36 : 56, nPontos: leve ? 32 : 48 });
@@ -338,10 +399,13 @@ export function criarLus222({ leve = false } = {}) {
     return { s: x, le: 1.5 - 0.65 * f, corda: 2.7 - 1.35 * f, esp: 1 - 0.25 * f };
   };
   const planoAsa = (e, c, t) => [e.s, 1.22 + t * e.corda * e.esp, e.le - c * e.corda];
-  g.add(superficie([asa(-5), asa(5)], perfilAsa, m.branco, planoAsa));
+  g.add(superficie([asa(-1.25), asa(0), asa(1.25)], perfilAsa, m.branco, planoAsa));
   for (const s of [-1, 1]) {
+    superficieArticulada(g, [asa(s * 1.25), asa(s * 4.95)], perfilAsa, m.branco, planoAsa, 'flaps', s);
+    g.add(superficie([asa(s * 4.95), asa(s * 5)], perfilAsa, m.branco, planoAsa));
+    superficieArticulada(g, [asa(s * 5), asa(s * 7.55)], perfilAsa, m.marinho, planoAsa, 'aileron', s);
     const ponta = { ...asa(s * 7.9), corda: asa(7.9).corda * 0.82, le: asa(7.9).le - 0.08, esp: 0.45 };
-    g.add(superficie([asa(s * 5), asa(s * 7.62), ponta], perfilAsa, m.marinho, planoAsa, { tampaFim: true }));
+    g.add(superficie([asa(s * 7.55), asa(s * 7.62), ponta], perfilAsa, m.marinho, planoAsa, { tampaFim: true }));
   }
 
   // Naceles centradas na asa, perto da fuselagem, como na vista frontal.
@@ -369,9 +433,12 @@ export function criarLus222({ leve = false } = {}) {
   g.add(superficie([
     { s: 0.55, le: -3.4, corda: 3.1 },
     { s: 1.35, le: -4.3, corda: 2.1 },
+  ], perfilCauda, m.marinho, planoDeriva));
+  superficieArticulada(g, [
+    { s: 1.35, le: -4.3, corda: 2.1 },
     { s: 3.3, le: -5.5, corda: 1.3 },
     { s: 3.42, le: -5.58, corda: 1.12 },
-  ], perfilCauda, m.marinho, planoDeriva, { tampaFim: true }));
+  ], perfilCauda, m.marinho, planoDeriva, 'rudder', 0, 0.68);
   const planoEstab = (e, c, t) => [e.s, 3.4 + t * e.corda, e.le - c * e.corda];
   const estab = (x) => {
     const f = Math.min(1, Math.abs(x) / 2.9);
@@ -379,7 +446,9 @@ export function criarLus222({ leve = false } = {}) {
   };
   for (const s of [-1, 1]) {
     const ponta = { ...estab(s * 2.9), corda: estab(2.9).corda * 0.8, le: estab(2.9).le - 0.05 };
-    g.add(superficie([estab(0), estab(s * 2.75), ponta], perfilCauda, m.marinho, planoEstab, { tampaFim: true }));
+    g.add(superficie([estab(0), estab(s * 0.18)], perfilCauda, m.marinho, planoEstab));
+    superficieArticulada(g, [estab(s * 0.18), estab(s * 2.75)], perfilCauda, m.marinho, planoEstab, 'elevator', s, 0.64);
+    g.add(superficie([estab(s * 2.75), ponta], perfilCauda, m.marinho, planoEstab, { tampaFim: true }));
   }
 
   const lus = placa('LUS+222', 1.5, 0.34, { fill: '#f4f6f8', size: 76, w: 560, h: 128 });
@@ -413,6 +482,7 @@ export function criarLus222({ leve = false } = {}) {
   antena.rotation.x = -0.35;
   g.add(antena);
 
+  criarLuzesAterragem(g);
   g.userData.props = props;
   g.userData.heliceAnterior = null;
   g.scale.setScalar(1.35);
@@ -441,4 +511,23 @@ export function actualizarHelices(aviao, angulo, agoraMs = performance.now()) {
     const pa = p.children[0];
     if (pa?.material) pa.material.opacity = 1 - 0.62 * rapido;
   }
+}
+
+
+/** Anima as superfícies a partir do estado da física, sem alterar o voo. */
+export function actualizarSuperficies(aviao, voo = {}) {
+  const valores = voo.superficies ?? {};
+  for (const { articulacao, eixo, tipo, lado } of aviao?.userData?.superficies ?? []) {
+    const valor = Number.isFinite(valores[tipo]) ? valores[tipo] : 0;
+    const v = THREE.MathUtils.clamp(valor, tipo === 'flaps' ? 0 : -1, 1);
+    const angulo = tipo === 'flaps' ? -v * 0.52
+      : tipo === 'aileron' ? -v * lado * 0.32
+        : tipo === 'elevator' ? v * 0.38 : v * 0.4;
+    articulacao.quaternion.setFromAxisAngle(eixo, angulo);
+  }
+}
+
+/** Os faróis são independentes das luzes de navegação geridas pelo mundo. */
+export function actualizarLuzes(aviao, { luzesAterragem = false } = {}) {
+  for (const luz of aviao?.userData?.luzesAterragem ?? []) luz.visible = Boolean(luzesAterragem);
 }

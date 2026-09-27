@@ -1,3 +1,6 @@
+import { PERFIL_PROGRESSIVO, novosControlos, ALTURA_TREM_M } from './voo-progressivo.js';
+import { ambienteMeteorologico } from './meteorologia.js';
+import { novoTreino } from './treino.js';
 import { PERFIL } from './simulacao.js';
 import { novoPiloto } from './piloto-sim.js';
 
@@ -55,5 +58,27 @@ export function criarVooLivre(semente = 222, { piloto = 'humano' } = {}) {
     passo: 0,
     acumuladorS: 0,
     vooAnterior: null,
+  };
+}
+
+/** Sessão interactiva nova; o construtor anterior fica intacto para replays históricos. */
+export function criarVooProgressivo(semente = 222, { exercicio = 'livre', tempo = 'poucas_nuvens', ambiente = {} } = {}) {
+  const m = criarVooLivre(semente);
+  const controlos = novosControlos();
+  let voo = { ...m.voo, xM: -4300, zM: 151500, rumoRad: 1.2, flaps: 0, emSolo: false, contacto: null };
+  const treino = novoTreino(exercicio);
+  if (exercicio === 'solo') {
+    voo = { ...voo, xM: 0, zM: 163400, rumoRad: 0, altitudeM: 2 + ALTURA_TREM_M, altitudeAlvoM: null, velocidadeMs: 0, emSolo: true, acelerador: 0, potencia: 0, flaps: 0.35 };
+    Object.assign(controlos, { flaps: 0.35, acelerador: 0, travao: 1, luzesAterragem: true });
+  } else if (exercicio === 'aproximacao') {
+    voo = { ...voo, xM: 0, zM: 159900, rumoRad: 0, altitudeM: 195, altitudeAlvoM: 195, velocidadeMs: 64, acelerador: 0.5, potencia: 0.5, flaps: 0.65 };
+    Object.assign(controlos, { flaps: 0.65, luzesAterragem: true });
+  }
+  return { ...m, perfil: PERFIL_PROGRESSIVO, controlos, treino, voo,
+    ambiente: ambienteMeteorologico(tempo, ambiente),
+    pistas: m.pistas.map((p) => ({ ...p, raioPlanoM: 2000 })),
+    diretor: treino ? null : m.diretor, circuito: treino ? null : m.circuito,
+    destinoId: exercicio === 'solo' || exercicio === 'aproximacao' ? 'aeroporto' : m.destinoId,
+    fase: voo.emSolo ? 'solo' : 'em_rota',
   };
 }

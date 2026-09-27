@@ -44,7 +44,10 @@ export function nevoeiroDe(visKm, alcanceTerrenoM) {
 
 const NOITE_INICIAL = { porto: 0.35, sar: 0.2 };
 
-export function noiteAlvo(cenario, luzDia) {
+export function noiteAlvo(cenario, luzDia, periodo) {
+  if (periodo === 'dia') return 0;
+  if (periodo === 'anoitecer') return 0.42;
+  if (periodo === 'noite') return 1;
   return luzDia ? NOITE_INICIAL[cenario] ?? 0 : 1;
 }
 
@@ -56,18 +59,24 @@ export function misturarCor(a, b, t) {
 const DIA = { zenite: 0x3f6f9e, horizonte: 0xb8c6d2, nevoeiro: 0xa7b6c3, sol: 0xfff1d8 };
 const NOITE = { zenite: 0x080b12, horizonte: 0x2a2f3c, nevoeiro: 0x1b2029, sol: 0xff9a5c };
 
-export function paletaCeu(noite) {
+export function paletaCeu(noite, ambiente = {}) {
   const n = clamp(noite, 0, 1);
+  const cobertura = clamp(ambiente.cobertura ?? 0, 0, 1);
+  const chuva = clamp(ambiente.chuva ?? 0, 0, 1);
+  const cinza = cobertura * 0.38 + chuva * 0.18;
+  const entardecer = suave(0.12, 0.42, n) * (1 - suave(0.5, 0.85, n));
+  const horizonte = misturarCor(misturarCor(DIA.horizonte, NOITE.horizonte, n), 0xf2b48c, entardecer * (1 - cinza) * 0.55);
   return {
-    zenite: misturarCor(DIA.zenite, NOITE.zenite, n),
-    horizonte: misturarCor(DIA.horizonte, NOITE.horizonte, n),
-    nevoeiro: misturarCor(DIA.nevoeiro, NOITE.nevoeiro, n),
+    zenite: misturarCor(misturarCor(DIA.zenite, NOITE.zenite, n), misturarCor(0x7d8998, 0x19202c, n), cinza),
+    horizonte: misturarCor(horizonte, misturarCor(0xa0a8ae, 0x292f3a, n), cinza),
+    nevoeiro: misturarCor(misturarCor(DIA.nevoeiro, NOITE.nevoeiro, n), misturarCor(0x929fa8, 0x242b34, n), cinza),
     corSol: misturarCor(DIA.sol, NOITE.sol, suave(0.2, 0.7, n)),
-    intensidadeSol: 1.35 * (1 - 0.8 * n),
-    intensidadeCeu: 1.05 * (1 - 0.6 * n),
+    intensidadeSol: 1.35 * (1 - 0.8 * n) * (1 - 0.72 * cobertura),
+    // Luz difusa mantém a leitura do chão mesmo sob céu encoberto.
+    intensidadeCeu: 1.05 * (1 - 0.6 * n) * (1 - 0.18 * chuva),
     // De dia ~37°, como a luz afinada; de noite abaixo do horizonte (só para o céu).
     elevacaoSolRad: 0.64 - 0.72 * n,
-    luzes: suave(0.45, 0.8, n),
+    luzes: suave(0.26, 0.8, n),
   };
 }
 

@@ -64,7 +64,7 @@ Sem valores de motor fictícios, sem novas chamadas JEV para desenhar instrument
 ## Estado
 
 - Entrega 1: implementada e validada. 236 testes, lint e verificação de assets passam. Smoke Chromium: gravação → humano → subida/descida → pausa; painel aberto/fechado em 1440×1000, 1024×768, 768×1024, 390×844 e 360×640, sem sobreposição dos instrumentos com os comandos. Sem erros JavaScript; endpoint /api/jev indisponível no servidor estático, usando a gravação identificada. JEV ao vivo não foi exercitado.
-- Entregas 2–4: planeadas; não incluídas no PR de instrumentação.
+- Entregas 2–4: implementadas na continuação `2026-09-27-voo-porto-meteorologia.md`, em perfil de treino independente. Limites: cockpit frontal sem interior modelado; Porto procedural sem cartografia real; flaps/trim/leme ilustrativos; integração estratégica M5 local preservada fora desta entrega.
 
 ## Correcção de interacção vertical — 27/09/2026
 
