@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="pt-PT">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#090b0e">
-<meta name="description" content="Explore decisões tipadas do JEV numa simulação ilustrativa de missão do LUS-222.">
-<title>JEV / Mesa de missão</title>
+<meta name="description" content="Fly the LUS-222 over Porto and meet JEV, the AI copilot that turns structured flight data into visible decisions.">
+<title>JEV / AI Flight Lab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,58 +16,58 @@
 <body>
 <div id="app">
   <section class="screen active" id="screen-splash">
-    <div class="hero-image"><picture><source srcset="./img/lus-222-hero.webp" type="image/webp"><img src="./img/lus-222-hero.png" alt="Representação do LUS-222 em voo"></picture></div>
+    <div class="hero-image"><picture><source srcset="./img/lus-222-hero.webp" type="image/webp"><img src="./img/lus-222-hero.png" alt="LUS-222 aircraft in flight"></picture></div>
     <div class="hero-shade"></div>
     <canvas id="hero-particles" aria-hidden="true"></canvas>
-    <header class="site-header"><span class="brand-mark">J<span>·</span>EV</span><span class="header-rule"></span><span>LABORATÓRIO DE DECISÃO</span><span class="header-right">LUS-222 / DEMO INDEPENDENTE</span></header>
+    <header class="site-header"><span class="brand-mark">J<span>·</span>EV</span><span class="header-rule"></span><span>AI FLIGHT LAB</span><span class="header-right">LUS-222 / INDEPENDENT DEMO</span></header>
     <main class="hero-copy">
-      <p class="kicker">01 / ESTADO → ESCOLHA → CONSEQUÊNCIA</p>
-      <h1>Uma decisão<br><em>muda a missão.</em></h1>
-      <p class="hero-lead">Aproximação ao Porto no anoitecer de São João. O JEV decide perante balões, tráfego e vento; cada escolha altera o voo.</p>
-      <div class="hero-example" aria-label="Exemplo de decisão">
-        <div><span>ESTADO</span><strong>Balões no corredor · 800 m</strong></div>
-        <div><span>JEV / REPLAY</span><strong>Prosseguir · direita + subir</strong></div>
-        <div><span>EFEITO SIMULADO</span><strong>Separação ≈190 m · rota mantida</strong></div>
+      <p class="kicker">FLY WITH JEV / AI DECISIONS IN MOTION</p>
+      <h1>Meet JEV.<br><em>Your AI copilot.</em></h1>
+      <p class="hero-lead">Fly the LUS-222 over Porto, or let JEV take the controls. TypeSafe’s AI model reads the flight state, chooses a manoeuvre and changes what happens next.</p>
+      <div class="hero-example" aria-label="Recorded example: flight data, JEV decision and simulated outcome">
+        <div><span>FLIGHT DATA</span><strong>Lanterns ahead · 800 m</strong></div>
+        <div><span>JEV / RECORDED DECISION</span><strong>Continue · right + climb</strong></div>
+        <div><span>SIMULATED OUTCOME</span><strong>≈190 m clearance · route held</strong></div>
       </div>
-      <div class="hero-actions"><button type="button" class="button button-accent" id="btn-sim-abrir">Voar o LUS-222 <span aria-hidden="true">↗</span></button><button type="button" class="button button-outline" id="btn-open">Escolher missão <span aria-hidden="true">↗</span></button><span class="gateway-status" id="gateway-status" role="status">A verificar o Gateway…</span></div>
-      <p class="hero-foot">typesafe-ai/jev via AI Gateway · dados estruturados, não imagens · física ilustrativa, não certificável · render do LUS-222: EEA Aircraft</p>
+      <div class="hero-actions"><button type="button" class="button button-accent" id="btn-sim-abrir">Take the controls <span aria-hidden="true">↗</span></button><button type="button" class="button button-outline" id="btn-open">Explore AI missions <span aria-hidden="true">↗</span></button><span class="gateway-status" id="gateway-status" role="status">Checking live JEV…</span></div>
+      <p class="hero-foot">JEV by TypeSafe AI · Structured flight data, visible decisions · Illustrative physics · Aircraft render: EEA Aircraft</p>
     </main>
-    <a class="px-brand" href="https://www.pixelgrammar.com/" target="_blank" rel="noopener noreferrer" aria-label="Pixelgrammar — estúdio criador, abre num novo separador">
-      <span class="px-credit">CRIADO PELA</span>
+    <a class="px-brand" href="https://www.pixelgrammar.com/" target="_blank" rel="noopener noreferrer" aria-label="Pixelgrammar — the studio behind this experience, opens in a new tab">
+      <span class="px-credit">BUILT BY</span>
       <span class="px-mark"><span class="px-fallback" aria-hidden="true">PX</span><canvas id="px-particles" role="img" aria-label="PX — Pixelgrammar"></canvas></span>
       <span class="px-wordmark">PIXELGRAMMAR <span aria-hidden="true">↗</span></span>
     </a>
-    <div class="hero-index">QUATRO CENÁRIOS · PORTO EM DESTAQUE</div>
+    <div class="hero-index">FOUR MISSIONS · PORTO AT DUSK</div>
   </section>
 
   <section class="screen" id="screen-commander">
     <div class="exlibris" aria-hidden="true"><img src="./img/lus-222-hero.webp" alt=""></div>
-    <header class="page-header"><button type="button" class="text-button" id="btn-home">← Início</button><span>JEV / MESA DE MISSÃO</span><span class="page-step">01 — PREPARAR</span></header>
+    <header class="page-header"><button type="button" class="text-button" id="btn-home">← Home</button><span>JEV / MISSION DESK</span><span class="page-step">01 — PREPARE</span></header>
     <main class="setup-layout">
       <div class="setup-main">
-        <div class="setup-title"><p class="kicker">ESCOLHE O CONTEXTO</p><h1>O mesmo modelo. <em>Decisões diferentes.</em></h1><p class="intro">Cada missão coloca um compromisso concreto: tempo clínico, carga ou incerteza visual. O voo reage às escolhas do JEV e às restrições que definires.</p></div>
+        <div class="setup-title"><p class="kicker">CHOOSE THE CONTEXT</p><h1>One AI model. <em>Different decisions.</em></h1><p class="intro">Each mission presents a trade-off: clinical urgency, heavy cargo or an uncertain sighting. The flight responds to JEV’s decisions and your chosen constraints.</p></div>
         <div class="mission-cards" id="mission-cards"></div>
       </div>
-      <aside class="setup-controls" aria-label="Parâmetros do briefing">
-        <div class="control-heading"><span class="kicker">PARÂMETROS</span><strong>Briefing do comandante</strong></div>
+      <aside class="setup-controls" aria-label="Briefing settings">
+        <div class="control-heading"><span class="kicker">SETTINGS</span><strong>Your mission briefing</strong></div>
         <div class="control-grid">
-          <label class="control-row"><span>Risco máximo</span><select id="select-risk"><option value="baixo">Baixo</option><option value="medio" selected>Médio</option><option value="alto">Alto</option></select></label>
-          <label class="control-row"><span>Carga útil <small>kg</small></span><input id="input-payload" type="number" min="0" max="2700" step="50" value="620"></label>
-          <label class="control-row"><span>Semente</span><input id="input-seed" type="number" min="1" max="999999999" value="222"></label>
+          <label class="control-row"><span>Maximum risk</span><select id="select-risk"><option value="baixo">Low</option><option value="medio" selected>Medium</option><option value="alto">High</option></select></label>
+          <label class="control-row"><span>Payload <small>kg</small></span><input id="input-payload" type="number" min="0" max="2700" step="50" value="620"></label>
+          <label class="control-row"><span>Seed</span><input id="input-seed" type="number" min="1" max="999999999" value="222"></label>
           <div class="control-checks">
-            <label class="control-row check"><input id="check-stol" type="checkbox"><span>Preferir pistas STOL</span></label>
-            <label class="control-row check"><input id="check-no-divert" type="checkbox"><span>Evitar desvios</span></label>
+            <label class="control-row check"><input id="check-stol" type="checkbox"><span>Prefer STOL airstrips</span></label>
+            <label class="control-row check"><input id="check-no-divert" type="checkbox"><span>Avoid diversions</span></label>
           </div>
         </div>
-        <button type="button" class="text-button map-link" id="btn-setup-map">Pista real no Google Maps ↗</button>
-        <p class="fine-print setup-note">Um percurso dura 3–5 minutos a 8×. O comandante pode pausar e sobrepor uma escolha. Não é treino de voo.</p>
+        <button type="button" class="text-button map-link" id="btn-setup-map">Actual runway on Google Maps ↗</button>
+        <p class="fine-print setup-note">A mission takes 3–5 minutes at 8× speed. Pause at any time or override a decision. This is an illustrative simulation, not certified flight training.</p>
       </aside>
       <div class="setup-dock">
-        <div class="mode-info" id="mode-info" role="status">A verificar a ligação ao JEV…</div>
+        <div class="mode-info" id="mode-info" role="status">Checking live JEV…</div>
         <div class="dock-buttons">
-          <button type="button" class="button button-accent pilot-button" id="btn-pilot">Prova contínua JEV <span aria-hidden="true">↗</span></button>
-          <button type="button" class="button button-accent" id="btn-launch">Iniciar JEV ao vivo <span aria-hidden="true">↗</span></button>
-          <button type="button" class="button button-outline" id="btn-replay">Ver replay gravado</button>
+          <button type="button" class="button button-accent pilot-button" id="btn-pilot">JEV continuous flight <span aria-hidden="true">↗</span></button>
+          <button type="button" class="button button-accent" id="btn-launch">Start live JEV <span aria-hidden="true">↗</span></button>
+          <button type="button" class="button button-outline" id="btn-replay">Watch recorded replay</button>
         </div>
       </div>
     </main>
@@ -75,57 +75,58 @@
 
   <section class="screen" id="screen-live">
     <canvas id="flight-canvas" aria-hidden="true"></canvas><div class="flight-tint"></div>
-    <header class="flight-header"><div class="flight-identity"><span class="brand-mark small">J<span>·</span>EV</span><img class="identity-thumb" src="./img/lus-222-hero.webp" alt="" aria-hidden="true"><div><b id="flight-name">—</b><small id="flight-source">—</small></div></div><div class="flight-phase"><span class="pulse"></span><span id="flight-phase">Em voo</span></div><button type="button" class="flight-sound" id="btn-som" aria-pressed="true" aria-label="Som dos motores" title="Som dos motores"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="som-ondas" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="som-mudo" d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button><button type="button" class="flight-exit" id="btn-exit">Terminar</button></header>
-    <aside class="decision-panel drawer" id="decision-panel" aria-label="Decisão actual">
-      <p class="kicker light">SITUAÇÃO ACTUAL <span id="event-number">01</span></p><h2 id="event-title">A preparar briefing</h2><p class="event-desc" id="event-desc">O JEV vai receber o estado da missão.</p>
-      <div class="decision-flow"><div class="flow-step"><span class="flow-index">01</span><div><small>ENTRADA</small><strong id="flow-input">—</strong></div></div><div class="flow-step"><span class="flow-index">02</span><div><small>DECISÃO</small><strong id="flow-choice">À espera do JEV</strong><span id="flow-detail">—</span></div></div><div class="flow-step"><span class="flow-index">03</span><div><small>EFEITO NA MISSÃO</small><strong id="flow-effect">—</strong></div></div></div>
+    <header class="flight-header"><div class="flight-identity"><span class="brand-mark small">J<span>·</span>EV</span><img class="identity-thumb" src="./img/lus-222-hero.webp" alt="" aria-hidden="true"><div><b id="flight-name">—</b><small id="flight-source">—</small></div></div><div class="flight-phase"><span class="pulse"></span><span id="flight-phase">In flight</span></div><button type="button" class="flight-sound" id="btn-som" aria-pressed="true" aria-label="Engine sound" title="Engine sound"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="som-ondas" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="som-mudo" d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button><button type="button" class="flight-exit" id="btn-exit">End flight</button></header>
+    <aside class="decision-panel drawer" id="decision-panel" aria-label="Current decision">
+      <p class="kicker light">CURRENT SITUATION <span id="event-number">01</span></p><h2 id="event-title">Preparing briefing</h2><p class="event-desc" id="event-desc">JEV will receive the structured mission state.</p>
+      <div class="decision-flow"><div class="flow-step"><span class="flow-index">01</span><div><small>INPUT</small><strong id="flow-input">—</strong></div></div><div class="flow-step"><span class="flow-index">02</span><div><small>DECISION</small><strong id="flow-choice">Waiting for JEV</strong><span id="flow-detail">—</span></div></div><div class="flow-step"><span class="flow-index">03</span><div><small>MISSION OUTCOME</small><strong id="flow-effect">—</strong></div></div></div>
       <div class="decision-flags"><span id="decision-origin">—</span><span id="decision-pic">—</span></div>
-      <section class="typed-panel" aria-label="Respostas tipadas do JEV"><p class="typed-meta" id="typed-meta">—</p><div id="typed-answers"></div></section>
+      <section class="typed-panel" aria-label="Structured JEV answers"><p class="typed-meta" id="typed-meta">—</p><div id="typed-answers"></div></section>
     </aside>
-    <aside class="telemetry" aria-label="Telemetria"><p class="kicker light">VOO / TEMPO SIMULADO</p><div><span>VELOCIDADE</span><strong><b id="tel-speed">—</b><small>kt</small></strong></div><div><span>ALTITUDE</span><strong><b id="tel-alt">—</b><small>ft</small></strong></div><div><span>COMBUSTÍVEL</span><strong><b id="tel-fuel">—</b><small>kg</small></strong></div><div><span>ETA</span><strong><b id="tel-eta">—</b><small>min</small></strong></div><div><span>RELÓGIO</span><strong><b id="tel-time">—</b><small>min</small></strong></div></aside>
-    <div class="map-card"><span class="map-label">ROTA ACTIVA</span><svg id="route-map" viewBox="0 0 270 112" role="img" aria-label="Esquema da rota da missão"><path id="map-planned" d="" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-dasharray="4 6"/><path id="map-path" d="" fill="none" stroke="#f4f6f8" stroke-width="3"/><circle id="map-plane" cx="20" cy="82" r="6" fill="#f4f6f8"/><circle id="map-target" cx="248" cy="82" r="5" fill="#f4f6f8"/></svg><strong id="map-destination">—</strong><small id="map-caption">Traçado esquemático</small></div>
-    <div class="flight-label">SIMULAÇÃO ILUSTRATIVA / PERFIL ASSUMIDO</div>
-    <aside class="pilot-proof" id="pilot-proof" aria-label="Prova contínua do piloto JEV" hidden>
-      <div class="pilot-proof-head"><span>PILOTO JEV / DECISÕES CONTÍNUAS</span><strong id="pilot-stats">—</strong></div>
+    <aside class="telemetry" aria-label="Telemetry"><p class="kicker light">FLIGHT / SIMULATION TIME</p><div><span>AIRSPEED</span><strong><b id="tel-speed">—</b><small>kt</small></strong></div><div><span>ALTITUDE</span><strong><b id="tel-alt">—</b><small>ft</small></strong></div><div><span>FUEL</span><strong><b id="tel-fuel">—</b><small>kg</small></strong></div><div><span>ETA</span><strong><b id="tel-eta">—</b><small>min</small></strong></div><div><span>TIME</span><strong><b id="tel-time">—</b><small>min</small></strong></div></aside>
+    <div class="map-card"><span class="map-label">ACTIVE ROUTE</span><svg id="route-map" viewBox="0 0 270 112" role="img" aria-label="Mission route diagram"><path id="map-planned" d="" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-dasharray="4 6"/><path id="map-path" d="" fill="none" stroke="#f4f6f8" stroke-width="3"/><circle id="map-plane" cx="20" cy="82" r="6" fill="#f4f6f8"/><circle id="map-target" cx="248" cy="82" r="5" fill="#f4f6f8"/></svg><strong id="map-destination">—</strong><small id="map-caption">Schematic route</small></div>
+    <div class="flight-label">ILLUSTRATIVE SIMULATION / ASSUMED PROFILE</div>
+    <aside class="pilot-proof" id="pilot-proof" aria-label="Continuous JEV pilot demonstration" hidden>
+      <div class="pilot-proof-head"><span>JEV PILOT / CONTINUOUS DECISIONS</span><strong id="pilot-stats">—</strong></div>
       <div class="pilot-tape" id="pilot-tape" aria-live="polite"></div>
     </aside>
-    <div class="flight-seal" id="flight-seal" aria-live="polite"><small id="seal-source">JEV</small><strong id="seal-choice">À espera do JEV</strong><span id="seal-ms">— ms</span></div>
+    <div class="flight-seal" id="flight-seal" aria-live="polite"><small id="seal-source">JEV</small><strong id="seal-choice">Waiting for JEV</strong><span id="seal-ms">— ms</span></div>
     <div class="flight-footer">
       <div class="flight-controls">
-        <button type="button" id="btn-drawer" class="control-button" aria-controls="decision-panel" aria-expanded="false">Decisão</button>
-        <button type="button" id="btn-pause" class="control-button">Pausar</button>
-        <button type="button" id="btn-speed" class="control-button">8× velocidade</button>
-        <button type="button" id="btn-camera" class="control-button">Câmara: cauda</button>
-        <button type="button" id="btn-pic" class="control-button">Intervenção PIC</button>
-        <button type="button" id="btn-real-map" class="control-button" aria-label="Pista real no Google Maps">Pista real</button>
+        <button type="button" id="btn-drawer" class="control-button" aria-controls="decision-panel" aria-expanded="false">Decision</button>
+        <button type="button" id="btn-pause" class="control-button">Pause</button>
+        <button type="button" id="btn-speed" class="control-button">8× speed</button>
+        <button type="button" id="btn-camera" class="control-button">Camera: chase</button>
+        <button type="button" id="btn-pic" class="control-button">Pilot override</button>
+        <button type="button" id="btn-real-map" class="control-button" aria-label="Actual runway on Google Maps">Actual runway</button>
       </div>
-      <p id="flight-status" role="status" aria-live="polite">A iniciar simulação…</p>
+      <p id="flight-status" role="status" aria-live="polite">Starting simulation…</p>
     </div>
-    <div class="overlay" id="failure-overlay" hidden><div class="overlay-card"><p class="kicker">LIGAÇÃO INTERROMPIDA</p><h2>O JEV não respondeu.</h2><p id="failure-reason">—</p><div class="overlay-actions"><button type="button" class="button button-accent" id="btn-retry">Tentar novamente</button><button type="button" class="button button-outline" id="btn-incomplete">Terminar como incompleta</button></div></div></div>
-    <div class="overlay" id="pic-overlay" hidden><div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="pic-title"><p class="kicker" id="pic-kicker">COMANDANTE / PIC</p><h2 id="pic-title">Sobrepor a escolha</h2><p id="pic-text">A intervenção humana fica identificada no registo. O supervisor continua a verificar os limites calculados.</p><div class="pic-dist" id="pic-dist" hidden></div><p class="pic-countdown" id="pic-countdown" aria-live="polite" hidden>10 s</p><label class="control-row"><span>Nova ação</span><select id="pic-action"><option value="orbitar">Orbitar</option><option value="regressar_base">Regressar à origem</option><option value="desviar_alternativo">Desviar para alternativo</option><option value="prosseguir">Prosseguir</option><option value="abortar_emergencia">Aterragem de emergência</option></select></label><div class="overlay-actions"><button type="button" class="button button-accent" id="btn-pic-apply">Aplicar intervenção</button><button type="button" class="button button-outline" id="btn-pic-cancel">Cancelar</button></div></div></div>
+    <div class="overlay" id="failure-overlay" hidden><div class="overlay-card"><p class="kicker">CONNECTION INTERRUPTED</p><h2>JEV did not respond.</h2><p id="failure-reason">—</p><div class="overlay-actions"><button type="button" class="button button-accent" id="btn-retry">Try again</button><button type="button" class="button button-outline" id="btn-incomplete">End as incomplete</button></div></div></div>
+    <div class="overlay" id="pic-overlay" hidden><div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="pic-title"><p class="kicker" id="pic-kicker">PILOT IN COMMAND</p><h2 id="pic-title">Override the decision</h2><p id="pic-text">Your intervention is labelled in the record. The supervisor still checks the calculated limits.</p><div class="pic-dist" id="pic-dist" hidden></div><p class="pic-countdown" id="pic-countdown" aria-live="polite" hidden>10 s</p><label class="control-row"><span>New action</span><select id="pic-action"><option value="orbitar">Hold pattern</option><option value="regressar_base">Return to departure</option><option value="desviar_alternativo">Divert to alternative</option><option value="prosseguir">Continue</option><option value="abortar_emergencia">Emergency landing</option></select></label><div class="overlay-actions"><button type="button" class="button button-accent" id="btn-pic-apply">Apply override</button><button type="button" class="button button-outline" id="btn-pic-cancel">Cancel</button></div></div></div>
   </section>
 
-  <section class="screen sim" id="screen-sim" aria-label="Simulador LUS-222">
+  <section class="screen sim" id="screen-sim" aria-label="LUS-222 flight simulator">
     <div class="sim-palco">
       <canvas id="sim-canvas" aria-hidden="true"></canvas>
       <header class="sim-topo">
-        <div class="flight-identity"><span class="brand-mark small">J<span>·</span>EV</span><div><b>Simulador LUS-222</b><small id="sim-fonte">Voo livre · Porto · noite de São João</small></div></div>
-        <div class="sim-piloto" role="group" aria-label="Quem pilota o LUS-222">
-          <button type="button" id="sim-piloto-jev" aria-pressed="false" title="A inteligência artificial JEV assume os comandos">Controlo por IA <small>JEV</small></button>
-          <button type="button" id="sim-piloto-humano" aria-pressed="true">Eu piloto</button>
+        <div class="flight-identity"><span class="brand-mark small">J<span>·</span>EV</span><div><b>LUS-222 flight simulator</b><small id="sim-fonte">Manual flight · Porto · dusk</small></div></div>
+        <div class="sim-piloto" role="group" aria-label="Who controls the LUS-222">
+          <button type="button" id="sim-piloto-jev" aria-pressed="false" title="Let JEV, the AI pilot, take the controls">AI pilot <small>JEV</small></button>
+          <button type="button" id="sim-piloto-humano" aria-pressed="true">I fly</button>
         </div>
-        <button type="button" class="flight-sound" id="sim-som" aria-pressed="true" aria-label="Som dos motores" title="Som dos motores"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="som-ondas" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="som-mudo" d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
-        <button type="button" class="flight-exit" id="sim-sair">Sair</button>
+        <button type="button" class="flight-sound" id="sim-som" aria-pressed="true" aria-label="Engine sound" title="Engine sound"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="som-ondas" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="som-mudo" d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+        <button type="button" class="flight-exit" id="sim-sair">Exit</button>
       </header>
-      <div class="sim-modos" aria-label="Assistências de voo">
-        <span>PILOTO <b data-instrumento="piloto">Humano</b></span>
-        <span>A ACTUAR <b data-instrumento="autoridade">Estabilizador</b></span>
+      <div class="sim-modos" aria-label="Flight assistance">
+        <span>PILOT <b data-instrumento="piloto">Human</b></span>
+        <span>IN CONTROL <b data-instrumento="autoridade">Stabiliser</b></span>
+        <button type="button" id="sim-protecao-toggle" aria-pressed="false" title="Toggle automatic terrain and traffic avoidance">Protection OFF · free flight</button>
       </div>
-      <section class="sim-instrumentos" id="sim-instrumentos" aria-label="Painel de instrumentos de voo">
-        <header class="sim-instrumentos-topo"><span>LUS-222 <b>FLIGHT DISPLAY</b></span><span>PERFIL ILUSTRATIVO</span></header>
+      <section class="sim-instrumentos" id="sim-instrumentos" aria-label="Flight instruments">
+        <header class="sim-instrumentos-topo"><span>LUS-222 <b>FLIGHT DISPLAY</b></span><span>ILLUSTRATIVE PROFILE</span></header>
         <div class="sim-instrumentos-corpo">
           <div class="sim-atitude">
-            <svg viewBox="-85 -70 170 140" role="img" aria-label="Horizonte artificial; atitude numérica indicada abaixo">
+            <svg viewBox="-85 -70 170 140" role="img" aria-label="Artificial horizon; numerical attitude shown below">
               <defs><clipPath id="sim-horizonte-clip"><rect x="-78" y="-55" width="156" height="110" rx="5"/></clipPath></defs>
               <g clip-path="url(#sim-horizonte-clip)">
                 <g id="sim-horizonte-movel">
@@ -143,114 +144,117 @@
               <path d="M0 -49l-4 7h8z M-47 0h25v6 M47 0H22v6 M-5 0h10" fill="none" stroke="#ffe0a0" stroke-width="2.5"/>
               <circle r="2" fill="#ffe0a0"/>
             </svg>
-            <div class="sim-atitude-valores"><span>NARIZ <b data-instrumento="pitch">0°</b></span><span>ASA <b data-instrumento="bank">0°</b></span><span class="sim-trajectoria-valor">TRAJ <b data-instrumento="trajectoria">0°</b></span></div>
+            <div class="sim-atitude-valores"><span>NOSE <b data-instrumento="pitch">0°</b></span><span>BANK <b data-instrumento="bank">0°</b></span><span class="sim-trajectoria-valor">PATH <b data-instrumento="trajectoria">0°</b></span></div>
           </div>
           <div class="sim-leituras">
-            <div class="sim-leitura"><span>VELOCIDADE</span><div><b id="sim-vel" data-instrumento="velocidade">—</b><small>kt</small></div><em>no ar · simulada</em></div>
-            <div class="sim-leitura"><span>ALTITUDE</span><div><b id="sim-alt" data-instrumento="altitude">—</b><small>ft</small></div><em>nível do mar</em></div>
-            <div class="sim-leitura sim-leitura-vsi"><span>VERTICAL</span><div><b data-instrumento="vertical">—</b><small>ft/min</small></div><em data-instrumento="movimento">Nivelado</em><div class="sim-vsi" aria-hidden="true"><span>+</span><i id="sim-vsi-agulha"></i><span>−</span></div></div>
-            <div class="sim-leitura"><span>RUMO</span><div><b id="sim-rumo" data-instrumento="rumo">—</b><small>°</small></div><em>referência simulada</em></div>
-            <div class="sim-leitura"><span>AO TERRENO</span><div><b data-instrumento="agl">—</b><small>ft</small></div><em>altura AGL</em></div>
-            <div class="sim-leitura"><span>POTÊNCIA</span><div><b id="sim-pot" data-instrumento="potencia">—</b><small>%</small></div><em>E / Q · aumentar / reduzir</em></div>
+            <div class="sim-leitura"><span>AIRSPEED</span><div><b id="sim-vel" data-instrumento="velocidade">—</b><small>kt</small></div><em>simulated airspeed</em></div>
+            <div class="sim-leitura"><span>ALTITUDE</span><div><b id="sim-alt" data-instrumento="altitude">—</b><small>ft</small></div><em>above sea level</em></div>
+            <div class="sim-leitura sim-leitura-vsi"><span>VERTICAL</span><div><b data-instrumento="vertical">—</b><small>ft/min</small></div><em data-instrumento="movimento">Level</em><div class="sim-vsi" aria-hidden="true"><span>+</span><i id="sim-vsi-agulha"></i><span>−</span></div></div>
+            <div class="sim-leitura"><span>HEADING</span><div><b id="sim-rumo" data-instrumento="rumo">—</b><small>°</small></div><em>simulated reference</em></div>
+            <div class="sim-leitura"><span>HEIGHT AGL</span><div><b data-instrumento="agl">—</b><small>ft</small></div><em>above ground</em></div>
+            <div class="sim-leitura"><span>POWER</span><div><b id="sim-pot" data-instrumento="potencia">—</b><small>%</small></div><em>E / Q · increase / reduce</em></div>
           </div>
         </div>
-        <footer class="sim-instrumentos-base"><span>PEDIDO <b data-instrumento="intencao">Manter altitude</b></span><span>ALT ALVO <b data-instrumento="alvo">—</b></span><span>FUEL <b id="sim-fuel" data-instrumento="combustivel">—</b> kg</span></footer>
+        <footer class="sim-instrumentos-base"><span>COMMAND <b data-instrumento="intencao">Hold altitude</b></span><span>ALT TARGET <b data-instrumento="alvo">—</b></span><span>FUEL <b id="sim-fuel" data-instrumento="combustivel">—</b> kg</span></footer>
         <p class="sim-aviso-voo" id="sim-aviso-voo" data-instrumento="aviso" role="status" hidden></p>
       </section>
       <p class="sim-objetivo" id="sim-objetivo">—</p>
-      <aside class="sim-decisao" id="sim-decisao" aria-label="Decisão actual da inteligência artificial" hidden><span id="sim-decisao-fonte">CONTROLO POR IA · JEV</span><strong id="sim-decisao-manobra">A aguardar decisão…</strong><p id="sim-decisao-detalhe">O JEV selecciona manobra e potência.</p><small id="sim-decisao-estado">O supervisor pode intervir.</small></aside>
-      <details class="sim-ajuda"><summary>Como pilotar</summary><div><b>Uma ordem manual assume o voo</b><p>↑ / W subir · ↓ / S descer<br>← / A esquerda · → / D direita<br>E / Shift mais potência · Q / Ctrl menos</p><p>Clica em Subir ou Descer para manter esse comando. Clica em Nivelar (ou repete o botão activo) para manter a altitude. As setas/WASD actuam enquanto premidas e nivelam ao largar. Laterais e potência: mantém o botão premido. O supervisor continua a proteger o voo. Confirma ALTITUDE e VERTICAL: a câmara acompanha o avião. No horizonte, o círculo verde mostra a trajectória; o símbolo amarelo mostra o nariz.</p><p>P pausa · C muda a câmara · B trava<br>Z / X leme em modo avançado. Voo / Ambiente / JEV abre alvos, potência, sistemas e treino.</p></div></details>
+      <aside class="sim-decisao" id="sim-decisao" aria-label="Current AI decision" hidden><span id="sim-decisao-fonte">AI PILOT · JEV</span><strong id="sim-decisao-manobra">Waiting for a decision…</strong><p id="sim-decisao-detalhe">JEV selects a manoeuvre and power setting.</p><small id="sim-decisao-estado">Automatic protection may intervene.</small></aside>
+      <details class="sim-ajuda"><summary>Flight controls</summary><div><b>You have full control in manual mode</b><p>↑ / W raises the nose · ↓ / S lowers it<br>Hold a key to increase the angle. Release to keep that attitude. Click Climb / Descend for a 5° adjustment. Level explicitly stops the climb or descent. Dive points the nose down 65°.</p><p>← / A and → / D turn · E / Q change power<br>P pauses · C changes camera · B brakes. Use the Nose target slider for fine landing adjustments. Reduce speed on final, ease the descent before touchdown and brake on the runway.</p><p>Protection is OFF by default: terrain impacts end the flight. You can enable it above. Assisted mode holds altitude when controls are released. The AI pilot always uses protection.</p><p>The green marker shows the flight path; the yellow symbol shows the nose. Watch ALTITUDE, VERTICAL and HEIGHT AGL.</p></div></details>
       <div class="sim-comandos">
-        <div class="sim-manual"><p id="sim-comando-manual" class="sim-comando-manual">Clica num comando para assumir o voo.</p>
-        <div class="sim-actuacao" id="sim-actuacao" role="group" aria-label="Comandos de voo: clicar em Subir, Nivelar ou Descer; segurar os comandos laterais e de potência">
-          <button type="button" class="sim-lampada" data-eixo="lateral" data-valor="esquerda" aria-label="Esquerda">◀ ESQ</button>
-          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="subir" aria-label="Subir" aria-pressed="false" title="Clique para subida contínua; repetir ou Nivelar termina">▲ SUBIR</button>
-          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="manter" aria-label="Nivelar" aria-pressed="false" title="Terminar subida ou descida e manter a altitude">═ NIVELAR</button>
-          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="descer" aria-label="Descer" aria-pressed="false" title="Clique para descida contínua; repetir ou Nivelar termina">▼ DESCER</button>
-          <button type="button" class="sim-lampada" data-eixo="lateral" data-valor="direita" aria-label="Direita">DIR ▶</button>
-          <button type="button" class="sim-lampada" data-eixo="potencia" data-valor="mais" aria-label="Mais potência">POT +</button>
-          <button type="button" class="sim-lampada" data-eixo="potencia" data-valor="menos" aria-label="Menos potência">POT −</button>
+        <div class="sim-manual"><p id="sim-comando-manual" class="sim-comando-manual">Use any flight control to take over.</p>
+        <div class="sim-actuacao" id="sim-actuacao" role="group" aria-label="Flight controls: Climb and Descend adjust pitch; Level levels the aircraft; hold lateral and power controls">
+          <button type="button" class="sim-lampada" data-eixo="lateral" data-valor="esquerda" aria-label="Left">◀ LEFT</button>
+          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="subir" aria-label="Climb" aria-pressed="false" title="Manual: raise the nose 5 degrees. Assisted: start a continuous climb.">▲ CLIMB</button>
+          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="manter" aria-label="Level" aria-pressed="false" title="Level the aircraft and stop the climb or descent">═ LEVEL</button>
+          <button type="button" class="sim-lampada" data-eixo="vertical" data-valor="descer" aria-label="Descend" aria-pressed="false" title="Manual: lower the nose 5 degrees. Assisted: start a continuous descent.">▼ DESCEND</button>
+          <button type="button" class="sim-lampada" data-eixo="lateral" data-valor="direita" aria-label="Right">RIGHT ▶</button>
+          <button type="button" class="sim-lampada" data-eixo="potencia" data-valor="mais" aria-label="Increase power">PWR +</button>
+          <button type="button" class="sim-lampada" data-eixo="potencia" data-valor="menos" aria-label="Reduce power">PWR −</button>
+          <button type="button" class="sim-lampada sim-picar" id="sim-picar" aria-label="Dive" title="Point the nose down 65 degrees">↘ DIVE</button>
           <span class="sim-lampada sim-supervisor" id="sim-supervisor">SUPERVISOR</span>
         </div>
         </div>
         <div class="sim-botoes">
-          <button type="button" class="control-button" id="sim-pausa">Pausar</button>
-          <button type="button" class="control-button" id="sim-camara">Câmara: cauda</button>
-          <button type="button" class="control-button" id="sim-painel-toggle" aria-expanded="true" aria-controls="sim-painel">Voo / Ambiente / JEV</button>
+          <button type="button" class="control-button" id="sim-pausa">Pause</button>
+          <button type="button" class="control-button" id="sim-camara">Camera: chase</button>
+          <button type="button" class="control-button" id="sim-painel-toggle" aria-expanded="true" aria-controls="sim-painel">Flight / Weather / JEV</button>
         </div>
       </div>
-      <div class="overlay" id="sim-fim" hidden><div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="sim-fim-titulo"><p class="kicker" id="sim-fim-kicker">FIM DO VOO</p><h2 id="sim-fim-titulo">—</h2><p id="sim-fim-texto">—</p><div class="overlay-actions"><button type="button" class="button button-accent" id="sim-repetir">Voar outra vez</button><button type="button" class="button button-outline" id="sim-fim-sair">Sair</button></div></div></div>
+      <div class="overlay" id="sim-fim" hidden><div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="sim-fim-titulo"><p class="kicker" id="sim-fim-kicker">FLIGHT ENDED</p><h2 id="sim-fim-titulo">—</h2><p id="sim-fim-texto">—</p><div class="overlay-actions"><button type="button" class="button button-accent" id="sim-repetir">Fly again</button><button type="button" class="button button-outline" id="sim-fim-sair">Exit</button></div></div></div>
     </div>
-    <aside class="sim-painel" id="sim-painel" aria-label="Painel do JEV e sistemas">
-      <button type="button" class="control-button sim-voltar-voo" id="sim-voltar-voo">Voltar ao voo ↑</button>
+    <aside class="sim-painel" id="sim-painel" aria-label="JEV and aircraft systems">
+      <button type="button" class="control-button sim-voltar-voo" id="sim-voltar-voo">Back to flight ↑</button>
       <section class="sim-bloco sim-config" aria-labelledby="sim-config-titulo">
-        <h2 class="sim-h" id="sim-config-titulo">COMANDOS <span>PERFIL DE TREINO</span></h2>
-        <label>Potência <output id="sim-potencia-out">55%</output><input id="sim-potencia-range" type="range" min="0" max="100" step="1" value="55"></label>
+        <h2 class="sim-h" id="sim-config-titulo">CONTROLS <span>SIMULATION PROFILE</span></h2>
+        <label>Power <output id="sim-potencia-out">55%</output><input id="sim-potencia-range" type="range" min="0" max="100" step="1" value="55"></label>
         <form id="sim-alvos" class="sim-config-grid">
-          <label>Modo vertical<select id="sim-modo-vertical"><option value="livre">Manter / manual</option><option value="altitude">Capturar altitude</option><option value="vertical">Razão vertical</option></select></label>
+          <label>Vertical mode<select id="sim-modo-vertical"><option value="livre">Hold / manual</option><option value="altitude">Capture altitude</option><option value="vertical">Vertical speed</option></select></label>
           <label>Altitude · ft<input id="sim-alvo-alt" type="number" min="40" max="11480" step="10" value="1800" required></label>
           <label>Vertical · ft/min<input id="sim-alvo-vs" type="number" min="-1500" max="1500" step="50" value="600" required></label>
-          <label>Rumo · °<input id="sim-alvo-rumo" type="number" min="0" max="359" step="1" value="90" required></label>
-          <label class="sim-check"><input id="sim-seguir-rumo" type="checkbox"> Capturar rumo</label>
-          <button class="control-button" type="submit">Aplicar alvos</button>
+          <label>Heading · °<input id="sim-alvo-rumo" type="number" min="0" max="359" step="1" value="90" required></label>
+          <label class="sim-check"><input id="sim-seguir-rumo" type="checkbox"> Capture heading</label>
+          <button class="control-button" type="submit">Apply targets</button>
         </form>
-        <p id="sim-alvos-estado" class="sim-nota">Sem alvos seleccionados.</p>
+        <p id="sim-alvos-estado" class="sim-nota">Manual attitude control.</p>
+        <label>Nose target <output id="sim-nariz-out">Level</output><input id="sim-nariz" type="range" min="-80" max="40" step="0.5" value="0"></label>
+        <label class="sim-check"><input id="sim-protecao" type="checkbox"> Automatic terrain / traffic protection</label>
         <div class="sim-config-grid">
-          <label>Flaps · ilustrativos<select id="sim-flaps"><option value="0">Recolhidos</option><option value="0.35">Descolagem</option><option value="0.65">Aproximação</option><option value="1">Máximos</option></select></label>
-          <label>Assistência<select id="sim-modo-voo"><option value="assistido">Assistido</option><option value="avancado">Avançado · trim / leme</option></select></label>
+          <label>Flaps · illustrative<select id="sim-flaps"><option value="0">Retracted</option><option value="0.35">Take-off</option><option value="0.65">Approach</option><option value="1">Full</option></select></label>
+          <label>Flight mode<select id="sim-modo-voo"><option value="avancado" selected>Manual · free attitude</option><option value="assistido">Assisted · altitude hold</option></select></label>
           <label>Trim <input id="sim-trim" type="range" min="-100" max="100" value="0" disabled></label>
-          <label>Leme <input id="sim-leme" type="range" min="-100" max="100" value="0" disabled></label>
-          <label class="sim-check"><input id="sim-travao" type="checkbox"> Travões / B</label>
-          <label class="sim-check"><input id="sim-luzes-nav" type="checkbox" checked> Navegação</label>
-          <label class="sim-check"><input id="sim-luzes-pista" type="checkbox"> Faróis</label>
+          <label>Rudder <input id="sim-leme" type="range" min="-100" max="100" value="0" disabled></label>
+          <label class="sim-check"><input id="sim-travao" type="checkbox"> Brakes / B</label>
+          <label class="sim-check"><input id="sim-luzes-nav" type="checkbox" checked> Navigation lights</label>
+          <label class="sim-check"><input id="sim-luzes-pista" type="checkbox"> Landing lights</label>
         </div>
-        <p id="sim-gamepad" class="sim-nota">Gamepad standard: ligar e mover um eixo. Z / X: leme no modo avançado.</p>
+        <p id="sim-gamepad" class="sim-nota">Standard gamepad: connect and move an axis. Z / X: rudder in manual mode.</p>
       </section>
       <section class="sim-bloco sim-config" aria-labelledby="sim-treino-titulo">
-        <h2 class="sim-h" id="sim-treino-titulo">VOO E TREINO</h2>
-        <label>Início / exercício<select id="sim-exercicio"><option value="livre">Voo livre sobre o Porto</option><option value="solo">Na pista · descolagem</option><option value="aproximacao">Final · aterragem manual</option><option value="altitude">Manter 1800 ft · 60 s</option><option value="rumo">Manter rumo 090° · 60 s</option></select></label>
-        <button type="button" class="control-button" id="sim-iniciar-exercicio">Iniciar novo voo</button>
-        <div class="sim-config-grid"><button type="button" class="control-button" id="sim-aproximacao" aria-pressed="false">Guiar aproximação</button><button type="button" class="control-button" id="sim-borrego">Borrego</button></div>
-        <p id="sim-treino-estado" class="sim-nota">Subir para rodar na descolagem; reduzir potência e travar após o toque. Aproximação guiada disponível alinhado com a pista.</p>
+        <h2 class="sim-h" id="sim-treino-titulo">FLIGHT AND PRACTICE</h2>
+        <label>Start position / exercise<select id="sim-exercicio"><option value="livre">Free flight over Porto</option><option value="solo">On the runway · take-off</option><option value="aproximacao">On final · manual landing</option><option value="altitude">Hold 1,800 ft · 60 s</option><option value="rumo">Hold heading 090° · 60 s</option></select></label>
+        <button type="button" class="control-button" id="sim-iniciar-exercicio">Start a new flight</button>
+        <div class="sim-config-grid"><button type="button" class="control-button" id="sim-aproximacao" aria-pressed="false">Guide approach</button><button type="button" class="control-button" id="sim-borrego">Go around</button></div>
+        <p id="sim-treino-estado" class="sim-nota">Raise the nose to rotate at take-off speed. Reduce power and brake after touchdown. Approach guidance is available when aligned with the runway.</p>
         <p id="sim-treino-avaliacao" class="sim-nota" role="status"></p>
       </section>
       <section class="sim-bloco sim-config" aria-labelledby="sim-ambiente-titulo">
-        <h2 class="sim-h" id="sim-ambiente-titulo">PORTO · AMBIENTE</h2>
+        <h2 class="sim-h" id="sim-ambiente-titulo">PORTO · CONDITIONS</h2>
         <div class="sim-config-grid">
-          <label>Luz<select id="sim-periodo"><option value="anoitecer">Anoitecer</option><option value="dia">Dia</option><option value="noite">Noite</option></select></label>
-          <label>Meteorologia<select id="sim-tempo"><option value="limpo">Céu limpo</option><option value="poucas_nuvens" selected>Poucas nuvens</option><option value="nublado">Encoberto</option><option value="chuva">Chuva</option><option value="tempestade">Tempestade</option></select></label>
+          <label>Light<select id="sim-periodo"><option value="anoitecer">Dusk</option><option value="dia">Day</option><option value="noite">Night</option></select></label>
+          <label>Weather<select id="sim-tempo"><option value="limpo">Clear skies</option><option value="poucas_nuvens" selected>Few clouds</option><option value="nublado">Overcast</option><option value="chuva">Rain</option><option value="tempestade">Storm</option></select></label>
         </div>
-        <label>Nuvens <output id="sim-nuvens-out">30%</output><input id="sim-nuvens" type="range" min="0" max="100" value="30"></label>
-        <p class="sim-nota">Meteorologia simulada. Chuva reduz a travagem; tempestade acrescenta rajadas. Porto ilustrativo, sem fotografia aérea.</p>
+        <label>Cloud cover <output id="sim-nuvens-out">30%</output><input id="sim-nuvens" type="range" min="0" max="100" value="30"></label>
+        <p class="sim-nota">Simulated weather. Rain reduces braking; storms add gusts. Porto is an illustrative 3D scene, not aerial imagery.</p>
       </section>
-      <section class="sim-bloco"><h2 class="sim-h">SISTEMAS <span>SIMULAÇÃO</span></h2><dl class="sim-contadores sim-sistemas">
-        <div><dt>VELOCIDADE NO SOLO</dt><dd><b data-instrumento="solo">—</b> <small>kt</small></dd></div>
-        <div><dt>CONSUMO ACTUAL</dt><dd><b data-instrumento="consumo">—</b> <small>kg/h</small></dd></div>
-        <div><dt>AUTONOMIA ESTIMADA</dt><dd><b data-instrumento="autonomia">—</b> <small>min</small></dd></div>
-        <div><dt>MASSA TOTAL</dt><dd><b data-instrumento="massa">—</b> <small>kg</small></dd></div>
-      </dl><p class="sim-nota">Autonomia ao consumo actual, sem reserva operacional.</p></section>
-      <section class="sim-bloco"><h2 class="sim-h">JEV · JULGAMENTOS <span id="sim-meta"></span></h2><div id="sim-julgamentos" class="sim-vazio">Com «Humano» aos comandos o JEV não decide. Escolhe «JEV» em cima para ele pilotar.</div></section>
-      <section class="sim-bloco"><h2 class="sim-h">O QUE O JEV LÊ</h2><pre id="sim-estado" class="sim-estado">—</pre></section>
-      <section class="sim-bloco"><h2 class="sim-h">ORDENS DO COMANDANTE</h2><form id="sim-ordens-form" class="sim-ordens"><input id="sim-ordens" maxlength="120" autocomplete="off" placeholder="Ex.: poupa combustível e evita as nuvens" aria-label="Ordem ao JEV"><button type="submit">Dar</button></form><div class="sim-atalhos" id="sim-atalhos"><button type="button">Poupa combustível</button><button type="button">Evita as nuvens</button><button type="button">Voa baixo</button><button type="button">Chega depressa</button></div><p class="sim-ordem-activa" id="sim-ordem-activa">Sem ordens.</p></section>
-      <section class="sim-bloco"><h2 class="sim-h">CONTADORES</h2><dl class="sim-contadores" id="sim-contadores"></dl></section>
-      <section class="sim-bloco"><h2 class="sim-h">MAPA</h2><svg id="sim-mapa" class="sim-mapa" role="img" aria-label="Mapa do circuito, das ameaças e do rasto"></svg></section>
+      <section class="sim-bloco"><h2 class="sim-h">SYSTEMS <span>SIMULATION</span></h2><dl class="sim-contadores sim-sistemas">
+        <div><dt>GROUND SPEED</dt><dd><b data-instrumento="solo">—</b> <small>kt</small></dd></div>
+        <div><dt>FUEL FLOW</dt><dd><b data-instrumento="consumo">—</b> <small>kg/h</small></dd></div>
+        <div><dt>ESTIMATED ENDURANCE</dt><dd><b data-instrumento="autonomia">—</b> <small>min</small></dd></div>
+        <div><dt>TOTAL MASS</dt><dd><b data-instrumento="massa">—</b> <small>kg</small></dd></div>
+      </dl><p class="sim-nota">Endurance at current fuel flow, excluding operational reserve.</p></section>
+      <section class="sim-bloco"><h2 class="sim-h">JEV · DECISIONS <span id="sim-meta"></span></h2><div id="sim-julgamentos" class="sim-vazio">You are flying manually. Select AI pilot above to let JEV take the controls.</div></section>
+      <section class="sim-bloco"><h2 class="sim-h">WHAT JEV READS</h2><pre id="sim-estado" class="sim-estado">—</pre></section>
+      <section class="sim-bloco"><h2 class="sim-h">PILOT COMMANDS</h2><form id="sim-ordens-form" class="sim-ordens"><input id="sim-ordens" maxlength="120" autocomplete="off" placeholder="For example: save fuel and avoid clouds" aria-label="Command for JEV"><button type="submit">Send</button></form><div class="sim-atalhos" id="sim-atalhos"><button type="button">Save fuel</button><button type="button">Avoid clouds</button><button type="button">Fly lower</button><button type="button">Arrive sooner</button></div><p class="sim-ordem-activa" id="sim-ordem-activa">No active command.</p></section>
+      <section class="sim-bloco"><h2 class="sim-h">FLIGHT METRICS</h2><dl class="sim-contadores" id="sim-contadores"></dl></section>
+      <section class="sim-bloco"><h2 class="sim-h">MAP</h2><svg id="sim-mapa" class="sim-mapa" role="img" aria-label="Map showing route, threats and flight trail"></svg></section>
     </aside>
   </section>
 
   <section class="screen" id="screen-debrief">
     <div class="exlibris" aria-hidden="true"><img src="./img/lus-222-hero.webp" alt=""></div>
-    <header class="page-header"><span>JEV / RELATÓRIO DE MISSÃO</span><span class="page-step">03 — ANALISAR</span></header>
+    <header class="page-header"><span>JEV / MISSION REPORT</span><span class="page-step">03 — REVIEW</span></header>
     <main class="debrief-layout">
-      <div class="debrief-head"><p class="kicker">O QUE ACONTECEU</p><h1 id="result-title">Missão concluída</h1><p id="result-summary">—</p><div class="result-mode" id="result-mode">—</div></div>
+      <div class="debrief-head"><p class="kicker">WHAT HAPPENED</p><h1 id="result-title">Mission completed</h1><p id="result-summary">—</p><div class="result-mode" id="result-mode">—</div></div>
       <div class="metrics" id="result-metrics"></div>
-      <section class="debrief-list"><div class="section-title"><h2>Linha de decisão</h2><span>ESTADO · MODELO · EFEITO</span></div><div id="decision-list" class="decision-list"></div></section>
-      <div class="result-actions"><button type="button" class="button button-accent" id="btn-new">Nova missão</button><button type="button" class="button button-outline" id="btn-lab-open">Laboratório</button><button type="button" class="button button-outline" id="btn-download">Descarregar JSON</button></div>
-      <p class="fine-print debrief-note">Comparação com regra geométrica limitada. O JEV recebe dados estruturados; a simulação não valida desempenho aeronáutico real.</p>
+      <section class="debrief-list"><div class="section-title"><h2>Decision timeline</h2><span>STATE · MODEL · OUTCOME</span></div><div id="decision-list" class="decision-list"></div></section>
+      <div class="result-actions"><button type="button" class="button button-accent" id="btn-new">New mission</button><button type="button" class="button button-outline" id="btn-lab-open">Decision lab</button><button type="button" class="button button-outline" id="btn-download">Download JSON</button></div>
+      <p class="fine-print debrief-note">Compared with a limited geometric rule. JEV receives structured data; this simulation does not validate real aircraft performance.</p>
     </main>
-    <div class="overlay" id="lab-overlay" hidden><aside class="overlay-card lab" aria-label="Laboratório"><p class="kicker">LABORATÓRIO</p><h2>Muda uma condição. <em>Compara a resposta.</em></h2><p>Reavalia uma cópia do estado de um incidente. A missão original fica intacta.</p><label class="control-row"><span>Incidente</span><select id="lab-event"></select></label><label class="control-row"><span>Variável</span><select id="lab-variable"><option value="vento_kt">Vento (kt)</option><option value="payload_kg">Carga útil (kg)</option><option value="comprimento_pista_m">Pista (m)</option><option value="relogio_s">Tempo restante (s)</option></select></label><label class="control-row"><span>Novo valor</span><input id="lab-value" type="number" value="40"></label><div id="lab-result" role="status" aria-live="polite"></div><div class="overlay-actions"><button type="button" class="button button-accent" id="btn-lab">Reavaliar com JEV</button><button type="button" class="button button-outline" id="btn-lab-close">Fechar</button></div><p class="fine-print">Disponível apenas com Gateway. Uma nova resposta pode coincidir com a original.</p></aside></div>
+    <div class="overlay" id="lab-overlay" hidden><aside class="overlay-card lab" aria-label="Decision lab"><p class="kicker">DECISION LAB</p><h2>Change one condition. <em>Compare the response.</em></h2><p>Reassess a copy of an incident state. The original mission remains unchanged.</p><label class="control-row"><span>Incident</span><select id="lab-event"></select></label><label class="control-row"><span>Variable</span><select id="lab-variable"><option value="vento_kt">Wind (kt)</option><option value="payload_kg">Payload (kg)</option><option value="comprimento_pista_m">Runway (m)</option><option value="relogio_s">Time remaining (s)</option></select></label><label class="control-row"><span>New value</span><input id="lab-value" type="number" value="40"></label><div id="lab-result" role="status" aria-live="polite"></div><div class="overlay-actions"><button type="button" class="button button-accent" id="btn-lab">Reassess with JEV</button><button type="button" class="button button-outline" id="btn-lab-close">Close</button></div><p class="fine-print">Available with live JEV. A new assessment may reach the same decision.</p></aside></div>
   </section>
 
-  <div class="overlay" id="map-overlay" hidden><div class="overlay-card map-overlay-card"><p class="kicker">GOOGLE MAPS / IMAGEM REAL</p><h2>Pista do Porto.</h2><p>Vista de satélite do Aeroporto Francisco Sá Carneiro. A imagem não representa a noite de São João nem acompanha a posição simulada.</p><iframe title="Vista de satélite da pista do Porto no Google Maps" data-src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2812.334669533097!2d-8.6806638!3d41.2473992!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd246f64614a2bad%3A0x151a578a6d6039d1!2sAeroporto%20Francisco%20S%C3%A1%20Carneiro!5e1!3m2!1spt-PT!2spt!4v1790075229286!5m2!1spt-PT!2spt" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe><button type="button" class="button button-outline" id="btn-map-close">Fechar mapa</button></div></div>
+  <div class="overlay" id="map-overlay" hidden><div class="overlay-card map-overlay-card"><p class="kicker">GOOGLE MAPS / SATELLITE IMAGE</p><h2>Porto runway.</h2><p>Satellite view of Francisco Sá Carneiro Airport. This image does not show São João night or track the simulated aircraft.</p><iframe title="Satellite view of the Porto runway on Google Maps" data-src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2812.334669533097!2d-8.6806638!3d41.2473992!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd246f64614a2bad%3A0x151a578a6d6039d1!2sAeroporto%20Francisco%20S%C3%A1%20Carneiro!5e1!3m2!1sen-GB!2sen!4v1790075229286!5m2!1sen-GB!2sen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe><button type="button" class="button button-outline" id="btn-map-close">Close map</button></div></div>
 </div>
 <script type="module" src="./src/ambient.js"></script>
 <script type="module" src="./src/px-particles.js"></script>

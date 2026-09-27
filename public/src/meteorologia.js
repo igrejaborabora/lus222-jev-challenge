@@ -3,11 +3,11 @@ const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 const numero = (v, fallback, min, max) => Number.isFinite(v) ? clamp(v, min, max) : fallback;
 
 export const CONFIGS_TEMPO = Object.freeze([
-  { id: 'limpo', label: 'Céu limpo', cobertura: 0, chuva: 0, turbulencia: 0.02, visKm: 24, tetoFt: 6500, ventoMs: { x: 1, z: -2 } },
-  { id: 'poucas_nuvens', label: 'Poucas nuvens', cobertura: 0.28, chuva: 0, turbulencia: 0.08, visKm: 18, tetoFt: 3800, ventoMs: { x: 3, z: -4 } },
-  { id: 'nublado', label: 'Nublado', cobertura: 0.82, chuva: 0, turbulencia: 0.16, visKm: 11, tetoFt: 2300, ventoMs: { x: 5, z: -5 } },
-  { id: 'chuva', label: 'Chuva', cobertura: 0.88, chuva: 0.65, turbulencia: 0.3, visKm: 5, tetoFt: 1800, ventoMs: { x: 7, z: -8 } },
-  { id: 'tempestade', label: 'Tempestade', cobertura: 1, chuva: 1, turbulencia: 0.8, visKm: 3, tetoFt: 1500, ventoMs: { x: 11, z: -13 } },
+  { id: 'limpo', label: 'Clear skies', cobertura: 0, chuva: 0, turbulencia: 0.02, visKm: 24, tetoFt: 6500, ventoMs: { x: 1, z: -2 } },
+  { id: 'poucas_nuvens', label: 'Few clouds', cobertura: 0.28, chuva: 0, turbulencia: 0.08, visKm: 18, tetoFt: 3800, ventoMs: { x: 3, z: -4 } },
+  { id: 'nublado', label: 'Overcast', cobertura: 0.82, chuva: 0, turbulencia: 0.16, visKm: 11, tetoFt: 2300, ventoMs: { x: 5, z: -5 } },
+  { id: 'chuva', label: 'Rain', cobertura: 0.88, chuva: 0.65, turbulencia: 0.3, visKm: 5, tetoFt: 1800, ventoMs: { x: 7, z: -8 } },
+  { id: 'tempestade', label: 'Storm', cobertura: 1, chuva: 1, turbulencia: 0.8, visKm: 3, tetoFt: 1500, ventoMs: { x: 11, z: -13 } },
 ].map((p) => Object.freeze({ ...p, ventoMs: Object.freeze(p.ventoMs) })));
 
 /** O anoitecer conserva luz ambiente suficiente para ler o terreno e a pista. */

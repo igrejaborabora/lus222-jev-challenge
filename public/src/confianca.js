@@ -11,7 +11,7 @@
 export const LIMIAR_AGIR = 0.9;
 export const LIMIAR_PIC = 0.5;
 
-export const ROTULO_NIVEL = Object.freeze({ agir: 'age', assinalar: 'age e assinala', pic: 'pede o PIC' });
+export const ROTULO_NIVEL = Object.freeze({ agir: 'act', assinalar: 'act and flag', pic: 'ask the pilot' });
 
 /**
  * Confiança de uma pergunta na resposta do JEV: a do Gateway ou, sem ela

@@ -328,15 +328,15 @@ export function decisaoGeometrica(estado, momento = 'incidente') {
 export function etiquetarAcao(acao) {
   switch (acao) {
     case 'prosseguir':
-      return 'Prosseguir';
+      return 'Continue';
     case 'desviar_alternativo':
-      return 'Desviar';
+      return 'Divert';
     case 'orbitar':
-      return 'Orbitar';
+      return 'Hold pattern';
     case 'regressar_base':
-      return 'Regressar';
+      return 'Return';
     case 'abortar_emergencia':
-      return 'Emergência';
+      return 'Emergency';
     default: {
       const _x = acao;
       return String(_x ?? '—');
@@ -347,15 +347,15 @@ export function etiquetarAcao(acao) {
 export function etiquetarDestino(destino) {
   switch (destino) {
     case 'planeado':
-      return 'Destino planeado';
+      return 'Planned destination';
     case 'stol_proximo':
-      return 'STOL próximo';
+      return 'Nearby STOL strip';
     case 'hospital_alternativo':
-      return 'Hospital alternativo';
+      return 'Alternative hospital';
     case 'aeroporto_alternativo':
-      return 'Aeroporto alternativo';
+      return 'Alternative airport';
     case 'origem':
-      return 'Origem';
+      return 'Departure';
     default: {
       const _x = destino;
       return String(_x ?? '—');
@@ -365,22 +365,22 @@ export function etiquetarDestino(destino) {
 
 export function etiquetarUrgencia(score) {
   const n = round(score, 0, 3, 0);
-  return ['Vigiar', 'Actuar', 'Prioritário', 'Emergência de missão'][n] ?? 'Vigiar';
+  return ['Monitor', 'Act', 'Priority', 'Mission emergency'][n] ?? 'Monitor';
 }
 
 export function etiquetarRiscoMeteo(score) {
   const n = round(score, 0, 3, 0);
-  return ['Calmo', 'Atenção', 'Adverso', 'Impedimento'][n] ?? 'Calmo';
+  return ['Calm', 'Caution', 'Adverse', 'No-go'][n] ?? 'Calm';
 }
 
 export function etiquetarManobraV(manobra) {
   switch (manobra) {
     case 'subir':
-      return 'Subir';
+      return 'Climb';
     case 'descer':
-      return 'Descer';
+      return 'Descend';
     case 'manter':
-      return 'Manter';
+      return 'Hold';
     default: {
       const _x = manobra;
       return String(_x ?? '—');
@@ -391,11 +391,11 @@ export function etiquetarManobraV(manobra) {
 export function etiquetarManobraL(manobra) {
   switch (manobra) {
     case 'esquerda':
-      return 'Esquerda';
+      return 'Left';
     case 'direita':
-      return 'Direita';
+      return 'Right';
     case 'manter':
-      return 'Manter';
+      return 'Hold';
     default: {
       const _x = manobra;
       return String(_x ?? '—');

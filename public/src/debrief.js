@@ -1,3 +1,4 @@
+import { textoUI } from './copy-en.js';
 import { deveEscalarPIC, etiquetarAcao, maxProbabilidade } from './decisao.js';
 
 export function teseCumprida(tese, answers) {
@@ -73,12 +74,12 @@ export function resumirMissao({
   }
 
   const veredicto = incompleta
-    ? `A missão ficou incompleta — ${motivoIncompleta || 'o Gateway falhou'}. A comparação JEV / regra não é válida.`
+    ? `The mission is incomplete — ${textoUI(motivoIncompleta || 'live AI became unavailable')}. The JEV / rule comparison is not valid.`
     : montarVeredicto(cenario, incidentes);
 
   return {
     versao: 2,
-    produto: 'JEV comanda o LUS-222',
+    produto: 'JEV flies the LUS-222',
     fonte: incompleta ? 'bloqueio' : 'typesafe-ai/jev',
     cenario: cenario?.id ?? cenario,
     semente,
@@ -108,11 +109,11 @@ function montarVeredicto(cenario, incidentes) {
   });
 
   if (prova) {
-    const nome = prova.resumo?.split('.')[0] ?? prova.id;
+    const nome = textoUI(prova.resumo?.split('.')[0] ?? prova.id);
     return (
-      `No incidente «${nome}», o JEV escolheu ${etiquetarAcao(prova.jev.answers.acaoMissao.choice).toLowerCase()}; ` +
-      `a regra só viu geometria e mandou ${etiquetarAcao(prova.baseline.answers.acaoMissao.choice).toLowerCase()}. ` +
-      `${cenario?.tese ?? ''}`.trim()
+      `In incident “${nome}”, JEV chose ${etiquetarAcao(prova.jev.answers.acaoMissao.choice).toLowerCase()}; ` +
+      `the rule considered only geometry and selected ${etiquetarAcao(prova.baseline.answers.acaoMissao.choice).toLowerCase()}. ` +
+      `${textoUI(cenario?.tese ?? '')}`.trim()
     );
   }
 
@@ -124,13 +125,13 @@ function montarVeredicto(cenario, incidentes) {
 
   if (divergiu) {
     return (
-      `O JEV e a regra divergiram em «${divergiu.id}», mas a tese deste cenário não se cumpriu na íntegra. ` +
-      `${cenario?.tese ?? ''}`.trim()
+      `JEV and the rule disagreed in “${textoUI(divergiu.id)}”, but the scenario objective was not fully met. ` +
+      `${textoUI(cenario?.tese ?? '')}`.trim()
     );
   }
 
   return (
-    'JEV e regra coincidiram nas acções. Neste semente a geometria chegou — a comparação continua honesta, sem inventar uma vitória.'
+    'JEV and the rule selected the same actions. For this seed, geometry alone was sufficient.'
   );
 }
 

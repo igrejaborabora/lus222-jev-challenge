@@ -1,7 +1,8 @@
+import { textoUI } from './copy-en.js';
 /** Exercícios curtos com métricas calculadas no passo fixo, sem avaliações pelo modelo. */
 export const EXERCICIOS = {
-  livre: 'Voo livre', solo: 'Descolagem', aproximacao: 'Aproximação e aterragem',
-  altitude: 'Manter 1800 ft', rumo: 'Manter rumo 090°',
+  livre: 'Free flight', solo: 'Take-off', aproximacao: 'Approach and landing',
+  altitude: 'Hold 1,800 ft', rumo: 'Hold heading 090°',
 };
 export function novoTreino(tipo) {
   if (!EXERCICIOS[tipo] || tipo === 'livre') return null;
@@ -21,10 +22,10 @@ export function avaliarTreino(t, voo, dt, resultado) {
     oscilacao: t.oscilacao + Math.abs(voo.velocidadeVerticalMs - t.ultimoVS), ultimoVS: voo.velocidadeVerticalMs, concluido };
   if (concluido) {
     const falhou = resultado && resultado !== 'chegou';
-    r.avaliacao = falhou ? `Exercício interrompido: ${resultado.replaceAll('_', ' ')}.`
-      : altitude || rumo ? `${Math.round(dentroS / segundos * 100)}% dentro da tolerância · erro médio ${(r.erroAcumulado / segundos * (altitude ? 3.28084 : 1)).toFixed(1)} ${altitude ? 'ft' : '°'} · variação vertical média ${(r.oscilacao / segundos).toFixed(2)} m/s².`
-        : t.tipo === 'solo' ? 'Descolagem concluída · 150 m de altitude atingidos.'
-          : `Aterragem concluída · toque a ${Math.abs(voo.contacto?.verticalMs ?? 0).toFixed(1)} m/s · desvio lateral ${Math.abs(voo.contacto?.lateralM ?? 0).toFixed(1)} m.`;
+    r.avaliacao = falhou ? `Exercise ended: ${textoUI(resultado)}.`
+      : altitude || rumo ? `${Math.round(dentroS / segundos * 100)}% within tolerance · mean error ${(r.erroAcumulado / segundos * (altitude ? 3.28084 : 1)).toFixed(1)} ${altitude ? 'ft' : '°'} · mean vertical acceleration change ${(r.oscilacao / segundos).toFixed(2)} m/s².`
+        : t.tipo === 'solo' ? 'Take-off complete · reached 150 m altitude.'
+          : `Landing complete · touchdown at ${Math.abs(voo.contacto?.verticalMs ?? 0).toFixed(1)} m/s · lateral offset ${Math.abs(voo.contacto?.lateralM ?? 0).toFixed(1)} m.`;
   }
   return r;
 }

@@ -1,3 +1,4 @@
+import { textoUI } from './copy-en.js';
 import {
   etiquetarAcao,
   etiquetarDestino,
@@ -9,29 +10,29 @@ import {
 
 /** Nome curto de cada pergunta tipada, no painel e no debrief. */
 export const ROTULOS_PERGUNTAS = Object.freeze({
-  configuracaoCabine: 'Cabine',
-  prioridadeOperacional: 'Prioridade',
-  pistaAdequada: 'Pista adequada',
-  combustivelSuficiente: 'Combustível suficiente',
-  acaoMissao: 'Acção de missão',
+  configuracaoCabine: 'Cabin',
+  prioridadeOperacional: 'Priority',
+  pistaAdequada: 'Runway suitable',
+  combustivelSuficiente: 'Fuel sufficient',
+  acaoMissao: 'Mission decision',
   manobraVertical: 'Vertical',
   manobraLateral: 'Lateral',
-  destinoPreferido: 'Destino se mudar rota',
-  urgencia: 'Urgência',
-  riscoMeteorologico: 'Risco meteorológico',
-  precisaRevisaoPIC: 'Fora do envelope',
-  continuarVoo: 'Continuar voo',
-  plano: 'Plano',
-  manobra: 'Manobra',
-  potencia: 'Potência',
-  ameacaPrioritaria: 'Ameaça prioritária',
-  foraDoEnvelope: 'Fora do envelope',
-  manobraTactica: 'Manobra',
+  destinoPreferido: 'Diversion destination',
+  urgencia: 'Urgency',
+  riscoMeteorologico: 'Weather risk',
+  precisaRevisaoPIC: 'Outside flight envelope',
+  continuarVoo: 'Continue flight',
+  plano: 'Plan',
+  manobra: 'Manoeuvre',
+  potencia: 'Power',
+  ameacaPrioritaria: 'Priority threat',
+  foraDoEnvelope: 'Outside flight envelope',
+  manobraTactica: 'Manoeuvre',
 });
 
-const MANOBRAS = { manter: 'Manter', esquerda: 'Esquerda', direita: 'Direita', subir: 'Subir', descer: 'Descer', esquerda_subir: 'Esquerda + subir', direita_subir: 'Direita + subir' };
-const PLANOS = { seguir_rota: 'Seguir rota', evitar: 'Evitar', estabilizar: 'Estabilizar', cumprir_ordem: 'Cumprir ordem' };
-const POTENCIAS = { mais: 'Mais', manter: 'Manter', menos: 'Menos' };
+const MANOBRAS = { manter: 'Hold', esquerda: 'Left', direita: 'Right', subir: 'Climb', descer: 'Descend', esquerda_subir: 'Left + climb', direita_subir: 'Right + climb' };
+const PLANOS = { seguir_rota: 'Follow route', evitar: 'Avoid', estabilizar: 'Stabilise', cumprir_ordem: 'Follow command' };
+const POTENCIAS = { mais: 'Increase', manter: 'Hold', menos: 'Reduce' };
 
 const ETIQUETAS_OPCAO = {
   acaoMissao: etiquetarAcao,
@@ -48,13 +49,13 @@ const ETIQUETAS_OPCAO = {
 
 /** «0,97»: probabilidades e confianças com vírgula, duas casas. */
 export function decimal(valor) {
-  return Number.isFinite(Number(valor)) ? Number(valor).toFixed(2).replace('.', ',') : '—';
+  return Number.isFinite(Number(valor)) ? Number(valor).toFixed(2) : '—';
 }
 
 export function etiquetaOpcao(chave, opcao) {
   const etiquetar = ETIQUETAS_OPCAO[chave];
   if (etiquetar) return etiquetar(opcao);
-  const texto = String(opcao ?? '—').replaceAll('_', ' ');
+  const texto = textoUI(opcao).replaceAll('_', ' ');
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
@@ -93,10 +94,10 @@ export function linhasPainel(answers, confidence = null) {
       const sim = p >= 0.5;
       // A probabilidade ao lado da escolha é a da resposta escolhida: «Não 0,59», nunca «Não 0,41».
       return {
-        chave, rotulo, tipo: 'boolean', escolha: sim ? 'Sim' : 'Não', p: sim ? p : 1 - p, confianca: null,
+        chave, rotulo, tipo: 'boolean', escolha: sim ? 'Yes' : 'No', p: sim ? p : 1 - p, confianca: null,
         distribuicao: [
-          { opcao: 'true', rotulo: 'Sim', p, escolhida: sim },
-          { opcao: 'false', rotulo: 'Não', p: 1 - p, escolhida: !sim },
+          { opcao: 'true', rotulo: 'Yes', p, escolhida: sim },
+          { opcao: 'false', rotulo: 'No', p: 1 - p, escolhida: !sim },
         ],
       };
     }
@@ -105,15 +106,15 @@ export function linhasPainel(answers, confidence = null) {
 }
 
 function milhares(n) {
-  return n >= 1000 ? `${(n / 1000).toFixed(1).replace('.', ',').replace(/,0$/, '')} mil` : String(n);
+  return n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(n);
 }
 
 /** «8 perguntas em paralelo · 412 ms · 3,1 mil tokens» — o que custou esta resposta. */
 export function resumoCabecalho(resposta, { replay = false } = {}) {
   const n = Object.keys(resposta?.answers ?? {}).length;
-  const partes = [`${n} ${n === 1 ? 'pergunta' : 'perguntas em paralelo'}`];
+  const partes = [`${n} ${n === 1 ? 'question' : 'parallel questions'}`];
   const ms = Number(resposta?.latencia_ms);
-  if (Number.isFinite(ms)) partes.push(`${Math.round(ms)} ms${replay ? ' gravados' : ''}`);
+  if (Number.isFinite(ms)) partes.push(`${Math.round(ms)} ms${replay ? ' recorded' : ''}`);
   const u = resposta?.usage;
   const tokens = Number(u?.totalTokens ?? (Number(u?.inputTokens) + Number(u?.outputTokens)));
   if (Number.isFinite(tokens) && tokens > 0) partes.push(`${milhares(Math.round(tokens))} tokens`);
@@ -196,6 +197,7 @@ export function actualizarPainel(meta, host, resposta, opcoes = {}) {
       seg.classList.toggle('is-on', d.escolhida);
       seg.title = `${d.rotulo} ${decimal(d.p)}`;
     });
+    existente.querySelector('.typed-dist')?.setAttribute('aria-label', `${l.rotulo}: ${l.distribuicao.map((d) => `${d.rotulo} ${decimal(d.p)}`).join(' · ')}`);
     const legenda = existente.querySelector('.typed-legend');
     if (legenda) legenda.textContent = l.distribuicao.filter((d) => d.p >= 0.03).slice(0, 4).map((d) => `${d.rotulo} ${decimal(d.p)}`).join(' · ');
   });
