@@ -191,3 +191,16 @@ node scripts/gravar-voo-jev.mjs http://localhost:43123 222 300
 MIT — ver [LICENSE](./LICENSE).
 
 No horizonte artificial, o círculo verde indica a trajectória medida e o símbolo amarelo indica o nariz. O painel distingue a ordem, a autoridade efectiva e a razão vertical; a câmara de cauda acompanha a altitude do avião.
+
+
+## Cockpit do simulador
+
+O cockpit tem três ecrãs: instrumentos de voo (atitude, velocidade, altitude, razão vertical, rumo e altura ao terreno), navegação esquemática sobre o Porto e sistemas simulados (potência, combustível, autonomia, flaps e trim). A moldura e os seletores usam Three.js; os valores e comandos permanecem em HTML/SVG, com apresentação alternativa quando WebGL não está disponível.
+
+- **Hide panel / Show panel** ou **I** oculta/mostra o cockpit. A preferência fica guardada neste navegador, atravessa mudanças de câmara e novos voos, e liberta o enquadramento sem pausar a simulação ou trocar de piloto.
+- **Expand** aumenta a leitura. Em telemóvel, os separadores **FLIGHT / NAV / SYSTEMS** alternam o ecrã visível; em paisagem baixa, a vista compacta privilegia os instrumentos.
+- **HDG / ALT / VS**, números ou seletores (arrastar, roda e setas), preparam os alvos. **Apply** activa-os; **Level** nivela o avião. Os mesmos comandos do simulador tratam potência, trim, flaps, travões, luzes e tomada de controlo.
+- **DIM**, alcance/orientação do mapa e checklists de partida/aterragem são controlos do painel. As checklists mostram o estado actual, sem comandar o avião.
+- As decisões JEV e os avisos continuam disponíveis com o cockpit oculto. Ocultar o painel suspende o desenho da moldura e do mapa.
+
+A cartografia é esquemática. A potência é conjunta: não há indicadores inventados de temperatura, óleo ou motores independentes. Estes exigem um modelo de sistemas adicional.

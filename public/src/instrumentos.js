@@ -1,3 +1,4 @@
+import { velocidadeSoloNavegacao } from './cockpit-navigation.js';
 import { alturaChaoM } from './simulacao.js';
 import { actuacaoEfectiva } from './piloto-sim.js';
 
@@ -19,8 +20,7 @@ export function instrumentosDeVoo(m, v = m.voo) {
   const potencia = v.acelerador ?? v.potencia ?? 0.55;
   // Lei de consumo do perfil ilustrativo actual (kg/s); não é reserva operacional.
   const consumoKgH = (0.026 + 0.115 * potencia) * 3600;
-  const vento = m.ambiente.ventoMs;
-  const soloMs = Math.hypot(Math.sin(v.rumoRad) * v.velocidadeMs + vento.x, Math.cos(v.rumoRad) * v.velocidadeMs + vento.z);
+  const soloMs = velocidadeSoloNavegacao({ ...m, voo: v }).soloMs;
   const vertical = a.pitchInput ? (a.pitchInput > 0 ? 'subir' : 'descer') : a.vertical;
   const captura = final || (vertical === 'manter' && m.controlos?.modo !== 'avancado') || (!supervisor && m.controlos?.altitudeM != null);
   return {

@@ -5,6 +5,11 @@ const requiredAssets = [
   'public/src/lus222.js',
   'public/src/turntable.js',
   'public/src/world.js',
+  'public/cockpit.css',
+  'public/src/cockpit-ui.js',
+  'public/src/cockpit-model.js',
+  'public/src/cockpit-shell.js',
+  'public/src/cockpit-navigation.js',
 ];
 
 await Promise.all(requiredAssets.map((path) => access(new URL(path, root))));

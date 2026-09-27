@@ -5,15 +5,16 @@ const assinado = (n) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${numero(Math.abs(n)
 
 /** Cache de elementos e actualizações de texto só quando o valor muda. */
 export function criarInstrumentosUI(raiz) {
-  const campos = new Map([...raiz.querySelectorAll('[data-instrumento]')].map((e) => [e.dataset.instrumento, e]));
+  const campos = new Map();
+  for(const e of raiz.querySelectorAll('[data-instrumento]')) campos.set(e.dataset.instrumento,[...(campos.get(e.dataset.instrumento)??[]),e]);
   const horizonte = raiz.querySelector('#sim-horizonte-movel');
   const trajectoria = raiz.querySelector('#sim-trajectoria');
   const agulha = raiz.querySelector('#sim-vsi-agulha');
   const painel = raiz.querySelector('#sim-instrumentos');
   const aviso = raiz.querySelector('#sim-aviso-voo');
+  const compacto=raiz.querySelector('#sim-aviso-compacto');
   const texto = (nome, valor) => {
-    const e = campos.get(nome);
-    if (e && e.textContent !== valor) e.textContent = valor;
+    for(const e of campos.get(nome)??[]) if(e.textContent !== valor) e.textContent = valor;
   };
   return {
     atitude(v) {
@@ -45,8 +46,9 @@ export function criarInstrumentosUI(raiz) {
       texto('aviso', i.aviso);
       painel.classList.toggle('tem-aviso', Boolean(i.aviso));
       aviso.hidden = !i.aviso;
-      // ±1500 ft/min na escala; o valor numérico continua sem truncamento.
-      agulha.style.transform = `translateY(${-Math.max(-1500, Math.min(1500, i.verticalFtMin)) / 1500 * 22}px)`;
+      if(compacto)compacto.hidden=!i.aviso||!painel.hidden;
+      // ±6000 ft/min; extreme dives remain readable in the unbounded numerical value.
+      agulha.style.transform = `translateY(${-Math.max(-6000, Math.min(6000, i.verticalFtMin)) / 6000 * (agulha.parentElement.clientHeight/2-3)}px)`;
     },
   };
 }
