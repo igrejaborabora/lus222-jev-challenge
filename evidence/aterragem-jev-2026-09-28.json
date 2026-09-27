@@ -1,0 +1,1466 @@
+{
+  "testedAt": "2026-09-27T23:04:58.185Z",
+  "note": "Actual JEV endpoint function and fixed-step physics. Accelerated simulation; fresh judgement every 5 simulated seconds and each phase, not browser/network timing.",
+  "result": "chegou",
+  "phase": "rollout",
+  "flightSeconds": 227.39999999999137,
+  "touchdown": {
+    "tipo": "pista",
+    "verticalMs": -0.5569172388632582,
+    "lateralM": 0.836618349294531,
+    "tempoS": 214.5999999999921,
+    "pitchRad": 0.08844561231519787,
+    "speedMs": 65.21782488740877,
+    "bankRad": 0.0023010013670289767,
+    "headingRad": -0.047573054435932224,
+    "xM": 0.836618349294531,
+    "zM": 164041.82204340782,
+    "distanciaPercorridaM": 15226.345586837313
+  },
+  "requests": 39,
+  "decisions": [
+    {
+      "time": 0,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 480,
+        "speed_mps": 88,
+        "vertical_mps": 0,
+        "heading_error_deg": 68.75493541569878,
+        "lateral_m": -4300,
+        "distance_threshold_m": 11760,
+        "glide_error_m": -153.97000000000003,
+        "flaps": 0,
+        "fuel_kg": 600,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "hold": 0,
+          "unable": 0,
+          "go_around": 0,
+          "continue": 1
+        }
+      },
+      "ms": 500,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 5.999999999999995,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 458.1376676669126,
+        "speed_mps": 85.68476807462199,
+        "vertical_mps": -4.018217818739316,
+        "heading_error_deg": 52.25303230994462,
+        "lateral_m": -3828.1166472547884,
+        "distance_threshold_m": 11533.902346140327,
+        "glide_error_m": -164.07525433238442,
+        "flaps": 0,
+        "fuel_kg": 599.7839857243165,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "continue": 1,
+          "hold": 0,
+          "go_around": 0,
+          "unable": 0
+        }
+      },
+      "ms": 325,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 11.999999999999973,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 434.43047531104,
+        "speed_mps": 84.55545039531312,
+        "vertical_mps": -4.033651414145714,
+        "heading_error_deg": 33.58689694549396,
+        "lateral_m": -3464.8844074278754,
+        "distance_threshold_m": 11186.582973507204,
+        "glide_error_m": -169.72183931133452,
+        "flaps": 0,
+        "fuel_kg": 599.5294077499082,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "continue": 1,
+          "unable": 0,
+          "hold": 0,
+          "go_around": 0
+        }
+      },
+      "ms": 285,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 16.99999999999997,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 414.18770239222636,
+        "speed_mps": 84.20563843088071,
+        "vertical_mps": -3.972684316849431,
+        "heading_error_deg": 39.82032546315204,
+        "lateral_m": -3216.6820536746836,
+        "distance_threshold_m": 10856.795009969268,
+        "glide_error_m": -172.8156381261756,
+        "flaps": 0,
+        "fuel_kg": 599.3003991585007,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "continue": 1,
+          "go_around": 0,
+          "unable": 0,
+          "hold": 0
+        }
+      },
+      "ms": 263,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 22.000000000000043,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 396.0930705204969,
+        "speed_mps": 83.74961629984433,
+        "vertical_mps": -2.2755531447775037,
+        "heading_error_deg": 55.51542909113724,
+        "lateral_m": -2890.6414895957637,
+        "distance_threshold_m": 10595.071459693892,
+        "glide_error_m": -177.30064538358545,
+        "flaps": 0,
+        "fuel_kg": 599.0618480447018,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "unable": 0,
+          "go_around": 0,
+          "continue": 1,
+          "hold": 0
+        }
+      },
+      "ms": 346,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 27.000000000000114,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 390.9714493472129,
+        "speed_mps": 82.50114945828273,
+        "vertical_mps": -0.25265474536181126,
+        "heading_error_deg": 66.44869680363624,
+        "lateral_m": -2510.5688325968554,
+        "distance_threshold_m": 10418.584375681734,
+        "glide_error_m": -173.24493818823726,
+        "flaps": 0,
+        "fuel_kg": 598.8005368095078,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "go_around": 0,
+          "unable": 0,
+          "hold": 0,
+          "continue": 1
+        }
+      },
+      "ms": 354,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 32.000000000000185,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 390.2624482696672,
+        "speed_mps": 81.57645155536707,
+        "vertical_mps": -0.18137243101288103,
+        "heading_error_deg": 72.55316856329746,
+        "lateral_m": -2111.890408858005,
+        "distance_threshold_m": 10297.97118542518,
+        "glide_error_m": -167.68205337244217,
+        "flaps": 0,
+        "fuel_kg": 598.5095314886759,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "unable": 0,
+          "go_around": 0,
+          "hold": 0,
+          "continue": 1
+        }
+      },
+      "ms": 288,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 37.000000000000256,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 389.90852557946755,
+        "speed_mps": 81.07866136741646,
+        "vertical_mps": 0.06339086347466916,
+        "heading_error_deg": 76.21043244194769,
+        "lateral_m": -1704.0439547532646,
+        "distance_threshold_m": 10208.973653374735,
+        "glide_error_m": -163.40810439601864,
+        "flaps": 0,
+        "fuel_kg": 598.2008118022306,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "continue": 1,
+          "go_around": 0,
+          "unable": 0,
+          "hold": 0
+        }
+      },
+      "ms": 323,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 42.00000000000033,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 390.12487609166755,
+        "speed_mps": 80.78278334533334,
+        "vertical_mps": -0.026262373882608235,
+        "heading_error_deg": 78.39219940333054,
+        "lateral_m": -1294.5087925633975,
+        "distance_threshold_m": 10140.75776240349,
+        "glide_error_m": -159.64452755331382,
+        "flaps": 0,
+        "fuel_kg": 597.8815854145047,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "unable": 0,
+          "go_around": 0,
+          "continue": 1,
+          "hold": 0
+        }
+      },
+      "ms": 329,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 47.0000000000004,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 389.90038748385473,
+        "speed_mps": 80.5103437402349,
+        "vertical_mps": 0.016407680086752818,
+        "heading_error_deg": 69.04123219562975,
+        "lateral_m": -889.9647151277892,
+        "distance_threshold_m": 10062.31701112818,
+        "glide_error_m": -155.79009709481056,
+        "flaps": 0,
+        "fuel_kg": 597.5565011486971,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "hold": 0,
+          "go_around": 0,
+          "unable": 0,
+          "continue": 1
+        }
+      },
+      "ms": 282,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 52.00000000000047,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 390.0923378131467,
+        "speed_mps": 80.24731461358577,
+        "vertical_mps": -0.05232423984681632,
+        "heading_error_deg": 52.58146133780797,
+        "lateral_m": -524.8306775268256,
+        "distance_threshold_m": 9885.670839314495,
+        "glide_error_m": -146.41254583120696,
+        "flaps": 0,
+        "fuel_kg": 597.2230514802725,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "go_around": 0,
+          "hold": 0,
+          "unable": 0,
+          "continue": 1
+        }
+      },
+      "ms": 343,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 57.00000000000054,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 389.8871292097265,
+        "speed_mps": 80.13722057260863,
+        "vertical_mps": 0.08697666827103287,
+        "heading_error_deg": 36.08837047065396,
+        "lateral_m": -231.79241050457296,
+        "distance_threshold_m": 9618.305366064335,
+        "glide_error_m": -132.71474982561892,
+        "flaps": 0,
+        "fuel_kg": 596.8853205321208,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "hold": 0,
+          "go_around": 0,
+          "unable": 0,
+          "continue": 1
+        }
+      },
+      "ms": 331,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 62.00000000000061,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 390.14874681327075,
+        "speed_mps": 80.04166753236794,
+        "vertical_mps": -0.0770734149244882,
+        "heading_error_deg": 19.576547942413985,
+        "lateral_m": -32.09965862420275,
+        "distance_threshold_m": 9285.70502094616,
+        "glide_error_m": -115.1579142759295,
+        "flaps": 0,
+        "fuel_kg": 596.5446578034762,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": false,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "unable": 0,
+          "go_around": 0,
+          "hold": 0,
+          "continue": 1
+        }
+      },
+      "ms": 329,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 68.00000000000041,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 389.9177791429559,
+        "speed_mps": 80.16699524586701,
+        "vertical_mps": 0.12152985208984803,
+        "heading_error_deg": 5.498109764774298,
+        "lateral_m": 83.35074217301026,
+        "distance_threshold_m": 8840.276955762674,
+        "glide_error_m": -92.22662255670315,
+        "flaps": 0,
+        "fuel_kg": 596.1364488986497,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "unable": 0,
+          "go_around": 0,
+          "continue": 1,
+          "hold": 0
+        }
+      },
+      "ms": 310,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 74.00000000000007,
+      "state": {
+        "phase": "joining",
+        "altitude_m": 389.9943061224996,
+        "speed_mps": 80.31645250516341,
+        "vertical_mps": -0.13017366364743474,
+        "heading_error_deg": -1.1847942899575463,
+        "lateral_m": 114.11720615011014,
+        "distance_threshold_m": 8382.475441803428,
+        "glide_error_m": -68.34441685127865,
+        "flaps": 0,
+        "fuel_kg": 595.7322475482789,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "go_around": 0,
+          "hold": 0,
+          "unable": 0,
+          "continue": 1
+        }
+      },
+      "ms": 369,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 79.99999999999973,
+      "state": {
+        "phase": "aligning",
+        "altitude_m": 391.44913201567823,
+        "speed_mps": 79.48876526339279,
+        "vertical_mps": 2.8360491506871277,
+        "heading_error_deg": -4.204546650446,
+        "lateral_m": 108.20472759558832,
+        "distance_threshold_m": 7926.245145288936,
+        "glide_error_m": -43.16561553934645,
+        "flaps": 0.18000000000000005,
+        "fuel_kg": 595.3606829072124,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "hold": 0,
+          "go_around": 0,
+          "continue": 1,
+          "unable": 0
+        }
+      },
+      "ms": 292,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 85.99999999999939,
+      "state": {
+        "phase": "aligning",
+        "altitude_m": 411.45118684255453,
+        "speed_mps": 72.61650103590915,
+        "vertical_mps": 0.38187015515085004,
+        "heading_error_deg": -5.157291859358237,
+        "lateral_m": 88.19573168685024,
+        "distance_threshold_m": 7499.434556195425,
+        "glide_error_m": -0.9694100796075418,
+        "flaps": 0.35,
+        "fuel_kg": 595.082846531695,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "hold": 0,
+          "unable": 0,
+          "continue": 1,
+          "go_around": 0
+        }
+      },
+      "ms": 310,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 91.99999999999905,
+      "state": {
+        "phase": "aligning",
+        "altitude_m": 400.1753822559548,
+        "speed_mps": 72.26914095125417,
+        "vertical_mps": -3.0867036683272797,
+        "heading_error_deg": -5.111095542594011,
+        "lateral_m": 66.82826419428628,
+        "distance_threshold_m": 7091.518776731333,
+        "glide_error_m": 8.96640586592548,
+        "flaps": 0.35,
+        "fuel_kg": 594.7093362065992,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "unable": 0,
+          "go_around": 0,
+          "continue": 1,
+          "hold": 0
+        }
+      },
+      "ms": 412,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 97.9999999999987,
+      "state": {
+        "phase": "aligning",
+        "altitude_m": 379.80440726934125,
+        "speed_mps": 72.85852827127675,
+        "vertical_mps": -3.406143634101482,
+        "heading_error_deg": -4.7367567291424395,
+        "lateral_m": 48.29379907006855,
+        "distance_threshold_m": 6683.080506542174,
+        "glide_error_m": 9.834220929148216,
+        "flaps": 0.35,
+        "fuel_kg": 594.3470605288933,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "continue": 1,
+          "hold": 0,
+          "go_around": 0,
+          "unable": 0
+        }
+      },
+      "ms": 350,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 103.99999999999837,
+      "state": {
+        "phase": "aligning",
+        "altitude_m": 358.7806339379124,
+        "speed_mps": 73.1738040605095,
+        "vertical_mps": -3.689445575222674,
+        "heading_error_deg": -4.015108667624728,
+        "lateral_m": 31.78279675525928,
+        "distance_threshold_m": 6270.05200103845,
+        "glide_error_m": 10.287929883913023,
+        "flaps": 0.35,
+        "fuel_kg": 593.9983952143414,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "unable": 0,
+          "hold": 0,
+          "continue": 1,
+          "go_around": 0
+        }
+      },
+      "ms": 302,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 105.99999999999825,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 350.46091134009015,
+        "speed_mps": 72.94975340004828,
+        "vertical_mps": -5.060258127704638,
+        "heading_error_deg": -4.1432801695187225,
+        "lateral_m": 27.567451377726183,
+        "distance_threshold_m": 6132.103104729322,
+        "glide_error_m": 9.14154989416545,
+        "flaps": 0.5300000000000001,
+        "fuel_kg": 593.9005758042844,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "go_around": 0,
+          "hold": 0,
+          "continue": 1,
+          "unable": 0
+        }
+      },
+      "ms": 321,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 111.99999999999791,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 321.0732524955222,
+        "speed_mps": 71.06305980841813,
+        "vertical_mps": -4.161209020135312,
+        "heading_error_deg": -4.532116136611326,
+        "lateral_m": 12.873533494627399,
+        "distance_threshold_m": 5727.17392112923,
+        "glide_error_m": 0.8102085968022266,
+        "flaps": 0.65,
+        "fuel_kg": 593.6403418107955,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "hold": 0,
+          "go_around": 0,
+          "continue": 1,
+          "unable": 0
+        }
+      },
+      "ms": 336,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 117.99999999999757,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 299.3009310121608,
+        "speed_mps": 69.37711403881713,
+        "vertical_mps": -3.402079604807051,
+        "heading_error_deg": -3.467677944487928,
+        "lateral_m": 0.2619524058781002,
+        "distance_threshold_m": 5332.38744107596,
+        "glide_error_m": -0.43321592378913465,
+        "flaps": 0.65,
+        "fuel_kg": 593.3368584373826,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "continue": 1,
+          "go_around": 0,
+          "hold": 0,
+          "unable": 0
+        }
+      },
+      "ms": 466,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 123.99999999999723,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 279.23333175820403,
+        "speed_mps": 68.39490623954205,
+        "vertical_mps": -3.3607859113352796,
+        "heading_error_deg": -2.7826277187814523,
+        "lateral_m": -2.813001759864602,
+        "distance_threshold_m": 4943.590631328989,
+        "glide_error_m": -0.28338107090337417,
+        "flaps": 0.65,
+        "fuel_kg": 593.0008989064858,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "unable": 0,
+          "hold": 0,
+          "continue": 1,
+          "go_around": 0
+        }
+      },
+      "ms": 676,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 129.9999999999969,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 259.18935352999597,
+        "speed_mps": 67.89673598978855,
+        "vertical_mps": -3.2797542720353223,
+        "heading_error_deg": -2.3433278343637376,
+        "lateral_m": -3.2464897272968773,
+        "distance_threshold_m": 4560.439499644504,
+        "glide_error_m": -0.403500451518255,
+        "flaps": 0.65,
+        "fuel_kg": 592.6480603862095,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "go_around": 0,
+          "unable": 0,
+          "continue": 1,
+          "hold": 0
+        }
+      },
+      "ms": 662,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 135.99999999999656,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 239.3831333308521,
+        "speed_mps": 67.63825999229698,
+        "vertical_mps": -3.3423871503868456,
+        "heading_error_deg": -2.251606402294214,
+        "lateral_m": -1.5960075743583892,
+        "distance_threshold_m": 4178.865249090391,
+        "glide_error_m": -0.36785962184825394,
+        "flaps": 0.65,
+        "fuel_kg": 592.2857388752949,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "unable": 0,
+          "go_around": 0,
+          "hold": 0,
+          "continue": 1
+        }
+      },
+      "ms": 377,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 141.99999999999622,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 219.62796713729412,
+        "speed_mps": 67.49340606266558,
+        "vertical_mps": -3.260365063076762,
+        "heading_error_deg": -2.497364113757805,
+        "lateral_m": 0.2903503739369673,
+        "distance_threshold_m": 3797.4949281203153,
+        "glide_error_m": -0.2917691249622578,
+        "flaps": 0.65,
+        "fuel_kg": 591.9192380249523,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "hold": 0,
+          "unable": 0,
+          "go_around": 0,
+          "continue": 1
+        }
+      },
+      "ms": 668,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 147.99999999999588,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 199.74688409758267,
+        "speed_mps": 67.44306654010516,
+        "vertical_mps": -3.3121811045129093,
+        "heading_error_deg": -2.4079635686228475,
+        "lateral_m": -0.2898512278953038,
+        "distance_threshold_m": 3418.566158109781,
+        "glide_error_m": -0.4685561241259393,
+        "flaps": 0.65,
+        "fuel_kg": 591.5501264711145,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "continue": 1,
+          "go_around": 0,
+          "hold": 0,
+          "unable": 0
+        }
+      },
+      "ms": 504,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 153.99999999999554,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 180.21504872361862,
+        "speed_mps": 67.38033709101441,
+        "vertical_mps": -3.281995667559694,
+        "heading_error_deg": -2.6513861591127155,
+        "lateral_m": 1.0119989397045186,
+        "distance_threshold_m": 3038.609534918185,
+        "glide_error_m": -0.24264709212698676,
+        "flaps": 0.65,
+        "fuel_kg": 591.1797132633822,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "continue": 1,
+          "go_around": 0,
+          "hold": 0,
+          "unable": 0
+        }
+      },
+      "ms": 502,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 159.9999999999952,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 160.2534451343887,
+        "speed_mps": 67.39117804833575,
+        "vertical_mps": -3.281555088462581,
+        "heading_error_deg": -2.557178869596591,
+        "lateral_m": -0.10281353870758397,
+        "distance_threshold_m": 2658.624384890456,
+        "glide_error_m": -0.4450228799150011,
+        "flaps": 0.65,
+        "fuel_kg": 590.8089474982704,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "unable": 0,
+          "go_around": 0,
+          "continue": 1,
+          "hold": 0
+        }
+      },
+      "ms": 328,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 165.99999999999486,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 140.70060208545746,
+        "speed_mps": 67.36238778254511,
+        "vertical_mps": -3.308372831366008,
+        "heading_error_deg": -2.566337919253116,
+        "lateral_m": 0.22522444677734738,
+        "distance_threshold_m": 2280.393512308452,
+        "glide_error_m": -0.3298605545820408,
+        "flaps": 0.65,
+        "fuel_kg": 590.4375252940272,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "continue": 1,
+          "go_around": 0,
+          "hold": 0,
+          "unable": 0
+        }
+      },
+      "ms": 319,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 171.99999999999451,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 120.93257000696737,
+        "speed_mps": 67.36076501368089,
+        "vertical_mps": -3.248387891305577,
+        "heading_error_deg": -2.6456315257784886,
+        "lateral_m": 0.36465379604303855,
+        "distance_threshold_m": 1900.2974995705881,
+        "glide_error_m": -0.33289997070320965,
+        "flaps": 0.65,
+        "fuel_kg": 590.0662732768384,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "go_around": 0,
+          "hold": 0,
+          "unable": 0,
+          "continue": 1
+        }
+      },
+      "ms": 334,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 177.99999999999417,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 101.10555551735078,
+        "speed_mps": 67.37760351637064,
+        "vertical_mps": -3.3427527150694707,
+        "heading_error_deg": -2.4551959178492444,
+        "lateral_m": -0.5821976885552361,
+        "distance_threshold_m": 1520.792442343838,
+        "glide_error_m": -0.42565148452879953,
+        "flaps": 0.65,
+        "fuel_kg": 589.6947063487183,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "continue": 1,
+          "go_around": 0,
+          "hold": 0,
+          "unable": 0
+        }
+      },
+      "ms": 487,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 183.99999999999383,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 81.58920884897441,
+        "speed_mps": 67.34473913874419,
+        "vertical_mps": -3.2280628368803352,
+        "heading_error_deg": -2.6379453592476314,
+        "lateral_m": 0.5692859688529001,
+        "distance_threshold_m": 1142.5390763347386,
+        "glide_error_m": -0.27282312043199397,
+        "flaps": 0.65,
+        "fuel_kg": 589.3233167121249,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "go_around": 0,
+          "continue": 1,
+          "unable": 0,
+          "hold": 0
+        }
+      },
+      "ms": 327,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 189.9999999999935,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 61.63303717670404,
+        "speed_mps": 67.38009766925492,
+        "vertical_mps": -3.327234079422057,
+        "heading_error_deg": -2.4731062133565525,
+        "lateral_m": -0.6258687105505987,
+        "distance_threshold_m": 762.2293934724003,
+        "glide_error_m": -0.45289128386076527,
+        "flaps": 0.65,
+        "fuel_kg": 588.9518055303462,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "unable": 0,
+          "go_around": 0,
+          "continue": 1,
+          "hold": 0
+        }
+      },
+      "ms": 328,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 195.99999999999315,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 42.09714077263116,
+        "speed_mps": 67.35481889079917,
+        "vertical_mps": -3.287717028355192,
+        "heading_error_deg": -2.556670264779098,
+        "lateral_m": 0.23945185369783656,
+        "distance_threshold_m": 383.0426250412129,
+        "glide_error_m": -0.2710757295119137,
+        "flaps": 0.65,
+        "fuel_kg": 588.5802978384879,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "go_around": 0,
+          "unable": 0,
+          "continue": 1,
+          "hold": 0
+        }
+      },
+      "ms": 567,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 201.9999999999928,
+      "state": {
+        "phase": "descending",
+        "altitude_m": 22.266184419907805,
+        "speed_mps": 67.36636350591657,
+        "vertical_mps": -3.2403778806871935,
+        "heading_error_deg": -2.6030629741064355,
+        "lateral_m": 0.1557986673423918,
+        "distance_threshold_m": 4.615576975629665,
+        "glide_error_m": -0.42382558282493576,
+        "flaps": 0.65,
+        "fuel_kg": 588.2090170076235,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "continue": 0.99,
+          "hold": 0,
+          "go_around": 0.01,
+          "unable": 0
+        }
+      },
+      "ms": 283,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 204.99999999999264,
+      "state": {
+        "phase": "flare",
+        "altitude_m": 12.585212410596236,
+        "speed_mps": 67.34546951857855,
+        "vertical_mps": -3.333670387497033,
+        "heading_error_deg": -2.469755074795812,
+        "lateral_m": -0.6344029568964638,
+        "distance_threshold_m": -185.59993693468277,
+        "glide_error_m": -0.21359086880025835,
+        "flaps": 0.65,
+        "fuel_kg": 588.0231287585623,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "unable": 0,
+          "hold": 0,
+          "continue": 0.99,
+          "go_around": 0.01
+        }
+      },
+      "ms": 361,
+      "model": "typesafe-ai/jev"
+    },
+    {
+      "time": 210.9999999999923,
+      "state": {
+        "phase": "flare",
+        "altitude_m": 6.511478561709677,
+        "speed_mps": 65.86441564171344,
+        "vertical_mps": -0.6857097759652201,
+        "heading_error_deg": -2.5970820685523717,
+        "lateral_m": 0.39814331693985416,
+        "distance_threshold_m": -561.2433820371225,
+        "glide_error_m": 2.2614785617096773,
+        "flaps": 0.65,
+        "fuel_kg": 587.6336793288945,
+        "engines_available": 2,
+        "weather": {
+          "visibility_km": 18,
+          "crosswind_mps": 3,
+          "turbulence": 0.08,
+          "rain": 0
+        },
+        "traffic": "clear",
+        "stable": true,
+        "weather_suitable": true
+      },
+      "answer": {
+        "type": "choice",
+        "choice": "continue",
+        "probabilities": {
+          "hold": 0,
+          "continue": 0.98,
+          "go_around": 0.02,
+          "unable": 0
+        }
+      },
+      "ms": 311,
+      "model": "typesafe-ai/jev"
+    }
+  ]
+}

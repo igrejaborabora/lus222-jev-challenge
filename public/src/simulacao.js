@@ -1,3 +1,4 @@
+import { prepararAterragemAI } from './ai-landing.js';
 import { PERFIL_PROGRESSIVO, passoProgressivo, corredorAproximacao, protecaoActiva } from './voo-progressivo.js';
 import { avaliarTreino } from './treino.js';
 import { mulberry32, offsetLateral } from './decisao.js';
@@ -502,6 +503,7 @@ function passoMissao(anterior, dt) {
     if (atual.diretor) atual = passoDiretor(atual);
     if ((atual.passo ?? 0) % 10 === 0) atual = verificarSupervisor(atual);
   }
+  atual = prepararAterragemAI(atual);
   const voo = passoFisico(atual, dt);
   const orbitaRestanteS = Math.max(0, atual.orbitaRestanteS - (atual.fase === 'orbita' ? dt : 0));
   const fase = atual.fase === 'orbita' && orbitaRestanteS === 0 ? 'em_rota' : atual.fase;

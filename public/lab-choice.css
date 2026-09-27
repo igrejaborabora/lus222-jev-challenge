@@ -1,0 +1,54 @@
+/* The flight choice is a native modal, above the landing and outside the 3D lifecycle. */
+.lab-choice{--choice-accent:#a4eddf;width:min(780px,calc(100vw - 40px));max-height:calc(100dvh - 40px);margin:auto;padding:34px;border:1px solid #9bc8bd4a;border-radius:5px;background:#0b1416;color:#f0f0e8;box-shadow:0 28px 100px #0009;overflow-y:auto;overscroll-behavior:contain;font-family:var(--sans)}
+.lab-choice::backdrop{background:#03090bd1;backdrop-filter:blur(8px)}
+.lab-choice[data-pilot=jev]{--choice-accent:#c5b1ef}
+.lab-choice button,.lab-choice input,.lab-choice label{touch-action:manipulation}
+.lab-choice button:focus-visible,.lab-choice input:focus-visible{outline:2px solid var(--choice-accent);outline-offset:4px}
+.lab-choice-close{position:absolute;top:15px;right:15px;width:40px;height:40px;background:transparent;border:1px solid #ffffff30;color:#b5c5bf;font:26px/1 var(--sans)}
+.lab-choice-close:hover{border-color:#a4eddf;color:#fff}
+.lab-choice-heading{padding-right:40px}
+.lab-choice-eyebrow{margin:0 0 14px;color:#a4eddf;font:9px/1.7 var(--mono);letter-spacing:.1em}
+.lab-choice h2{margin:0;font:500 clamp(28px,4vw,39px)/1.1 'DM Sans',sans-serif;letter-spacing:-.055em}
+.lab-choice-heading>p:last-child{margin:12px 0 24px;color:#a8bbb5;font-size:14px;line-height:1.6}
+.lab-choice-modes{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0;margin:0;border:0;min-width:0}
+.lab-choice-card{--card-accent:#a4eddf;position:relative;display:flex;flex-direction:column;min-width:0;padding:22px;border:1px solid #819b9245;background:#111e20;cursor:pointer;transition:border-color .15s,background .15s}
+.lab-choice-card>input{position:absolute;opacity:0;width:20px;height:20px;right:20px;top:18px;margin:0}
+.lab-choice-card:has(input:checked){border-color:var(--card-accent);background:#a4eddf0b}
+.lab-choice-card:has(input:focus-visible){outline:2px solid var(--card-accent);outline-offset:4px}
+.lab-choice-card:hover{border-color:var(--card-accent)}
+.lab-choice-card-top{display:flex;justify-content:space-between;gap:16px;align-items:center;color:var(--card-accent);font:9px/1.5 var(--mono);letter-spacing:.08em;margin-bottom:24px}
+.lab-choice-radio{display:block;width:16px;height:16px;border:1px solid #8a9b98;border-radius:50%;flex:none}
+.lab-choice-card:has(input:checked) .lab-choice-radio{border-color:var(--card-accent);box-shadow:inset 0 0 0 4px #111e20;background:var(--card-accent)}
+.lab-choice-card>strong{font:500 24px/1.2 'DM Sans',sans-serif;letter-spacing:-.045em;margin-bottom:12px}
+.lab-choice-card strong em{color:#c5b1ef;font-style:normal}
+.lab-choice-description{font:13px/1.65 var(--sans);color:#b4c3bd;flex:1}
+.lab-choice-card>small{display:block;margin-top:20px;color:var(--card-accent);font:9px/1.6 var(--mono)}
+.lab-choice-ai{--card-accent:#c5b1ef}
+.lab-choice-ai:has(input:checked){background:#c5b1ef0b}
+.lab-choice-detail{margin-top:20px}
+.lab-choice-detail>p{margin:0;color:#9fb5ac;font:12px/1.7 var(--sans)}
+.lab-choice-goals{display:grid;grid-template-columns:1fr 1fr;gap:10px;border:0;padding:0;margin:0;min-width:0}
+.lab-choice-goals legend{padding:0;margin-bottom:12px;font:10px/1.5 var(--mono);letter-spacing:.06em;color:#d6c9ed}
+.lab-choice-goals label{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #a799bc42;cursor:pointer;min-width:0}
+.lab-choice-goals label:has(input:checked){border-color:#c5b1efa0;background:#c5b1ef0a}
+.lab-choice-goals input{flex:none;margin:3px 0 0;width:15px;height:15px;accent-color:#c5b1ef;color-scheme:dark}
+.lab-choice-goals strong{font:500 13px/1.5 var(--sans);display:block}
+.lab-choice-goals small{display:block;margin-top:4px;color:#a4b2ad;font:11px/1.6 var(--sans)}
+.lab-choice-detail>.lab-choice-explanation{font-size:11px;margin-top:14px;max-width:65ch}
+.lab-choice-availability{display:flex;gap:12px;align-items:center;margin-top:12px}
+.lab-choice-availability p{font:10px/1.6 var(--mono);color:#a5b9b2;margin:0}
+.lab-choice-availability p[data-state=ready]{color:#a4eddf}
+.lab-choice-availability p[data-state=unavailable]{color:#e8c18c}
+.lab-choice-availability button{background:none;color:#d7c8f3;font:10px/1.5 var(--mono);border:0;border-bottom:1px solid #c5b1ef88;padding:5px 0;white-space:nowrap}
+.lab-choice-actions{display:flex;gap:24px;align-items:center;margin-top:24px}
+.lab-choice-start{background:var(--choice-accent);border:1px solid var(--choice-accent);color:#0b1516;font:600 14px/1.3 var(--sans);min-height:50px;min-width:240px;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:14px 18px}
+.lab-choice-start:disabled{opacity:.4;cursor:not-allowed}
+.lab-choice-start:not(:disabled):hover{filter:brightness(1.12)}
+.lab-choice-start>span{font-size:20px;font-weight:400}
+.lab-choice-replay{max-width:300px}
+.lab-choice-replay>button{display:block;color:#d0c1ed;font:11px/1.5 var(--mono);padding:5px 0;background:transparent;border:0;text-align:left}
+.lab-choice-replay>button:hover{text-decoration:underline;text-underline-offset:4px}
+.lab-choice-replay>small{display:block;color:#8faaa0;font:10px/1.5 var(--sans);margin-top:4px}
+.lab-choice-footnote{font:9px/1.6 var(--mono);color:#839b91;margin:20px 0 0;border-top:1px solid #ffffff1c;padding-top:16px}
+@media(max-width:580px){.lab-choice{width:calc(100vw - 24px);max-height:calc(100dvh - 24px);padding:24px 18px}.lab-choice-heading{padding-right:28px}.lab-choice-close{top:10px;right:10px;width:36px;height:36px}.lab-choice-eyebrow{font-size:7px;max-width:26ch;margin-bottom:10px}.lab-choice h2{font-size:30px}.lab-choice-heading>p:last-child{font-size:12px;margin-bottom:18px}.lab-choice-modes{grid-template-columns:1fr;gap:8px}.lab-choice-card{padding:14px 16px}.lab-choice-card-top{font-size:8px;margin-bottom:8px}.lab-choice-card>strong{font-size:22px;margin-bottom:7px}.lab-choice-description{font-size:12px;line-height:1.5}.lab-choice-card>small{margin-top:9px;font-size:8px}.lab-choice-card>input{top:13px;right:14px}.lab-choice-detail{margin-top:16px}.lab-choice-goals{gap:8px}.lab-choice-goals label{padding:10px 8px;gap:7px}.lab-choice-goals strong{font-size:12px}.lab-choice-goals small{font-size:10px}.lab-choice-goals legend{margin-bottom:9px}.lab-choice-availability{align-items:flex-start}.lab-choice-availability p{font-size:9px}.lab-choice-actions{margin-top:18px;display:flex;flex-direction:column;gap:13px;align-items:stretch}.lab-choice-start{width:100%;min-width:0}.lab-choice-replay{max-width:none}.lab-choice-replay>small{font-size:9px}.lab-choice-footnote{font-size:8px;margin-top:16px;padding-top:12px}}
+@media(prefers-reduced-motion:reduce){.lab-choice-card{transition:none}}

@@ -1,3 +1,6 @@
+import { iniciarAterragemAI, cancelarAterragemAI, pedirBorregoAI, decidirAterragemAI, estadoAterragem, LANDING_FRESH_S } from './ai-landing.js';
+import { respostaAterragemValida } from './landing-contract.js';
+import { actualizarAterragemUI } from './ai-landing-ui.js';
 import { criarAssinaturaUI } from './flight-signature-ui.js';
 import { criarFlightLabUI } from './flight-lab-ui.js';
 import { criarCockpitUI } from './cockpit-ui.js';
@@ -38,7 +41,8 @@ const MAPA = { x0: -19000, z1: 168000, lado: 31000 };
 // JEV piloto: ~3 pedidos por segundo, dois em voo, 0,042 USD por milhão de tokens de entrada.
 const INTERVALO_JEV_MS = 330;
 const CUSTO_TOKEN_USD = 0.042 / 1e6;
-const LIMITE_AO_VIVO_MS = 5 * 60 * 1000;
+// A bounded request allowance gives the slower landing controller time for a go-around.
+const LIMITE_PEDIDOS_JEV = 900;
 // Uma resposta sobre um estado com mais de 1,5 s de simulação já não comanda.
 const IDADE_MAX_S = 1.5;
 // Voo real do JEV, gravado com scripts/gravar-voo-jev.mjs, para quem não tem voo ao vivo.
@@ -111,7 +115,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   $('sim-instrumentos-toggle').textContent=instrumentosVisiveis?'Hide panel [I]':'Show panel [I]';
   $('sim-instrumentos-toggle').setAttribute('aria-expanded',String(instrumentosVisiveis));
   const comandos = criarComandosUI({ estado: () => s, assumir: assumirComandos, iniciar, avisar });
-  const lab = criarFlightLabUI({ estado:()=>s, assumir:assumirComandos, iniciar, pause:definirPausa, panelVisible:()=>instrumentosVisiveis, sound:som, liveAvailable:()=>gatewayDisponivel()&&aoVivoMs<LIMITE_AO_VIVO_MS });
+  const lab = criarFlightLabUI({ estado:()=>s, assumir:assumirComandos, iniciar, pause:definirPausa, panelVisible:()=>instrumentosVisiveis, sound:som, liveAvailable:()=>gatewayDisponivel()&&pedidosAoVivo<LIMITE_PEDIDOS_JEV });
   const assinatura=criarAssinaturaUI($('sim-signature'),$('sim-signature-enabled'));
   let pedidoFoto=0;
   async function aplicarFoto() {
@@ -127,15 +131,16 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   }
   $('sim-ground').addEventListener('change',()=>{void aplicarFoto();});
   let painelManual = false;
-  // O tempo de voo ao vivo do JEV conta por visita (página), não por voo.
-  let aoVivoMs = 0;
+  // Requests count across flights in this page visit; pausing does not reset the allowance.
+  let pedidosAoVivo = 0;
 
-  function novoJev() {
-    return { pipeline: novoPipelinePiloto({ intervaloMs: INTERVALO_JEV_MS, maxEmVoo: 2 }), pedidos: new Map(), falhas: 0, decisoes: 0, custoUsd: 0 };
+  function novoJev(aterragem = false) {
+    return { pipeline: novoPipelinePiloto({ intervaloMs: aterragem ? 1500 : INTERVALO_JEV_MS, maxEmVoo: aterragem ? 1 : 2 }), pedidos: new Map(), falhas: 0, decisoes: 0, custoUsd: 0 };
   }
 
   function avisar(texto) {
     s.aviso = texto;
+    s.avisoAte = performance.now()+8000;
     $('sim-meta').textContent = texto;
   }
 
@@ -148,7 +153,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     s.teclas.clear();
     s.toque.clear();
     s.verticalSeleccionada = 'manter';
-    if (!painelManual) definirPainel(tipo !== 'humano');
+    if (!painelManual) definirPainel(tipo !== 'humano' && !s.m.aiLanding);
     $('sim-decisao').hidden = tipo === 'humano';
     if(tipo !== 'humano') {
       $('sim-decisao-fonte').textContent = tipo === 'jev-gravado' ? 'AI · JEV · RECORDED' : 'AI CONTROL · JEV LIVE';
@@ -217,6 +222,8 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   /** Volta a pôr o humano aos comandos; o JEV deixa de receber pedidos. */
   function pararJev(motivo) {
     cancelarPedidosJev();
+    if (s.m) s.m = cancelarAterragemAI(s.m);
+    s.jev = null;
     if (s.m) s.m = { ...s.m, piloto: { ...novoPiloto('humano'), supervisor: s.m.piloto.supervisor } };
     if (s.m && s.m.perfil !== PERFIL_PROGRESSIVO) s.m = { ...s.m, perfil: PERFIL_PROGRESSIVO, controlos: novosControlos() };
     if (s.m) s.m = { ...s.m, controlos: { ...s.m.controlos, modo:'avancado', protecao:false, altitudeM:null, verticalMs:null, rumoRad:null, aproximacao:false }, voo:{...s.m.voo,pitchManualRad:s.m.voo.pitchRad}, piloto:{...s.m.piloto,supervisor:null} };
@@ -224,24 +231,27 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     if (motivo) avisar(motivo);
   }
 
-  function entregarAoJev() {
-    if (!s.m) return;
-    // Sem voo ao vivo (sem Gateway ou depois dos 5 min), o JEV pilota o voo gravado desde o início.
-    if (s.m.treino || s.m.voo.emSolo) { $('sim-treino-avaliacao').textContent = 'You fly the training exercises. Start Free flight to hand the controls to JEV.'; definirPainel(true); return; }
-    if (!gatewayDisponivel() || aoVivoMs >= LIMITE_AO_VIVO_MS) { void iniciar({ semente: s.m.semente, piloto: 'jev-gravado' }); return; }
-    s.m = { ...s.m, controlos: { ...novosControlos(), motores:s.m.controlos?.motores??novosControlos().motores, flaps: s.m.voo.flaps ?? 0 } };
-    s.jev = novoJev();
-    s.m = { ...s.m, piloto: { ...s.m.piloto, tipo: 'jev', fonte: 'jev' } };
-    s.teclas.clear();
-    s.toque.clear();
+  function entregarAoJev(objectivo = $('sim-ai-objective').value) {
+    if (!s.m || s.fim || s.m.resultado) return;
+    if (!gatewayDisponivel() || pedidosAoVivo >= LIMITE_PEDIDOS_JEV) { avisar('Live JEV is unavailable or this visit has reached its limit. You keep the controls. A recorded route is available from the landing page.'); return; }
+    if (s.m.voo.emSolo || (s.m.treino && objectivo !== 'aterrar')) { avisar('Start free flight to use AI route control. Landing guidance can take over an airborne approach.'); return; }
+    cancelarPedidosJev();
+    if (s.m.piloto.tipo === 'jev-gravado') { avisar('This is a recording. Start a live flight from the landing page.'); return; }
+    s.m=cancelarAterragemAI(s.m);
+    $('sim-ai-objective').value=objectivo;
+    s.m = { ...s.m, controlos: { ...novosControlos(), motores:s.m.controlos?.motores??novosControlos().motores, flaps: s.m.voo.flaps ?? 0 }, piloto:novoPiloto('jev') };
+    if(objectivo==='aterrar')s.m=iniciarAterragemAI(s.m);
+    s.jev = novoJev(Boolean(s.m.aiLanding));
+    s.teclas.clear(); s.toque.clear();
     marcarPiloto('jev');
-    avisar('JEV has taken the controls…');
+    avisar(objectivo==='aterrar'?'JEV objective: land at Porto. Guidance will join the approach.':'JEV objective: fly the route.');
   }
 
   function despacharJev(agora) {
-    const estado = estadoPiloto(s.m, { ordens: s.ordens });
-    $('sim-estado').textContent = textoEstadoUI(estado);
+    const estado = s.m.aiLanding ? estadoAterragem(s.m) : estadoPiloto(s.m, { ordens: s.ordens });
+    $('sim-estado').textContent = s.m.aiLanding ? JSON.stringify(estado,null,2) : textoEstadoUI(estado);
     const ticket = reservarPasso(s.jev.pipeline, { estado, tempoS: s.m.voo.tempoS, passo: s.m.passo }, agora);
+    pedidosAoVivo += 1;
     void pedirJev(ticket, s.geracao, s.jev);
   }
 
@@ -250,15 +260,15 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     jev.pedidos.set(ticket.id, ctrl);
     const limite = setTimeout(() => ctrl.abort(), 3500);
     try {
-      const r = await fetch('/api/jev', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ momento: 'piloto', estado: ticket.entrada.estado }), signal: ctrl.signal });
+      const r = await fetch('/api/jev', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ momento: ticket.entrada.estado.phase ? 'aterragem' : 'piloto', estado: ticket.entrada.estado }), signal: ctrl.signal });
       const d = await r.json().catch(() => ({}));
       if (d.erro === 'limite' || r.status === 429) throw Object.assign(new Error('The live AI flight limit has been reached.'), { codigo: 'limite' });
       if (!r.ok || d.fonte !== 'jev') throw new Error('JEV could not respond. Please try again.');
-      if (!respostaValida(d.answers, ticket.entrada.estado)) throw new Error('JEV returned an unusable decision.');
-      if (gen !== s.geracao || jev !== s.jev || s.m?.piloto.tipo !== 'jev') return;
+      if (!(ticket.entrada.estado.phase ? respostaAterragemValida(d.answers) : respostaValida(d.answers, ticket.entrada.estado))) throw new Error('JEV returned an unusable decision.');
+      if (ctrl.signal.aborted || s.pausa || gen !== s.geracao || jev !== s.jev || s.m?.piloto.tipo !== 'jev') return;
       aplicarJev(ticket, d);
     } catch (e) {
-      if (gen !== s.geracao || jev !== s.jev || s.m?.piloto.tipo !== 'jev') return;
+      if (s.pausa || gen !== s.geracao || jev !== s.jev || s.m?.piloto.tipo !== 'jev') return;
       falharJev(ticket, e);
     } finally {
       clearTimeout(limite);
@@ -285,7 +295,12 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     actualizarPainel($('sim-meta'), host, d);
     // Uma resposta mais antiga que chega depois de uma nova fica no painel, não nos comandos.
     if (!res.aplicar || s.m.piloto.tipo !== 'jev' || s.m.resultado) return;
-    if (s.m.voo.tempoS - ticket.entrada.tempoS > IDADE_MAX_S) return;
+    if (s.m.voo.tempoS - ticket.entrada.tempoS > (s.m.aiLanding ? LANDING_FRESH_S : IDADE_MAX_S)) return;
+    if(s.m.aiLanding) {
+      const next=decidirAterragemAI(s.m,d.answers.landingDecision.choice,{phase:ticket.entrada.estado.phase,tempoS:ticket.entrada.tempoS});
+      if(next!==s.m){s.m=next;s.decisaoVisivel={tempoS:s.m.voo.tempoS,gravada:false};lab.observarDecisao(s.m,etiquetaOpcao('landingDecision',d.answers.landingDecision.choice),false);}
+      return;
+    }
     mostrarDecisaoNoVoo(d.answers, d.latencia_ms);
     const eixos = actuacaoDeManobra(d.answers.manobra.choice);
     s.m = { ...s.m, piloto: darOrdem(s.m.piloto, { ...eixos, potencia: d.answers.potencia.choice, fonte: 'jev' }, s.m.voo.tempoS, RETENCAO_JEV_S) };
@@ -294,11 +309,16 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   function falharJev(ticket, erro) {
     const jev = s.jev;
     falharPasso(jev.pipeline, ticket.id, erro, performance.now());
-    if (erro.codigo === 'limite') { pararJev('The live AI flight limit has been reached. You have the controls.'); return; }
+    if (erro.codigo === 'limite') { interromperJev('The live AI allowance has been reached.'); return; }
     jev.falhas += 1;
     jev.pipeline.proximoEm = Math.max(jev.pipeline.proximoEm, performance.now() + Math.min(8000, 400 * 2 ** jev.falhas));
-    if (jev.falhas >= 5) { pararJev(`JEV failed to respond five times in a row (${erro.message}). You have the controls.`); return; }
+    if (jev.falhas >= 5) { interromperJev(`JEV is unavailable after repeated attempts (${erro.message}).`); return; }
     avisar(`No response from JEV (${erro.message}). The aircraft stabilises while protection remains active.`);
+  }
+
+  function interromperJev(reason) {
+    pararJev(`${reason} Flight paused. Resume to fly manually.`);
+    definirPausa(true);
   }
 
   function ligarSomAgora() {
@@ -415,9 +435,12 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     instrumentos.actualizar(s.m, vooInterpolado(s.m));
     comandos.actualizar();
     cockpit.actualizar(s.m);
+    actualizarAterragemUI(s.m);
+    $('sim-notice').hidden=!s.aviso||(!s.pausa&&performance.now()>s.avisoAte);
+    $('sim-notice').textContent=s.aviso??'';
     const d = s.m.destinos.find((x) => x.id === s.m.destinoId);
     const km = Math.hypot(d.xM - v.xM, d.zM - v.zM) / 1000;
-    $('sim-objetivo').textContent = `Next: ${textoUI(NOMES_CIRCUITO[d.id] ?? d.id)} · ${km.toFixed(1)} km · ${s.m.pontosPassados.length} waypoints passed`;
+    $('sim-objetivo').textContent = s.m.aiLanding ? `AI objective: land at Porto · ${km.toFixed(1)} km to airport` : `Next: ${textoUI(NOMES_CIRCUITO[d.id] ?? d.id)} · ${km.toFixed(1)} km · ${s.m.pontosPassados.length} waypoints passed`;
   }
 
   function actualizarContadores() {
@@ -546,9 +569,8 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
       if (s.m.piloto.tipo !== 'humano') comandos.gamepad();
       if (s.m.piloto.tipo === 'humano') aplicarHumano();
       else if (s.jev) {
-        aoVivoMs += dt * 1000;
-        if (aoVivoMs >= LIMITE_AO_VIVO_MS) pararJev('This visit has reached the 5-minute live JEV flight limit. You have the controls.');
-        else if (deveDespacharPasso(s.jev.pipeline, t)) despacharJev(t);
+        if (!(s.m.aiLanding && s.m.voo.emSolo) && pedidosAoVivo >= LIMITE_PEDIDOS_JEV) interromperJev('This visit has reached its live AI request allowance.');
+        else if (!(s.m.aiLanding && s.m.voo.emSolo) && deveDespacharPasso(s.jev.pipeline, t)) despacharJev(t);
       }
       s.m = avancarMissao(s.m, dt);
       contarSupervisor();
@@ -597,11 +619,12 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     s.verticalSeleccionada = 'manter';
     comandos.limpar();
     if(s.m?.piloto.tipo === 'humano') s.m = { ...s.m, piloto: { ...s.m.piloto, ateS: 0 } };
+    if(p && s.jev) {cancelarPedidosJev();s.jev={...s.jev,pedidos:new Map(),pipeline:novoJev(Boolean(s.m?.aiLanding)).pipeline};}
     s.pausa = Boolean(p);
     $('sim-pausa').textContent = s.pausa ? 'Resume [P]' : 'Pause [P]';
   }
 
-  async function iniciar({ semente = 222, piloto = 'humano', desdeS = 0, exercicio = 'livre', tempo = 'poucas_nuvens', ambiente = {}, primeiroVoo=false, guiaVisual=false, comparacao=false } = {}) {
+  async function iniciar({ semente = 222, piloto = 'humano', objectivo = 'aterrar', desdeS = 0, exercicio = 'livre', tempo = 'poucas_nuvens', ambiente = {}, primeiroVoo=false, guiaVisual=false, comparacao=false } = {}) {
     const gen = ++s.geracao;
     cockpit.parar();
     cancelAnimationFrame(s.raf);
@@ -616,6 +639,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     try { s.m = gravacao ? iniciarReproducao(gravacao) : criarVooProgressivo(semente, { exercicio, tempo, ambiente }); }
     catch { gravacao = null; piloto = 'humano'; s.m = criarVooProgressivo(semente, { exercicio, tempo, ambiente }); }
     if(comparacao) { s.m={...s.m,controlos:{...novosControlos(),flaps:s.m.voo.flaps??0}}; s.ordens=''; $('sim-ordens').value=''; $('sim-ordem-activa').textContent='No instructions.'; }
+    $('sim-ai-objective').value=comparacao?'rota':objectivo;
     comandos.iniciar();
     s.cursor = { i: 0, lido: false };
     if (gravacao) s.gravado = { decisoes: 0, custoUsd: 0, latencias: [] };
@@ -632,8 +656,8 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     marcarPiloto(gravacao ? 'jev-gravado' : 'humano');
     if (gravacao && desdeS > 0) saltarGravacao(Math.min(desdeS, (gravacao.duracaoS ?? 0) - 5));
     if (piloto === 'jev') {
-      if(comparacao&&(!gatewayDisponivel()||aoVivoMs>=LIMITE_AO_VIVO_MS)) { comparacao=false; avisar('Live AI is unavailable. You have the controls.'); }
-      else entregarAoJev();
+      if(comparacao&&(!gatewayDisponivel()||pedidosAoVivo>=LIMITE_PEDIDOS_JEV)) { comparacao=false; avisar('Live AI is unavailable. You have the controls.'); }
+      else entregarAoJev(comparacao?'rota':objectivo);
     }
     assinatura.reiniciar();
     lab.iniciar(s.m,{primeiroVoo,guiaVisual,comparacao});
@@ -769,8 +793,12 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   });
   $('sim-sair').addEventListener('click', sair);
   $('sim-fim-sair').addEventListener('click', sair);
-  $('sim-repetir').addEventListener('click', () => { ligarSomAgora(); void iniciar({ semente: (s.m?.semente ?? 222) + 1, piloto: s.m?.piloto.tipo ?? 'humano', exercicio:s.m?.treino?.tipo??'livre', tempo:s.m?.ambiente.tempo??'poucas_nuvens', ambiente:s.m?.ambiente??{} }); });
+  $('sim-repetir').addEventListener('click', () => { ligarSomAgora(); void iniciar({ semente: (s.m?.semente ?? 222) + 1, piloto: s.m?.piloto.tipo ?? 'humano', objectivo:$('sim-ai-objective').value, exercicio:s.m?.treino?.tipo??'livre', tempo:s.m?.ambiente.tempo??'poucas_nuvens', ambiente:s.m?.ambiente??{} }); });
   $('sim-piloto-humano').addEventListener('click', () => { if (s.m && s.m.piloto.tipo !== 'humano') pararJev('You have retaken the controls.'); });
+  $('sim-ai-start').addEventListener('click',()=>entregarAoJev());
+  $('sim-ai-objective').addEventListener('change',()=>{if(s.m?.piloto.tipo==='jev')entregarAoJev();});
+  $('sim-ai-go-around').addEventListener('click',()=>{if(s.m?.aiLanding&&!s.m.voo.emSolo){s.m=pedirBorregoAI(s.m);}});
+  $('sim-ai-takeover').addEventListener('click',()=>{if(s.m?.piloto.tipo!=='humano')pararJev('You have taken the controls.');});
   $('sim-piloto-jev').addEventListener('click', () => { if (s.m?.piloto.tipo === 'humano') entregarAoJev(); });
   const darOrdens = (texto) => {
     s.ordens = limparOrdens(texto);
@@ -788,5 +816,5 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     if (ligar && activo()) som.ligar();
   });
 
-  return { iniciar, sair, activo, ligarSom: ligarSomAgora, estado: () => s };
+  return { iniciar, sair, activo, liveAvailable:()=>gatewayDisponivel()&&pedidosAoVivo<LIMITE_PEDIDOS_JEV, ligarSom: ligarSomAgora, estado: () => s };
 }

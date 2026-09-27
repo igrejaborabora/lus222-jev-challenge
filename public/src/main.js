@@ -1079,8 +1079,11 @@ function ligarUI() {
   const forcarGravado = parametros.get('voo') === 'gravado';
   const desdeS = Math.max(0, Number(parametros.get('desde')) || 0);
   const start=options=>{simulador.ligarSom();void simulador.iniciar(options);};
-  criarLandingLab({start});
-  $('btn-sim-abrir').addEventListener('click', () => {let primeiroVoo=true;try{primeiroVoo=localStorage.getItem('lus222-first-flight')!=='complete';}catch{/* Optional preference. */}start({ piloto:forcarGravado?'jev-gravado':'humano',desdeS,primeiroVoo:!forcarGravado&&primeiroVoo });});
+  const landing=criarLandingLab({start,verificarLive:async()=>{await sondarGateway();return simulador.liveAvailable();}});
+  $('btn-sim-abrir').addEventListener('click', e => {
+    if(forcarGravado){start({piloto:'jev-gravado',objectivo:'rota',desdeS});return;}
+    landing.abrirEscolha('humano',e.currentTarget);
+  });
   $('btn-open').addEventListener('click', () => mostrar('commander'));
   $('btn-home').addEventListener('click', () => mostrar('splash'));
   $('btn-launch').addEventListener('click', () => { if (!estado.gateway) return; ligarSom(); void iniciar('live'); });
