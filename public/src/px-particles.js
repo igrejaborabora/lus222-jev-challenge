@@ -2,7 +2,7 @@
  * PX da Pixelgrammar. Adaptado de botffett/web/components/landing/px-particles.tsx:
  * mesmos glifos, molas, cores, repulsão e varrimento luminoso.
  * A dispersão acontece apenas durante interação, mantendo legível a autoria.
- * Canvas 2D independente de React; só anima enquanto a abertura está visível.
+ * Canvas 2D partilhado pelo header e pelo Lab; cada instância pausa fora do ecrã.
  */
 const W = 520;
 const H = 230;
@@ -31,33 +31,33 @@ function amostrar() {
   return passo <= 1 ? alvos : Array.from({ length: MAX_PARTICULAS }, (_, i) => alvos[Math.floor(i * passo)]);
 }
 
-function iniciar(canvas) {
+function iniciar(canvas, alvos) {
   const ctx = canvas.getContext('2d');
-  const alvos = amostrar();
   if (!ctx || !alvos.length) return;
   const dpr = Math.min(devicePixelRatio || 1, 2);
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   ctx.scale(dpr, dpr);
-  const marca = canvas.closest('.px-brand');
+  const marca = canvas.closest('[data-px-logo]');
+  const compacto = Boolean(marca.closest('.lab-header'));
   const ecran = canvas.closest('.screen');
   const reduzido = matchMedia('(prefers-reduced-motion: reduce)');
   const ponteiro = { x: 0, y: 0, activo: false };
   const particulas = alvos.map((a, i) => {
     const angulo = i / alvos.length * Math.PI * 2;
     const raio = 220 + i % 7 * 26;
-    return { x: marca?.closest('.lab-header') ? a.x : W / 2 + Math.cos(angulo) * raio, y: marca?.closest('.lab-header') ? a.y : H / 2 + Math.sin(angulo) * raio * 0.6,
-      vx: 0, vy: 0, tx: a.x, ty: a.y, size: marca?.closest('.lab-header') ? 3.2 : 1.5 + i % 5 * 0.3, hue: i % 9 === 0,
+    return { x: compacto ? a.x : W / 2 + Math.cos(angulo) * raio, y: compacto ? a.y : H / 2 + Math.sin(angulo) * raio * 0.6,
+      vx: 0, vy: 0, tx: a.x, ty: a.y, size: compacto ? 3.2 : 1.5 + i % 5 * 0.3, hue: i % 9 === 0,
       pull: 0.014 + i % 11 * 0.0018, flash: 0 };
   });
   let frame = 0;
-  let visivel = true;
+  let visivel = false;
   let tick = 0;
   let ultimo = 0;
   let dispersaoS = 0;
 
   function baseLegivel() {
-    if(!marca.closest('.lab-header'))return;
+    if(!compacto)return;
     ctx.save();ctx.globalCompositeOperation='source-over';ctx.fillStyle='rgba(120,230,255,.38)';
     ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`700 ${Math.round(H*.82)}px "IBM Plex Sans",system-ui,sans-serif`;
     ctx.fillText('PX',W/2,H/2+4);ctx.restore();
@@ -68,7 +68,7 @@ function iniciar(canvas) {
     ctx.globalCompositeOperation = 'source-over';
     for (const [i, a] of alvos.entries()) {
       ctx.fillStyle = i % 9 === 0 ? '#bea0ff' : '#78e6ff';
-      const size=marca.closest('.lab-header')?3.8:2;ctx.fillRect(a.x,a.y,size,size);
+      const size=compacto?3.8:2;ctx.fillRect(a.x,a.y,size,size);
     }
   }
 
@@ -153,5 +153,8 @@ function iniciar(canvas) {
   actualizar();
 }
 
-const canvas = document.getElementById('px-particles');
-if (canvas) document.fonts.ready.then(() => iniciar(canvas));
+const canvases = document.querySelectorAll('[data-px-particles]');
+if (canvases.length) document.fonts.ready.then(() => {
+  const alvos = amostrar();
+  for (const canvas of canvases) iniciar(canvas, alvos);
+});

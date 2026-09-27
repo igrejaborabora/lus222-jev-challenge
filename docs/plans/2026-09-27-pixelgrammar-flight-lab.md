@@ -74,10 +74,10 @@ The 12-second, silent WebM and JPEG poster were captured from the actual simulat
 
 The original checkout's unrelated strategic-JEV edits were left untouched.
 
-## Pending follow-up — PX in “From the Lab”
+## Completed follow-up — PX in “From the Lab”
 
 Requested by Fernando on 27 September 2026 through the browser annotation on `#lab-about > .lab-about-mark`.
 
-Replace the static PX treatment in the “From the Lab” section with the same dynamic particle logo used by the header and BotFfett: formation, pointer response and light sweep. Reuse the shared particle implementation with separate canvas instances; retain the Pixelgrammar Lab caption, accessible fallback, reduced-motion support and pause when offscreen.
+Replaced the static PX treatment in the “From the Lab” section with the shared header/BotFfett particle renderer: formation, pointer repulsion and light sweep. Glyph sampling is shared while each canvas keeps independent particles, interaction and visibility. The Pixelgrammar Lab caption, accessible name, textual fallback, reduced-motion support and offscreen pause are preserved.
 
-Status: recorded for the next visual refinement; not implemented in the release above. This note does not request a different logo or changes to the surrounding copy.
+Verified with 362 tests, ESLint, the asset build and diff check. Chromium checks confirmed independent offscreen pause for both logos, visible animation, pointer repulsion, live reduced-motion changes, the textual fallback without canvas support, and a 390 px mobile layout without horizontal overflow. Desktop and mobile screenshots were reviewed. No page errors or API POST requests occurred. No new dependencies or changes to the surrounding copy were introduced.
