@@ -44,6 +44,7 @@ export function darOrdem(piloto, ordem, tempoS, retencaoS = RETENCAO_JEV_S) {
     potencia: um(ordem?.potencia, POTENCIAS, piloto.potencia),
     ateS: tempoS + retencaoS,
     fonte: ordem?.fonte ?? piloto.fonte,
+    ...Object.fromEntries(['bankInput', 'pitchInput', 'rudder', 'potenciaDelta', 'travao'].map((k) => [k, Number.isFinite(ordem?.[k]) ? Math.max(-1, Math.min(1, ordem[k])) : undefined])),
   };
 }
 
@@ -70,7 +71,7 @@ export function ordemDeTeclas(teclas) {
 export function actuacaoEfectiva(piloto, tempoS) {
   const s = piloto?.supervisor;
   if (s && tempoS < s.ateS) return { lateral: s.lateral, vertical: s.vertical, potencia: s.potencia ?? 'manter', fonte: 'supervisor', motivo: s.motivo };
-  if (piloto && tempoS < piloto.ateS) return { lateral: piloto.lateral, vertical: piloto.vertical, potencia: piloto.potencia, fonte: piloto.fonte };
+  if (piloto && tempoS < piloto.ateS) return { lateral: piloto.lateral, vertical: piloto.vertical, potencia: piloto.potencia, fonte: piloto.fonte, ...Object.fromEntries(['bankInput', 'pitchInput', 'rudder', 'potenciaDelta', 'travao'].filter((k) => Number.isFinite(piloto[k])).map((k) => [k, piloto[k]])) };
   return { lateral: 'nivelar', vertical: 'manter', potencia: 'manter', fonte: 'estabilizador' };
 }
 

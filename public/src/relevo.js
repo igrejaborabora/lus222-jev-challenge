@@ -160,7 +160,7 @@ function alturaBaseSemRio(perfil, x, z) {
 
 /** Pistas (origem, destino e alternativos) em coordenadas do mundo. */
 export function pistasDaMissao(destinos) {
-  return destinos.map((d) => ({ id: d.id, ...pontoMundo(d.xM, d.zM), raioPlanoM: 1200 }));
+  return destinos.map((d) => ({ id: d.id, ...pontoMundo(d.xM, d.zM), raioPlanoM: d.raioPlanoM ?? 1200 }));
 }
 
 // Ilhéu da pista: uma pista junto ao mar assenta numa ilha rasa, em vez de

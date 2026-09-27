@@ -97,6 +97,7 @@ export function reproduzir(m, gravacao, cursor, segundos) {
 
 /** Começo da reprodução: o mesmo voo livre, com o JEV (gravado) aos comandos. */
 export function iniciarReproducao(gravacao) {
+  if (gravacao.versao !== VERSAO_VOO || gravacao.perfil !== PERFIL.versao) throw new Error('Gravação incompatível: versão ou perfil de física desconhecido.');
   const m = criarVooLivre(gravacao.semente);
   return { ...m, piloto: { ...m.piloto, tipo: 'jev-gravado', fonte: 'jev' } };
 }

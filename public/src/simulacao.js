@@ -1,6 +1,8 @@
+import { PERFIL_PROGRESSIVO, passoProgressivo, corredorAproximacao } from './voo-progressivo.js';
+import { avaliarTreino } from './treino.js';
 import { mulberry32, offsetLateral } from './decisao.js';
 import { cpa, distanciaM, nascerAmeacas, passoAmeacas, raioEfectivoM } from './ameacas.js';
-import { actuacaoDeManobra, actuacaoEfectiva } from './piloto-sim.js';
+import { actuacaoDeManobra, actuacaoEfectiva, darOrdem } from './piloto-sim.js';
 import { alturaTerreno, perfilTerreno, pistasDaMissao, prepararPistas } from './relevo.js';
 import { avancarCircuito, passoDiretor } from './diretor.js';
 
@@ -369,7 +371,7 @@ const CHAO_CACHE = new Map();
 export function alturaChaoM(m, xM, zM) {
   // No voo livre só o aeroporto é pista (m.pistas); nas missões, todos os destinos.
   const comPista = m.pistas ?? m.destinos;
-  const chave = `${m.cenario}|${comPista.map((d) => d.id).join(',')}`;
+  const chave = `${m.cenario}|${comPista.map((d) => `${d.id}:${d.xM}:${d.zM}:${d.raioPlanoM ?? 1200}`).join(',')}`;
   let c = CHAO_CACHE.get(chave);
   if (!c) {
     const perfil = perfilTerreno(m.cenario);
@@ -382,6 +384,7 @@ export function alturaChaoM(m, xM, zM) {
 
 /** Física com o piloto (humano ou JEV) aos comandos: a mesma aerodinâmica, outra lei de comando. */
 function passoPilotado(m, dt) {
+  if (m.perfil === PERFIL_PROGRESSIVO) return passoProgressivo(m, actuacaoEfectiva(m.piloto, m.voo.tempoS), dt, PERFIL, (x, z) => alturaChaoM(m, x, z));
   const v = m.voo;
   const a = actuacaoEfectiva(m.piloto, v.tempoS);
   const bancoAlvo = a.lateral === 'esquerda' ? -BANCO_PILOTO_RAD : a.lateral === 'direita' ? BANCO_PILOTO_RAD : 0;
@@ -431,8 +434,9 @@ function paraPrever(ameacas) {
  * altura ao chão. É a mesma conta para o supervisor e para o estado do JEV.
  */
 export function preverActuacao(m, actuacao, { horizonteS = 30, aplicarS = 8, dtS = 0.5, amostraS = 3 } = {}) {
+  if (m.perfil === PERFIL_PROGRESSIVO) dtS = PERFIL.passoS;
   const inicio = m.voo.tempoS;
-  let sim = { ...m, piloto: { ...m.piloto, ...actuacao, potencia: actuacao.potencia ?? 'manter', ateS: inicio + aplicarS, supervisor: null, fonte: 'previsao' } };
+  let sim = { ...m, piloto: { ...darOrdem(m.piloto, { ...actuacao, potencia: actuacao.potencia ?? 'manter', fonte: actuacao.fonte ?? m.piloto?.fonte ?? 'humano' }, inicio, aplicarS), supervisor: null } };
   let ameacas = paraPrever(m.ameacas ?? []);
   let margemM = Infinity;
   let critica = null;
@@ -477,14 +481,15 @@ export function escolhaDoSupervisor(previsoes) {
 function verificarSupervisor(m) {
   const v = m.voo;
   const agl = v.altitudeM - alturaChaoM(m, v.xM, v.zM);
-  if (agl < 60 && v.velocidadeVerticalMs < 0.5) {
+  const aproxima = m.perfil === PERFIL_PROGRESSIVO && (v.emSolo || corredorAproximacao(m));
+  if (!aproxima && agl < 60 && v.velocidadeVerticalMs < 0.5) {
     return { ...m, piloto: { ...m.piloto, supervisor: { lateral: 'nivelar', vertical: 'subir', potencia: 'mais', ateS: v.tempoS + 4, motivo: 'terreno' } } };
   }
   if (!m.ameacas?.length) return m;
   const actual = actuacaoEfectiva(m.piloto, v.tempoS);
   if (actual.fonte === 'supervisor') return m;
   if (preverActuacao(m, actual).margemM >= 0) return m;
-  const melhor = escolhaDoSupervisor(CANDIDATAS_SUPERVISOR.map((c) => ({ c, ...preverActuacao(m, { ...actuacaoDeManobra(c), potencia: 'manter' }) })));
+  const melhor = escolhaDoSupervisor(CANDIDATAS_SUPERVISOR.map((c) => ({ c, ...preverActuacao(m, { ...actuacaoDeManobra(c), potencia: 'manter', fonte: 'supervisor' }) })));
   return { ...m, piloto: { ...m.piloto, supervisor: { ...actuacaoDeManobra(melhor.c), potencia: 'manter', ateS: v.tempoS + 3, motivo: 'separacao', manobra: melhor.c } } };
 }
 
@@ -505,6 +510,12 @@ function passoMissao(anterior, dt) {
   else if (atual.piloto && voo.altitudeM <= alturaChaoM(atual, voo.xM, voo.zM) + 0.5 && dist(voo, destino) >= 1500) resultado = 'limite_altitude';
   else if (fase !== 'orbita' && dist(voo, destino) < 250 && voo.altitudeM <= 50) resultado = atual.destinoId === 'origem' ? 'regressou' : fase === 'emergencia' ? 'emergencia_resolvida' : 'chegou';
   else if (voo.tempoS >= 2800) resultado = 'tempo_esgotado';
+  if (atual.perfil === PERFIL_PROGRESSIVO) {
+    resultado = null;
+    if (voo.contacto && voo.contacto.tipo !== 'pista') resultado = voo.contacto.tipo === 'duro' ? 'aterragem_dura' : 'limite_altitude';
+    else if (voo.emSolo && voo.contacto?.tipo === 'pista' && voo.velocidadeMs < 1) resultado = 'chegou';
+    else if (voo.tempoS >= 2800) resultado = 'tempo_esgotado';
+  }
   const movidas = actualizarAmeacas(atual, voo, dt);
   if (movidas.perdida) resultado = 'separacao_perdida';
   let ameacaAtiva = atual.ameacaAtiva;
@@ -518,7 +529,9 @@ function passoMissao(anterior, dt) {
       ameacaAtiva = null;
     }
   }
-  const seguinte = { ...atual, voo, fase, orbitaRestanteS, resultado, ameacaAtiva, separacoes, ameacas: movidas.ameacas };
+  const faseVoo = atual.perfil === PERFIL_PROGRESSIVO ? (voo.emSolo ? voo.contacto ? 'rolagem' : 'solo' : atual.controlos?.aproximacao ? 'aproximacao' : fase === 'solo' ? 'subida' : fase) : fase;
+  const treino = avaliarTreino(atual.treino, voo, dt, resultado);
+  const seguinte = { ...atual, voo, fase: faseVoo, orbitaRestanteS, resultado, ameacaAtiva, separacoes, ameacas: movidas.ameacas, ...(treino ? { treino } : {}) };
   return seguinte.circuito ? avancarCircuito(seguinte) : seguinte;
 }
 
