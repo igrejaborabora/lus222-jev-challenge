@@ -91,7 +91,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .dock-buttons{display:grid;gap:8px}
 .dock-buttons .button{width:100%}
 .pilot-button{position:relative;overflow:hidden}
-.pilot-button::after{content:"400 MS · 2 PEDIDOS";font:500 8px var(--mono);letter-spacing:.1em;opacity:.58}
+.pilot-button::after{content:"400 MS · 2 REQUESTS";font:500 8px var(--mono);letter-spacing:.1em;opacity:.58}
 .mode-info{font:11px/1.5 var(--mono);color:#d6dde3}
 
 /* Voo: canvas a ecrã inteiro; tudo o resto flutua por cima. A largura da gaveta
@@ -239,7 +239,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
   .sim-atitude-valores{flex-direction:column;font-size:7px;gap:4px}
   .sim-leitura{padding:8px 6px}.sim-leitura b{font-size:18px}.sim-leitura>span{font-size:7px;letter-spacing:0}
   .sim-leitura>div{flex-wrap:wrap;column-gap:3px;row-gap:0}.sim-leitura small{font-size:7px}
-  .sim-leitura em{font-size:7px}.sim-leitura-vsi{padding-right:10px}.sim-leitura .sim-vsi{right:2px;width:3px;opacity:.5}
+  .sim-leitura em{font-size:7px}.sim-leitura-vsi b{font-size:clamp(12px,4vw,18px)}.sim-leitura-vsi{padding-right:10px}.sim-leitura .sim-vsi{right:2px;width:3px;opacity:.5}
   .sim-instrumentos-base{padding:7px 6px;font-size:7px;gap:6px;flex-wrap:wrap}
   .sim-instrumentos-topo{padding:0 7px;font-size:7px;letter-spacing:0}
   .sim-ajuda{top:calc(142px + var(--safe-t));left:8px}
@@ -480,3 +480,10 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .sim-instrumentos[data-movimento="descer"] .sim-leitura-vsi b,.sim-instrumentos[data-movimento="descer"] [data-instrumento="movimento"]{color:#8fc9ff}
 .sim-instrumentos[data-movimento="subir"] [data-instrumento="movimento"]::before{content:"↑ "}
 .sim-instrumentos[data-movimento="descer"] [data-instrumento="movimento"]::before{content:"↓ "}
+
+.sim-modos{flex-wrap:wrap}
+#sim-protecao-toggle{font:inherit;font-size:9px;padding:6px 8px;color:#efb778;border:1px solid #776046;background:#241c14;cursor:pointer}
+#sim-protecao-toggle[aria-pressed="true"]{color:#a4ddc4;border-color:#49735e;background:#14251d}
+.sim-supervisor{grid-column:span 2}
+.sim-picar{color:#efb778;border-color:#776046}
+@media(max-width:760px){#sim-protecao-toggle{font-size:8px;padding:3px 5px}.sim-modos{gap:5px}}

@@ -1,6 +1,6 @@
 import { instrumentosDeVoo, transformacaoHorizonte, anguloTrajectoria } from './instrumentos.js';
 
-const numero = (n) => Math.round(n).toLocaleString('pt-PT');
+const numero = (n) => Math.round(n).toLocaleString('en-GB');
 const assinado = (n) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${numero(Math.abs(n))}`;
 
 /** Cache de elementos e actualizações de texto só quando o valor muda. */
@@ -34,13 +34,13 @@ export function criarInstrumentosUI(raiz) {
       texto('autonomia', numero(i.autonomiaMin));
       texto('massa', numero(i.massaKg));
       texto('pitch', assinado(Math.round(i.pitchGraus)) + '°');
-      texto('bank', numero(Math.abs(i.bankGraus)) + '° ' + (i.bankGraus > 0.5 ? 'D' : i.bankGraus < -0.5 ? 'E' : ''));
+      texto('bank', numero(Math.abs(i.bankGraus)) + '° ' + (i.bankGraus > 0.5 ? 'R' : i.bankGraus < -0.5 ? 'L' : ''));
       texto('piloto', i.piloto);
       texto('autoridade', i.autoridade);
       texto('intencao', i.intencao);
       texto('movimento', i.movimento);
       texto('trajectoria', assinado(Math.round(i.trajectoriaGraus)) + '°');
-      painel.dataset.movimento = i.movimento === 'A subir' ? 'subir' : i.movimento === 'A descer' ? 'descer' : 'nivelado';
+      painel.dataset.movimento = i.movimento === 'Climbing' ? 'subir' : i.movimento === 'Descending' ? 'descer' : 'nivelado';
       texto('alvo', i.altitudeAlvoFt == null ? '—' : numero(i.altitudeAlvoFt) + ' ft');
       texto('aviso', i.aviso);
       painel.classList.toggle('tem-aviso', Boolean(i.aviso));

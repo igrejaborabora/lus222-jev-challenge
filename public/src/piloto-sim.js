@@ -1,16 +1,15 @@
 /**
- * Actuação do simulador, igual para o piloto humano e para o JEV: os mesmos
- * «botões» que o JEV escolhe a ~3 Hz são as teclas do humano. É comando de
- * intenção, como num fly-by-wire: esquerda/direita pedem 25° de pranchamento,
- * subir/descer pedem 4 m/s e a potência mexe no acelerador por incrementos.
- * Sem ordem nova, o avião nivela e mantém a altitude.
+ * Eixos partilhados por humano e JEV. O perfil assistido converte intenções em
+ * alvos de pranchamento/razão vertical e estabiliza ao expirar a ordem.
+ * No perfil manual, voo-progressivo.js integra pitchInput numa atitude
+ * persistente; a expiração liberta o eixo, sem nivelar o nariz.
  */
 export const LATERAIS = Object.freeze(['esquerda', 'nivelar', 'direita']);
 export const VERTICAIS = Object.freeze(['subir', 'manter', 'descer']);
 export const POTENCIAS = Object.freeze(['mais', 'manter', 'menos']);
 /** O JEV reconfirma a ~3 Hz; sem ordem durante este tempo, o avião estabiliza. */
 export const RETENCAO_JEV_S = 0.6;
-/** O humano segura a ordem enquanto carrega; ao largar estabiliza depressa. */
+/** Ao largar, o eixo humano expira depressa; o perfil determina a estabilização. */
 export const RETENCAO_HUMANO_S = 0.15;
 
 export function novoPiloto(tipo = 'humano') {

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { textoUI } from './copy-en.js';
 import { pontoMundo } from './escala.js';
 
 /**
@@ -65,7 +66,7 @@ const SETA_LADO_M = 10;
 const SETA_ALTURA_M = 5;
 const COR_SETA = { jev: 0xf4f6f8, supervisor: 0xd8483f, pic: 0xd8483f };
 
-const NOME_BALOES = 'Balões de São João';
+const NOME_BALOES = 'São João lanterns';
 // Ameaça mais de 60 m atrás do avião: passou, a marca sai.
 const AMEACA_PASSADA_M = 60;
 // Ameaça no chão (relevo) centenas de metros abaixo: a etiqueta sobe na mesma
@@ -154,6 +155,7 @@ function materialPoste({ cor, opacidade }) {
 }
 
 function criarEtiqueta(nome, { folga = FOLGA_DESTINO, ordem = 20 } = {}) {
+  nome = textoUI(nome);
   const res = Math.min(3, Math.max(2, Math.ceil(globalThis.devicePixelRatio || 1)));
   const canvas = document.createElement('canvas');
   canvas.width = ETIQUETA_PX.largura * res;
@@ -392,7 +394,7 @@ function actualizarSeta(marcas, { seta: sentido, autor, pose }) {
 
 function nomeAmeaca(obj) {
   if (obj.userData.baloes) return NOME_BALOES;
-  const tipo = String(obj.userData.tipo ?? obj.userData.visual ?? 'ameaça');
+  const tipo = textoUI(obj.userData.tipo ?? obj.userData.visual ?? 'threat');
   return tipo.charAt(0).toUpperCase() + tipo.slice(1);
 }
 

@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="pt-PT">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>LUS-222 / Turntable de comparação</title>
+<title>LUS-222 / Aircraft comparison</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -39,28 +39,28 @@
 </head>
 <body>
 <header>
-  <h1>LUS-222 <span>· malha procedural vs render</span></h1>
+  <h1>LUS-222 <span>· procedural model and reference render</span></h1>
   <div class="ctl">
-    <button type="button" id="rodar" aria-pressed="false">Rodar 3/4</button>
-    <button type="button" id="silhueta" aria-pressed="false">Silhueta</button>
-    <button type="button" id="leve" aria-pressed="false">Perfil leve</button>
-    <a href="./" style="align-self:center">Voltar à missão</a>
+    <button type="button" id="rodar" aria-pressed="false">Rotate 3/4</button>
+    <button type="button" id="silhueta" aria-pressed="false">Silhouette</button>
+    <button type="button" id="leve" aria-pressed="false">Lightweight profile</button>
+    <a href="./" style="align-self:center">Back to mission</a>
   </div>
 </header>
 <main>
   <figure class="ref" style="margin:0">
-    <picture><source srcset="./img/lus-222-hero.webp" type="image/webp"><img src="./img/lus-222-hero.png" alt="Render de referência do LUS-222 em voo"></picture>
-    <figcaption class="rotulo">Render de referência</figcaption>
+    <picture><source srcset="./img/lus-222-hero.webp" type="image/webp"><img src="./img/lus-222-hero.png" alt="Reference render of the LUS-222 in flight"></picture>
+    <figcaption class="rotulo">Reference render</figcaption>
   </figure>
-  <section class="vistas" aria-label="Quatro vistas da malha Three.js">
+  <section class="vistas" aria-label="Four views of the aircraft model">
     <canvas id="tt"></canvas>
     <div class="grelha" aria-hidden="true">
-      <div><span class="rotulo">Lado</span></div>
-      <div style="position:relative"><span class="rotulo">Frente</span></div>
-      <div style="position:relative"><span class="rotulo">3/4 · de baixo</span></div>
-      <div style="position:relative"><span class="rotulo">Cima</span></div>
+      <div><span class="rotulo">Side</span></div>
+      <div style="position:relative"><span class="rotulo">Front</span></div>
+      <div style="position:relative"><span class="rotulo">3/4 · from below</span></div>
+      <div style="position:relative"><span class="rotulo">Top</span></div>
     </div>
-    <p class="erro" id="erro">Este browser não tem WebGL; a turntable precisa dele.</p>
+    <p class="erro" id="erro">This browser does not support WebGL, which is needed for the aircraft view.</p>
   </section>
 </main>
 <script type="module" src="./src/turntable.js"></script>

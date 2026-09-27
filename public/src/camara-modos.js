@@ -27,10 +27,10 @@ export function alternarPreferido(c) {
   return { ...c, preferido: ORDEM[(ORDEM.indexOf(c.preferido) + 1) % ORDEM.length], ultimaInteracaoS: null };
 }
 
-/** A vista de pilotagem não é interrompida por cortes automáticos de evento/abertura. */
-export function modoCamara(c, agoraS) {
+/** Cockpit e cauda manual não cedem aos cortes automáticos; a órbita do utilizador mantém prioridade. */
+export function modoCamara(c, agoraS, { manual = false } = {}) {
   if (c.ultimaInteracaoS != null && agoraS - c.ultimaInteracaoS < REGRESSO_APOS_S) return 'livre';
-  if (c.preferido === 'livre' || c.preferido === 'cockpit') return c.preferido;
+  if (c.preferido === 'livre' || c.preferido === 'cockpit' || (manual && c.preferido === 'cauda')) return c.preferido;
   if (c.eventoAteS != null && agoraS < c.eventoAteS) return 'evento';
   if (agoraS - c.inicioS < DURACAO_ABERTURA_S) return 'abertura';
   return c.preferido;
@@ -104,7 +104,7 @@ function alvoCinema(pose, { fit, foco, agoraS, frente, esquerda }) {
 }
 
 /** Posição e mira da câmara para os modos automáticos (coordenadas locais). */
-export function alvoCamara(modo, pose, { fit = 1, foco = null, agoraS = 0 } = {}) {
+export function alvoCamara(modo, pose, { fit = 1, foco = null, agoraS = 0, manual = false, look = null } = {}) {
   const frente = { x: Math.sin(pose.heading), z: Math.cos(pose.heading) };
   // Esquerda do piloto: +X com rumo 0 (ver escala.js).
   const esquerda = { x: frente.z, z: -frente.x };
@@ -133,8 +133,41 @@ export function alvoCamara(modo, pose, { fit = 1, foco = null, agoraS = 0 } = {}
   }
   if (modo === 'evento' && foco) return enquadrarEvento(pose, foco, fit, frente, esquerda);
   const back = 30 / fit;
-  return {
-    pos: { x: pose.x - frente.x * back, y: pose.y + 7.5 / fit, z: pose.z - frente.z * back },
-    mira: { x: pose.x + frente.x * 46, y: pose.y + 2.2, z: pose.z + frente.z * 46 },
-  };
+  // A cauda acompanha 72% do pitch real: a paisagem revela a subida/picada e
+  // ainda se vê o nariz inclinar relativamente à câmara. Não alteramos a
+  // altitude da pose. O horizonte fica estável em roll, mesmo numa curva.
+  // Limitar a órbita a 64,8° evita passar pelo pólo do lookAt (world-up).
+  const pitch = Number.isFinite(pose.pitch) ? Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pose.pitch)) * 0.72 : 0;
+  const dir = { x: frente.x * Math.cos(pitch), y: -Math.sin(pitch), z: frente.z * Math.cos(pitch) };
+  const cima = { x: frente.x * Math.sin(pitch), y: Math.cos(pitch), z: frente.z * Math.sin(pitch) };
+  const junto = (longitudinal, altura) => ({
+    x: pose.x + dir.x * longitudinal + cima.x * altura,
+    y: pose.y + dir.y * longitudinal + cima.y * altura,
+    z: pose.z + dir.z * longitudinal + cima.z * altura,
+  });
+  // Na pilotagem, centrar o avião no espaço acima dos instrumentos. A mira
+  // desce no referencial do pitch; não se altera a altitude nem a pose real.
+  const alvo = { pos: junto(-back, 7.5 / fit), mira: junto(46, manual ? -10 : 2.2) };
+  if (modo === 'cauda' && !manual && look) puxarMiraParaAmeaca(alvo.mira, pose, look, fit);
+  return alvo;
+}
+
+/**
+ * Com ameaça à frente, puxa a mira da cauda um pouco para ela (limitado a
+ * ~19°) sem virar a vista; ameaça já atrás do nariz não arrasta a câmara.
+ */
+function puxarMiraParaAmeaca(mira, pose, look, fit) {
+  const fx = Math.sin(pose.heading);
+  const fz = Math.cos(pose.heading);
+  const peso = 0.06 * fit;
+  const ax = mira.x + (look.x - mira.x) * peso - pose.x;
+  const az = mira.z + (look.z - mira.z) * peso - pose.z;
+  const frente = ax * fx + az * fz;
+  const fade = Math.max(0, Math.min(1, (frente - 24) / 60));
+  if (fade <= 0) return;
+  const lat = az * fx - ax * fz;
+  const latMax = frente * 0.18;
+  const latC = Math.max(-latMax, Math.min(latMax, lat)) * fade;
+  mira.x = pose.x + fx * frente - fz * latC;
+  mira.z = pose.z + fz * frente + fx * latC;
 }

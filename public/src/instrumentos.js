@@ -5,17 +5,17 @@ const FT_M = 3.28084;
 const KT_MS = 1.94384;
 const graus = (r) => r * 180 / Math.PI;
 const normalizar = (r) => ((graus(r) % 360) + 360) % 360;
-const NOMES_VERTICAIS = { subir: 'Subir', descer: 'Descer', manter: 'Manter altitude' };
+const NOMES_VERTICAIS = { subir: 'Climb', descer: 'Descend', manter: 'Level hold' };
 
 /** Telemetria de leitura: nunca escreve no motor ou muda a lei das gravações. */
 export function instrumentosDeVoo(m, v = m.voo) {
   const a = actuacaoEfectiva(m.piloto, m.voo.tempoS);
   const gravado = m.piloto.tipo === 'jev-gravado';
-  const piloto = m.piloto.tipo === 'humano' ? 'Humano' : gravado ? 'JEV gravado' : 'JEV ao vivo';
+  const piloto = m.piloto.tipo === 'humano' ? 'Human' : gravado ? 'JEV recorded' : 'JEV live';
   const final = Boolean(m.finalAssistida || (m.controlos?.aproximacao && a.fonte !== 'supervisor'));
   const supervisor = !final && a.fonte === 'supervisor';
-  const autoridade = final ? 'Final assistida' : supervisor ? 'Supervisor'
-    : a.fonte === 'estabilizador' ? 'Estabilizador' : a.fonte === 'humano' ? 'Humano' : piloto;
+  const autoridade = final ? 'Assisted final' : supervisor ? 'Protection'
+    : a.fonte === 'estabilizador' ? 'Stabiliser' : a.fonte === 'humano' ? 'Human' : piloto;
   const potencia = v.acelerador ?? v.potencia ?? 0.55;
   // Lei de consumo do perfil ilustrativo actual (kg/s); não é reserva operacional.
   const consumoKgH = (0.026 + 0.115 * potencia) * 3600;
@@ -41,9 +41,9 @@ export function instrumentosDeVoo(m, v = m.voo) {
     altitudeAlvoFt: captura && Number.isFinite(m.voo.altitudeAlvoM) ? m.voo.altitudeAlvoM * FT_M : null,
     piloto,
     autoridade,
-    intencao: final ? 'Aproximação guiada' : supervisor ? NOMES_VERTICAIS[vertical] : m.controlos?.altitudeM != null ? 'Capturar altitude' : m.controlos?.verticalMs != null ? 'Razão vertical' : NOMES_VERTICAIS[vertical] ?? 'Manter altitude',
-    movimento: v.velocidadeVerticalMs > 0.15 ? 'A subir' : v.velocidadeVerticalMs < -0.15 ? 'A descer' : 'Nivelado',
-    aviso: supervisor ? a.motivo === 'terreno' ? 'TERRENO · subida de protecção' : 'SEPARAÇÃO · manobra de protecção' : v.stall ? 'PERDA · baixar nariz e aplicar potência' : v.avisoFlaps ? 'FLAPS · reduzir abaixo de 165 kt' : '',
+    intencao: final ? 'Guided approach' : supervisor ? NOMES_VERTICAIS[vertical] : m.controlos?.altitudeM != null ? 'Altitude capture' : m.controlos?.verticalMs != null ? 'Vertical speed' : m.controlos?.modo==='avancado' && Number.isFinite(v.pitchManualRad) ? `Nose ${Math.round(v.pitchManualRad*180/Math.PI)}°` : NOMES_VERTICAIS[vertical] ?? 'Level hold',
+    movimento: v.velocidadeVerticalMs > 0.15 ? 'Climbing' : v.velocidadeVerticalMs < -0.15 ? 'Descending' : 'Level',
+    aviso: supervisor ? a.motivo === 'terreno' ? 'TERRAIN · protective climb' : 'SEPARATION · protective manoeuvre' : v.stall ? 'STALL · lower the nose and add power' : v.avisoFlaps ? 'FLAPS · reduce speed below 165 kt' : '',
   };
 }
 

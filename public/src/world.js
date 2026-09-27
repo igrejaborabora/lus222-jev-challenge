@@ -681,26 +681,6 @@ export function aplicarPose(mundo, pose) {
   // O sol (direcção fixa no mundo, alvo no avião) é posto pelo céu: actualizarCena.
 }
 
-/**
- * Com ameaça à frente, puxa a mira da cauda um pouco para ela (limitado a
- * ~19°) sem virar a vista; ameaça já atrás do nariz não arrasta a câmara.
- */
-function puxarMiraParaAmeaca(mira, pose, look, fit) {
-  const fx = Math.sin(pose.heading);
-  const fz = Math.cos(pose.heading);
-  const peso = 0.06 * fit;
-  const ax = mira.x + (look.x - mira.x) * peso - pose.x;
-  const az = mira.z + (look.z - mira.z) * peso - pose.z;
-  const frente = ax * fx + az * fz;
-  const fade = Math.max(0, Math.min(1, (frente - 24) / 60));
-  if (fade <= 0) return;
-  const lat = az * fx - ax * fz;
-  const latMax = frente * 0.18;
-  const latC = Math.max(-latMax, Math.min(latMax, lat)) * fade;
-  mira.x = pose.x + fx * frente - fz * latC;
-  mira.z = pose.z + fz * frente + fx * latC;
-}
-
 /** Nunca abaixo do relevo nem do mar: uma consulta ao perfil por frame. */
 function limitarAoChao(mundo) {
   const t = mundo.terreno;
@@ -752,13 +732,12 @@ function seguirLivre(mundo, pose) {
  * absoluta. A 1:1 e a 8× (~700 m/s) a suavização absoluta deixava a câmara
  * ~200 m atrás; assim a distância não depende da velocidade.
  */
-function enquadrar(mundo, modo, pose, dt) {
+function enquadrar(mundo, modo, pose, dt, { manual = false } = {}) {
   const cam = mundo.camera;
   // Ecrã estreito (telemóvel em pé): afasta a câmara para a asa caber no quadro.
   const fit = Math.min(1, Math.max(0.42, (cam.aspect || 1) / 1.2));
   const foco = modo === 'evento' ? focoLocal(mundo) : modo === 'cinema' ? paraLocal(mundo, mundo.marcoCinema) : null;
-  const alvo = alvoCamara(modo, pose, { fit, foco, agoraS: performance.now() / 1000 });
-  if (modo === 'cauda' && mundo.alvoLook) puxarMiraParaAmeaca(alvo.mira, pose, mundo.alvoLook, fit);
+  const alvo = alvoCamara(modo, pose, { fit, foco, agoraS: performance.now() / 1000, manual, look: mundo.alvoLook });
   const cx = alvo.pos.x - pose.x;
   const cy = alvo.pos.y - pose.y;
   const cz = alvo.pos.z - pose.z;
@@ -794,10 +773,11 @@ function enquadrar(mundo, modo, pose, dt) {
  * Câmara por frame, com a pose LOCAL. Modos (camara-modos.js): abertura de
  * lado com a pintura legível, cauda, lado, evento (avião e ameaça no mesmo
  * quadro) e livre (órbita à mão, volta ao modo preferido 4 s depois de largar).
+ * Em pilotagem manual, cauda/cockpit mantêm a atitude sem cortes ou foco em ameaças.
  * Devolve o modo aplicado.
  */
-export function actualizarCamara(mundo, pose, dt) {
-  const modo = modoCamara(mundo.camara, performance.now() / 1000);
+export function actualizarCamara(mundo, pose, dt, { manual = false } = {}) {
+  const modo = modoCamara(mundo.camara, performance.now() / 1000, { manual });
   mundo.aviao.visible = true;
   mundo.aviao.traverse(o => { if(o.isMesh) o.visible = modo !== 'cockpit'; });
   mundo.controlos.enabled = modo !== 'cockpit';
@@ -809,7 +789,7 @@ export function actualizarCamara(mundo, pose, dt) {
     mundo.desvioCamara = null; mundo.desvioMira = null;
   }
   else if (modo === 'livre' && mundo.alvoAnterior) seguirLivre(mundo, pose);
-  else enquadrar(mundo, modo === 'livre' ? 'cauda' : modo, pose, dt);
+  else enquadrar(mundo, modo === 'livre' ? 'cauda' : modo, pose, dt, { manual });
   const ant = mundo.alvoAnterior ?? (mundo.alvoAnterior = { x: 0, y: 0, z: 0 });
   ant.x = pose.x;
   ant.y = pose.y;
