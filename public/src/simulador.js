@@ -64,7 +64,7 @@ export function criarVooLivre(semente = 222, { piloto = 'humano' } = {}) {
 /** Sessão interactiva nova; o construtor anterior fica intacto para replays históricos. */
 export function criarVooProgressivo(semente = 222, { exercicio = 'livre', tempo = 'poucas_nuvens', ambiente = {} } = {}) {
   const m = criarVooLivre(semente);
-  const controlos = novosControlos();
+  const controlos = { ...novosControlos(), modo:'avancado', protecao:false };
   let voo = { ...m.voo, xM: -4300, zM: 151500, rumoRad: 1.2, flaps: 0, emSolo: false, contacto: null };
   const treino = novoTreino(exercicio);
   if (exercicio === 'solo') {

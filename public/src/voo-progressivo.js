@@ -1,14 +1,14 @@
 import { ventoInstantaneo } from './meteorologia.js';
 
 /** Perfil de treino ilustrativo; não contém dados certificados do LUS-222. */
-export const PERFIL_PROGRESSIVO = 'treino-energia-1';
+export const PERFIL_PROGRESSIVO = 'treino-energia-2';
 export const G = 9.80665;
 export const ALTURA_TREM_M = 2.25;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const numero = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
 const angulo = (r) => Math.atan2(Math.sin(r), Math.cos(r));
 export function novosControlos() {
-  return { modo: 'assistido', acelerador: null, altitudeM: null, verticalMs: null, rumoRad: null, flaps: 0, trim: 0, leme: 0, travao: 0, luzesNav: true, luzesAterragem: false, aproximacao: false };
+  return { modo: 'assistido', protecao: true, acelerador: null, altitudeM: null, verticalMs: null, rumoRad: null, flaps: 0, trim: 0, leme: 0, travao: 0, luzesNav: true, luzesAterragem: false, aproximacao: false };
 }
 
 /** Limites partilhados por UI e motor; entradas inválidas não entram no integrador. */
@@ -16,6 +16,7 @@ export function normalizarControlos(c = {}) {
   const alvo = (v, lo, hi) => Number.isFinite(v) ? clamp(v, lo, hi) : null;
   return { ...novosControlos(), ...c,
     modo: c.modo === 'avancado' ? 'avancado' : 'assistido',
+    protecao: c.protecao !== false,
     acelerador: alvo(c.acelerador, 0, 1), altitudeM: alvo(c.altitudeM, 10, 3500),
     verticalMs: alvo(c.verticalMs, -8, 8), rumoRad: Number.isFinite(c.rumoRad) ? angulo(c.rumoRad) : null,
     flaps: clamp(numero(c.flaps), 0, 1), trim: clamp(numero(c.trim), -1, 1),
@@ -53,7 +54,7 @@ export function passoProgressivo(m, a, dt, perfil, chao) {
   const v = m.voo;
   const c = normalizarControlos(m.controlos);
   const sup = a.fonte === 'supervisor';
-  const manual = a.fonte === 'humano';
+  const manual = a.fonte === 'humano' || (a.fonte === 'estabilizador' && m.piloto?.tipo === 'humano');
   const bankInput = clamp(numero(a.bankInput, a.lateral === 'esquerda' ? -1 : a.lateral === 'direita' ? 1 : 0), -1, 1);
   const pitchInput = clamp(numero(a.pitchInput, a.vertical === 'subir' ? 1 : a.vertical === 'descer' ? -1 : 0), -1, 1);
   const leme = sup ? 0 : clamp(numero(a.rudder, c.modo === 'avancado' ? c.leme : 0), -1, 1);
@@ -75,6 +76,9 @@ export function passoProgressivo(m, a, dt, perfil, chao) {
   const aero = aerodinamica(v, bank, flaps, leme, perfil);
   const thrust = perfil.empuxoMaxN * acelerador * Math.max(0.55, 1 - v.altitudeM / 13000);
   const alpha = clamp(aero.cl / 5.7 - flaps * 0.065, 0.015, 0.23);
+  let pitchManualRad = Number.isFinite(v.pitchManualRad) ? v.pitchManualRad : null;
+  const atitudeLivre = !sup && c.modo === 'avancado' && manual && !c.aproximacao && c.altitudeM == null && c.verticalMs == null;
+  if (!atitudeLivre) pitchManualRad = null;
   let altitudeAlvoM = null;
   let verticalAlvo = pitchInput * 4;
   let modoVertical = a.vertical;
@@ -86,10 +90,13 @@ export function passoProgressivo(m, a, dt, perfil, chao) {
     verticalAlvo = clamp((altitudeAlvoM - v.altitudeM) * 0.6 - v.velocidadeMs * 0.052, -5, 4);
     if (v.altitudeM < 12) verticalAlvo = -0.7;
     modoVertical = 'aproximacao';
-  } else if (!sup && c.modo === 'avancado' && manual) {
-    const pitchAlvo = clamp(alpha + c.trim * 0.14 + pitchInput * 0.22, -0.3, 0.4);
+  } else if (atitudeLivre && (pitchInput || pitchManualRad != null || c.trim !== 0)) {
+    // O comando move o nariz; largar conserva a atitude. No solo não acumula
+    // inclinação invisível enquanto se espera pela velocidade de rotação.
+    if (pitchInput && !v.emSolo) pitchManualRad = clamp((pitchManualRad ?? v.pitchRad) + pitchInput * 0.18 * dt, -80 * Math.PI / 180, 40 * Math.PI / 180);
+    const pitchAlvo = clamp((pitchManualRad ?? alpha) + c.trim * 0.14, -80 * Math.PI / 180, 40 * Math.PI / 180);
     verticalAlvo = Math.sin(pitchAlvo - alpha) * v.velocidadeMs;
-    modoVertical = 'manual';
+    modoVertical = 'atitude';
   } else if (!pitchInput) {
     if (!sup && c.altitudeM != null) {
       altitudeAlvoM = c.altitudeM;
@@ -101,12 +108,18 @@ export function passoProgressivo(m, a, dt, perfil, chao) {
     } else {
       altitudeAlvoM = ['manter','altitude'].includes(v.modoVertical) && Number.isFinite(v.altitudeAlvoM) ? v.altitudeAlvoM : v.altitudeM;
       verticalAlvo = clamp((altitudeAlvoM - v.altitudeM) * 0.4, -2, 2);
+      if (v.modoVertical === 'nivelar') {
+        verticalAlvo = 0;
+        modoVertical = Math.abs(v.velocidadeVerticalMs) > 0.3 ? 'nivelar' : 'manter';
+      }
     }
   }
   // A baixa velocidade a autoridade de subida desaparece antes da perda.
   verticalAlvo = Math.min(verticalAlvo, Math.max(-5, (v.velocidadeMs / aero.stallMs - 1) * 20));
   if (aero.stall) verticalAlvo = Math.min(-4, verticalAlvo);
-  let vertical = v.velocidadeVerticalMs + clamp(verticalAlvo + vento.vertical - v.velocidadeVerticalMs, -3 * dt, 3 * dt);
+  const respostaVertical = atitudeLivre ? 9 : 3;
+  let vertical = v.velocidadeVerticalMs + clamp(verticalAlvo + vento.vertical - v.velocidadeVerticalMs, -respostaVertical * dt, respostaVertical * dt);
+  vertical = clamp(vertical, -v.velocidadeMs * 0.999, v.velocidadeMs * 0.999);
   let speed = Math.max(0, v.velocidadeMs + ((thrust - aero.drag) / aero.massa - G * vertical / Math.max(25, v.velocidadeMs)) * dt);
   // Arrasto adicional acima do envelope ilustrativo; não injecta energia.
   if (speed > perfil.velocidadeMaxMs) speed -= (speed - perfil.velocidadeMaxMs) * Math.min(1, dt);
@@ -118,7 +131,8 @@ export function passoProgressivo(m, a, dt, perfil, chao) {
     heading = v.rumoRad + (bankInput + leme) * Math.min(0.2, speed * 0.008) * dt;
     if (c.aproximacao && pista) heading = v.rumoRad + clamp(clamp((pista.xM - v.xM) * 0.025, -0.15, 0.15) - v.rumoRad, -0.3 * dt, 0.3 * dt);
     vertical = 0;
-    if (pitchInput > 0.1 && speed > aero.stallMs * 1.1) { emSolo = false; vertical = Math.min(1, dt * 3); altitudeAlvoM = null; }
+    const pedeRotacao = pitchInput > 0.1 || (atitudeLivre && pitchManualRad != null && pitchManualRad + c.trim * 0.14 > alpha + 0.015);
+    if (pedeRotacao && speed > aero.stallMs * 1.1) { emSolo = false; vertical = Math.min(1, dt * 3); altitudeAlvoM = null; }
   }
   const horizontal = Math.sqrt(Math.max(0, speed ** 2 - vertical ** 2));
   const dx = (Math.sin(heading) * horizontal + (emSolo ? 0 : vento.x)) * dt;
@@ -127,18 +141,19 @@ export function passoProgressivo(m, a, dt, perfil, chao) {
   const piso = chao(xM, zM) + ALTURA_TREM_M;
   let altitude = emSolo ? piso : v.altitudeM + vertical * dt;
   let contacto = v.contacto ?? null;
+  const pitchContacto = Math.asin(clamp(vertical / Math.max(1, speed), -1, 1)) + alpha;
   if (!emSolo && altitude <= piso) {
     const p = situacaoPista(m, { xM, zM });
     const seguro = p && Math.abs(angulo(heading)) < 0.18 && Math.abs(bank) < 0.12 && vertical >= -3 && speed < 85 && speed > 30;
-    contacto = { tipo: seguro ? 'pista' : p ? 'duro' : 'terreno', verticalMs: vertical, lateralM: p ? xM - p.xM : null, tempoS: v.tempoS + dt };
+    contacto = { tipo: seguro ? 'pista' : p ? 'duro' : 'terreno', verticalMs: vertical, lateralM: p ? xM - p.xM : null, tempoS: v.tempoS + dt, pitchRad: pitchContacto };
     altitude = piso; vertical = 0; emSolo = true;
   }
   if (emSolo && !situacaoPista(m, { xM, zM })) contacto = { ...contacto, tipo: 'fora_pista' };
   const fuel = Math.max(0, v.combustivelKg - (0.026 + 0.115 * acelerador) * dt);
   const gamma = Math.asin(clamp(vertical / Math.max(1, speed), -1, 1));
-  const pitch = emSolo ? 0 : gamma + alpha;
+  const pitch = emSolo ? (contacto && contacto.tipo !== 'pista' ? contacto.pitchRad ?? v.pitchRad : 0) : gamma + alpha;
   return { ...v, xM, zM, altitudeM: altitude, velocidadeMs: speed, velocidadeVerticalMs: vertical,
-    rumoRad: heading, bankRad: bank, pitchRad: pitch, gammaRad: gamma, alphaRad: alpha,
+    rumoRad: heading, bankRad: bank, pitchRad: pitch, pitchManualRad, gammaRad: gamma, alphaRad: alpha,
     massaKg: perfil.massaVaziaKg + v.payloadKg + fuel, combustivelKg: fuel,
     distanciaPercorridaM: v.distanciaPercorridaM + Math.hypot(dx,dz), tempoS: v.tempoS + dt,
     acelerador, potencia: acelerador, altitudeAlvoM, modoVertical, fonteActuacao: sup ? 'supervisor' : guiada ? 'aproximacao' : a.fonte,
@@ -151,4 +166,21 @@ export function passoProgressivo(m, a, dt, perfil, chao) {
 export function iniciarBorrego(m) {
   if (m.voo.emSolo || m.resultado) return m;
   return { ...m, fase: 'borrego', controlos: { ...normalizarControlos(m.controlos), aproximacao: false, modo: 'assistido', trim: 0, leme: 0, altitudeM: Math.max(m.voo.altitudeM + 150, 200), verticalMs: 4, acelerador: 1, flaps: 0.35 }, piloto: { ...m.piloto, lateral: 'nivelar', vertical: 'manter', potencia: 'manter', ateS: 0 } };
+}
+
+
+/** Human authority is independent of the optional collision-avoidance assistance. */
+export function protecaoActiva(m) {
+  return m.perfil !== PERFIL_PROGRESSIVO || m.piloto?.tipo !== 'humano' || m.controlos?.protecao !== false;
+}
+
+/** Buttons adjust attitude in steps; Level is an explicit return to altitude hold. */
+export function comandarAtitude(m, pedido) {
+  const delta = pedido === 'subir' ? 5 : -5;
+  const alvo = pedido === 'manter' ? null : pedido === 'picar' ? -65 * Math.PI / 180
+    : clamp((m.voo.pitchManualRad ?? m.voo.pitchRad) + delta * Math.PI / 180, -80 * Math.PI / 180, 40 * Math.PI / 180);
+  const c = normalizarControlos(m.controlos);
+  return { ...m, controlos: { ...c, trim: pedido === 'manter' ? 0 : c.trim, modo:'avancado', altitudeM:null, verticalMs:null, aproximacao:false },
+    voo: { ...m.voo, pitchManualRad:alvo, altitudeAlvoM:alvo == null ? m.voo.altitudeM : null, modoVertical:alvo == null ? 'nivelar' : 'atitude' },
+    piloto: { ...m.piloto, vertical:'manter', pitchInput:undefined, ateS:0 } };
 }

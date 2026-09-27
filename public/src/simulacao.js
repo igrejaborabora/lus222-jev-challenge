@@ -1,4 +1,4 @@
-import { PERFIL_PROGRESSIVO, passoProgressivo, corredorAproximacao } from './voo-progressivo.js';
+import { PERFIL_PROGRESSIVO, passoProgressivo, corredorAproximacao, protecaoActiva } from './voo-progressivo.js';
 import { avaliarTreino } from './treino.js';
 import { mulberry32, offsetLateral } from './decisao.js';
 import { cpa, distanciaM, nascerAmeacas, passoAmeacas, raioEfectivoM } from './ameacas.js';
@@ -479,6 +479,7 @@ export function escolhaDoSupervisor(previsoes) {
  * barreira; o piloto, humano ou JEV, continua a decidir fora disso.
  */
 function verificarSupervisor(m) {
+  if (!protecaoActiva(m)) return m;
   const v = m.voo;
   const agl = v.altitudeM - alturaChaoM(m, v.xM, v.zM);
   const aproxima = m.perfil === PERFIL_PROGRESSIVO && (v.emSolo || corredorAproximacao(m));
@@ -497,6 +498,7 @@ function verificarSupervisor(m) {
 function passoMissao(anterior, dt) {
   let atual = nascerAmeacasDevidas(anterior);
   if (atual.piloto) {
+    if (!protecaoActiva(atual) && atual.piloto.supervisor) atual = { ...atual, piloto: { ...atual.piloto, supervisor:null } };
     if (atual.diretor) atual = passoDiretor(atual);
     if ((atual.passo ?? 0) % 10 === 0) atual = verificarSupervisor(atual);
   }
