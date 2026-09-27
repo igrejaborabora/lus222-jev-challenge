@@ -13,7 +13,7 @@ const TAU_S = 0.12;
 const limitar = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 
 /** Mapeamento puro do voo para o som. A potência vai de 0,24 (ralenti) a 1. */
-export function parametrosSom({ potencia = 0.5, velocidadeMs = 80, distanciaCamaraM = 20 } = {}) {
+export function parametrosSom({ potencia = 0.5, velocidadeMs = 80, distanciaCamaraM = 20, motores = null } = {}) {
   const p = limitar((Number(potencia) - 0.24) / 0.76);
   const v = limitar((Number(velocidadeMs) - 30) / 85);
   const d = Math.max(0, Number(distanciaCamaraM) || 0);
@@ -21,6 +21,7 @@ export function parametrosSom({ potencia = 0.5, velocidadeMs = 80, distanciaCama
   const perto = 1 / (1 + Math.max(0, d - 15) / 80);
   const rpm = RPM_MIN + (RPM_MAX - RPM_MIN) * p;
   return {
+    ...(motores ? { canais:[motores.esquerdo,motores.direito].map(e=>({activo:e.estado==='operacional',power:e.potencia})) } : {}),
     rpm,
     fPas: (rpm * PAS) / 60,
     batimentoHz: 0.5 + 0.6 * p,
@@ -125,14 +126,16 @@ export function criarSomMotor() {
   function aplicar(s, tau = TAU_S) {
     if (!grafo) return;
     grafo.motores.forEach((m, i) => {
-      const f = s.fPas + (i ? s.batimentoHz : 0);
+      const channel=s.canais?.[i];
+      const individual=channel?parametrosSom({potencia:channel.power}):s;
+      const f = individual.fPas + (i ? s.batimentoHz : 0);
       rampa(m.tom.frequency, f, tau);
       rampa(m.harmonico.frequency, 2 * f, tau);
       rampa(m.filtro.frequency, 4 * f, tau);
-      rampa(m.ganho.gain, s.ganhoTom / 2, tau);
+      rampa(m.ganho.gain, channel&&!channel.activo ? 0 : individual.ganhoTom / 2, tau);
     });
     rampa(grafo.turbina.frequency, s.fTurbina, tau);
-    rampa(grafo.ganhoTurbina.gain, s.ganhoTurbina, tau);
+    rampa(grafo.ganhoTurbina.gain, s.canais ? s.ganhoTurbina*s.canais.filter(c=>c.activo).length/2 : s.ganhoTurbina, tau);
     rampa(grafo.filtroRuido.frequency, s.corteRuidoHz, tau);
     rampa(grafo.ganhoRuido.gain, s.ganhoRuido, tau);
   }
@@ -167,6 +170,13 @@ export function criarSomMotor() {
       tone.connect(gain).connect(grafo.mestre);
       tone.onended = () => { tone.disconnect(); gain.disconnect(); };
       tone.start(t); tone.stop(t + 0.035);
+    },
+    toque(sinkRateMs=0) {
+      if(!ctx||!grafo||!ligado||silenciado||ctx.state!=='running')return;
+      const tone=ctx.createOscillator(),gain=ctx.createGain(),t=ctx.currentTime;
+      tone.type='triangle';tone.frequency.setValueAtTime(95,t);tone.frequency.exponentialRampToValueAtTime(32,t+.18);
+      gain.gain.setValueAtTime(Math.min(.6,.12+Math.max(0,sinkRateMs)*.06),t);gain.gain.exponentialRampToValueAtTime(.001,t+.25);
+      tone.connect(gain).connect(grafo.mestre);tone.onended=()=>{tone.disconnect();gain.disconnect();};tone.start(t);tone.stop(t+.27);
     },
     actualizar(voo) {
       ultimo = parametrosSom(voo);

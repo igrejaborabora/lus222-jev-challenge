@@ -49,14 +49,14 @@ export function darOrdem(piloto, ordem, tempoS, retencaoS = RETENCAO_JEV_S) {
 
 /**
  * Teclas carregadas (KeyboardEvent.code) → ordem do humano. Setas ou WASD
- * para pranchamento e subida; E/Shift mais potência, Q/Control menos.
+ * para pranchamento e atitude (puxar ↓/S levanta, empurrar ↑/W baixa); E/Shift mais potência, Q/Control menos.
  */
 export function ordemDeTeclas(teclas) {
   const t = teclas instanceof Set ? teclas : new Set(teclas ?? []);
   const esquerda = t.has('ArrowLeft') || t.has('KeyA');
   const direita = t.has('ArrowRight') || t.has('KeyD');
-  const subir = t.has('ArrowUp') || t.has('KeyW');
-  const descer = t.has('ArrowDown') || t.has('KeyS');
+  const subir = t.has('ArrowDown') || t.has('KeyS');
+  const descer = t.has('ArrowUp') || t.has('KeyW');
   const mais = t.has('KeyE') || t.has('ShiftLeft') || t.has('ShiftRight');
   const menos = t.has('KeyQ') || t.has('ControlLeft') || t.has('ControlRight');
   return {

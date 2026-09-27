@@ -17,9 +17,10 @@ export function instrumentosDeVoo(m, v = m.voo) {
   const supervisor = !final && a.fonte === 'supervisor';
   const autoridade = final ? 'Assisted final' : supervisor ? 'Protection'
     : a.fonte === 'estabilizador' ? 'Stabiliser' : a.fonte === 'humano' ? 'Human' : piloto;
-  const potencia = v.acelerador ?? v.potencia ?? 0.55;
+  const potencia = v.motores ? v.motores.potenciaTotal : v.acelerador ?? v.potencia ?? 0.55;
   // Lei de consumo do perfil ilustrativo actual (kg/s); não é reserva operacional.
-  const consumoKgH = (0.026 + 0.115 * potencia) * 3600;
+  const consumoKgH = (v.motores?.consumoTotalKgS ?? (0.026 + 0.115 * potencia)) * 3600;
+  const motorFalhado = v.motores && [v.motores.esquerdo,v.motores.direito].some(e=>e.estado!=='operacional');
   const soloMs = velocidadeSoloNavegacao({ ...m, voo: v }).soloMs;
   const vertical = a.pitchInput ? (a.pitchInput > 0 ? 'subir' : 'descer') : a.vertical;
   const captura = final || (vertical === 'manter' && m.controlos?.modo !== 'avancado') || (!supervisor && m.controlos?.altitudeM != null);
@@ -37,13 +38,13 @@ export function instrumentosDeVoo(m, v = m.voo) {
     combustivelKg: v.combustivelKg,
     massaKg: v.massaKg,
     consumoKgH,
-    autonomiaMin: Math.max(0, v.combustivelKg) / consumoKgH * 60,
+    autonomiaMin: consumoKgH > 0 ? Math.max(0, v.combustivelKg) / consumoKgH * 60 : null,
     altitudeAlvoFt: captura && Number.isFinite(m.voo.altitudeAlvoM) ? m.voo.altitudeAlvoM * FT_M : null,
     piloto,
     autoridade,
     intencao: final ? 'Guided approach' : supervisor ? NOMES_VERTICAIS[vertical] : m.controlos?.altitudeM != null ? 'Altitude capture' : m.controlos?.verticalMs != null ? 'Vertical speed' : m.controlos?.modo==='avancado' && Number.isFinite(v.pitchManualRad) ? `Nose ${Math.round(v.pitchManualRad*180/Math.PI)}°` : NOMES_VERTICAIS[vertical] ?? 'Level hold',
     movimento: v.velocidadeVerticalMs > 0.15 ? 'Climbing' : v.velocidadeVerticalMs < -0.15 ? 'Descending' : 'Level',
-    aviso: supervisor ? a.motivo === 'terreno' ? 'TERRAIN · protective climb' : 'SEPARATION · protective manoeuvre' : v.stall ? 'STALL · lower the nose and add power' : v.avisoFlaps ? 'FLAPS · reduce speed below 165 kt' : '',
+    aviso: supervisor ? a.motivo === 'terreno' ? 'TERRAIN · protective climb' : 'SEPARATION · protective manoeuvre' : v.stall ? 'STALL · lower the nose and add power' : motorFalhado ? 'ENGINE · check power and rudder' : v.avisoFlaps ? 'FLAPS · reduce speed below 165 kt' : '',
   };
 }
 

@@ -1,4 +1,5 @@
 import { ventoInstantaneo } from './meteorologia.js';
+import { calcularMotores, novosComandosMotores, normalizarComandosMotores, AUTORIDADE_LEME_RAD_S } from './engine-model.js';
 
 /** Perfil de treino ilustrativo; não contém dados certificados do LUS-222. */
 export const PERFIL_PROGRESSIVO = 'treino-energia-2';
@@ -8,7 +9,7 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const numero = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
 const angulo = (r) => Math.atan2(Math.sin(r), Math.cos(r));
 export function novosControlos() {
-  return { modo: 'assistido', protecao: true, acelerador: null, altitudeM: null, verticalMs: null, rumoRad: null, flaps: 0, trim: 0, leme: 0, travao: 0, luzesNav: true, luzesAterragem: false, aproximacao: false };
+  return { modo: 'assistido', protecao: true, acelerador: null, altitudeM: null, verticalMs: null, rumoRad: null, flaps: 0, trim: 0, leme: 0, travao: 0, luzesNav: true, luzesAterragem: false, aproximacao: false, motores: novosComandosMotores() };
 }
 
 /** Limites partilhados por UI e motor; entradas inválidas não entram no integrador. */
@@ -17,6 +18,7 @@ export function normalizarControlos(c = {}) {
   return { ...novosControlos(), ...c,
     modo: c.modo === 'avancado' ? 'avancado' : 'assistido',
     protecao: c.protecao !== false,
+    motores: normalizarComandosMotores(c.motores),
     acelerador: alvo(c.acelerador, 0, 1), altitudeM: alvo(c.altitudeM, 10, 3500),
     verticalMs: alvo(c.verticalMs, -8, 8), rumoRad: Number.isFinite(c.rumoRad) ? angulo(c.rumoRad) : null,
     flaps: clamp(numero(c.flaps), 0, 1), trim: clamp(numero(c.trim), -1, 1),
@@ -74,7 +76,8 @@ export function passoProgressivo(m, a, dt, perfil, chao) {
   const pedidoFlaps = v.velocidadeMs > 85 ? Math.min(v.flaps ?? 0, c.flaps) : c.flaps;
   const flaps = (v.flaps ?? 0) + clamp(pedidoFlaps - (v.flaps ?? 0), -0.2 * dt, 0.2 * dt);
   const aero = aerodinamica(v, bank, flaps, leme, perfil);
-  const thrust = perfil.empuxoMaxN * acelerador * Math.max(0.55, 1 - v.altitudeM / 13000);
+  const motores = calcularMotores(v, c, perfil, acelerador);
+  const thrust = motores.empuxoTotalN;
   const alpha = clamp(aero.cl / 5.7 - flaps * 0.065, 0.015, 0.23);
   let pitchManualRad = Number.isFinite(v.pitchManualRad) ? v.pitchManualRad : null;
   const atitudeLivre = !sup && c.modo === 'avancado' && manual && !c.aproximacao && c.altitudeM == null && c.verticalMs == null;
@@ -123,13 +126,15 @@ export function passoProgressivo(m, a, dt, perfil, chao) {
   let speed = Math.max(0, v.velocidadeMs + ((thrust - aero.drag) / aero.massa - G * vertical / Math.max(25, v.velocidadeMs)) * dt);
   // Arrasto adicional acima do envelope ilustrativo; não injecta energia.
   if (speed > perfil.velocidadeMaxMs) speed -= (speed - perfil.velocidadeMaxMs) * Math.min(1, dt);
-  let heading = v.rumoRad + (G * Math.tan(bank) / Math.max(25, speed) + leme * 0.025) * dt;
+  let heading = v.rumoRad + (G * Math.tan(bank) / Math.max(25, speed) + leme * AUTORIDADE_LEME_RAD_S + motores.guinadaRadS) * dt;
   let emSolo = Boolean(v.emSolo);
   const travao = Math.max(c.travao, clamp(numero(a.travao), 0, 1));
   if (emSolo) {
     speed = Math.max(0, v.velocidadeMs + (thrust / aero.massa - 0.18 - 0.00025 * v.velocidadeMs ** 2 - travao * 4.5 * (1 - (m.ambiente.chuva ?? 0) * 0.35)) * dt);
     heading = v.rumoRad + (bankInput + leme) * Math.min(0.2, speed * 0.008) * dt;
     if (c.aproximacao && pista) heading = v.rumoRad + clamp(clamp((pista.xM - v.xM) * 0.025, -0.15, 0.15) - v.rumoRad, -0.3 * dt, 0.3 * dt);
+    // Tyre contact damps asymmetric yaw as ground speed approaches zero.
+    heading += motores.guinadaRadS * Math.min(1, speed / 25) * dt;
     vertical = 0;
     const pedeRotacao = pitchInput > 0.1 || (atitudeLivre && pitchManualRad != null && pitchManualRad + c.trim * 0.14 > alpha + 0.015);
     if (pedeRotacao && speed > aero.stallMs * 1.1) { emSolo = false; vertical = Math.min(1, dt * 3); altitudeAlvoM = null; }
@@ -145,18 +150,19 @@ export function passoProgressivo(m, a, dt, perfil, chao) {
   if (!emSolo && altitude <= piso) {
     const p = situacaoPista(m, { xM, zM });
     const seguro = p && Math.abs(angulo(heading)) < 0.18 && Math.abs(bank) < 0.12 && vertical >= -3 && speed < 85 && speed > 30;
-    contacto = { tipo: seguro ? 'pista' : p ? 'duro' : 'terreno', verticalMs: vertical, lateralM: p ? xM - p.xM : null, tempoS: v.tempoS + dt, pitchRad: pitchContacto };
+    contacto = { tipo: seguro ? 'pista' : p ? 'duro' : 'terreno', verticalMs: vertical, lateralM: p ? xM - p.xM : null, tempoS: v.tempoS + dt, pitchRad: pitchContacto, speedMs:speed, bankRad:bank, headingRad:heading, xM, zM, distanciaPercorridaM:v.distanciaPercorridaM+Math.hypot(dx,dz) };
     altitude = piso; vertical = 0; emSolo = true;
   }
   if (emSolo && !situacaoPista(m, { xM, zM })) contacto = { ...contacto, tipo: 'fora_pista' };
-  const fuel = Math.max(0, v.combustivelKg - (0.026 + 0.115 * acelerador) * dt);
+  const fuel = Math.max(0, v.combustivelKg - motores.consumoTotalKgS * dt);
+  const leiturasMotores = fuel > 0 ? motores : calcularMotores({ ...v, combustivelKg: fuel }, c, perfil, acelerador);
   const gamma = Math.asin(clamp(vertical / Math.max(1, speed), -1, 1));
   const pitch = emSolo ? (contacto && contacto.tipo !== 'pista' ? contacto.pitchRad ?? v.pitchRad : 0) : gamma + alpha;
   return { ...v, xM, zM, altitudeM: altitude, velocidadeMs: speed, velocidadeVerticalMs: vertical,
     rumoRad: heading, bankRad: bank, pitchRad: pitch, pitchManualRad, gammaRad: gamma, alphaRad: alpha,
     massaKg: perfil.massaVaziaKg + v.payloadKg + fuel, combustivelKg: fuel,
     distanciaPercorridaM: v.distanciaPercorridaM + Math.hypot(dx,dz), tempoS: v.tempoS + dt,
-    acelerador, potencia: acelerador, altitudeAlvoM, modoVertical, fonteActuacao: sup ? 'supervisor' : guiada ? 'aproximacao' : a.fonte,
+    acelerador, potencia: leiturasMotores.potenciaTotal, motores: leiturasMotores, altitudeAlvoM, modoVertical, fonteActuacao: sup ? 'supervisor' : guiada ? 'aproximacao' : a.fonte,
     flaps, stall: !emSolo && aero.stall, stallMs: aero.stallMs, emSolo, contacto,
     avisoFlaps: c.flaps > flaps + 0.01 && v.velocidadeMs > 85,
     superficies: { aileron: clamp((bancoAlvo-bank)*3,-1,1), elevator: clamp((verticalAlvo-v.velocidadeVerticalMs)*0.12,-1,1), rudder: leme, flaps },
@@ -183,4 +189,28 @@ export function comandarAtitude(m, pedido) {
   return { ...m, controlos: { ...c, trim: pedido === 'manter' ? 0 : c.trim, modo:'avancado', altitudeM:null, verticalMs:null, aproximacao:false },
     voo: { ...m.voo, pitchManualRad:alvo, altitudeAlvoM:alvo == null ? m.voo.altitudeM : null, modoVertical:alvo == null ? 'nivelar' : 'atitude' },
     piloto: { ...m.piloto, vertical:'manter', pitchInput:undefined, ateS:0 } };
+}
+
+/** Commands never affect the historical replay profile or unrelated controls.
+ * Readings update immediately, including while paused; motion updates next step.
+ */
+function aplicarComandosMotores(m, comandos) {
+  const controlos = { ...normalizarControlos(m.controlos), motores: normalizarComandosMotores(comandos) };
+  if (!m.voo.motores) return { ...m, controlos };
+  const motores = calcularMotores(m.voo, controlos, { empuxoMaxN: m.voo.motores.empuxoMaxN });
+  return { ...m, controlos, voo: { ...m.voo, motores, potencia: motores.potenciaTotal } };
+}
+
+export function comandarMotor(m, lado, comando = {}) {
+  if (m?.perfil !== PERFIL_PROGRESSIVO || !['esquerdo', 'direito'].includes(lado)) return m;
+  const comandos = normalizarComandosMotores(m.controlos?.motores);
+  return aplicarComandosMotores(m, { ...comandos, [lado]: { ...comandos[lado], ...comando } });
+}
+
+/** Restore both engines and remove per-engine throttle overrides, retaining the
+ * common throttle, rudder, aircraft position and all other flight controls.
+ */
+export function reporMotores(m) {
+  if (m?.perfil !== PERFIL_PROGRESSIVO) return m;
+  return aplicarComandosMotores(m, novosComandosMotores());
 }
