@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { mulberry32 } from './decisao.js';
+import { ventoInstantaneo } from './meteorologia.js';
 import { alturaNuvensM, distanciaNoTufo, escalaBolha, misturarCor, nevoeiroDe, noiteAlvo, paletaCeu, ventoNoMundo } from './ambiente-visual.js';
 
 /**
  * Céu desenhado a partir do ambiente que o JEV recebe (ambiente-visual.js):
  * cúpula em gradiente, nevoeiro pela visibilidade, camada de nuvens no tecto,
- * rastos de vento (ou chuva, com pouca visibilidade) e a luz do sol.
+ * rastos de vento e precipitação explícita e a luz do sol.
  */
 const CAMPO_NUVENS_M = 9000;
 // De noite as nuvens escurecem para um cinzento quente, o reflexo da cidade.
@@ -165,17 +166,20 @@ function dobrar(v, c, campo) {
  * Cria o céu e o nevoeiro da cena (substitui scene.background). `alcanceTerrenoM`
  * é o raio dos mosaicos carregados: o nevoeiro fecha antes da orla.
  */
-export function criarCeu(scene, { cenario, leve = false, alcanceTerrenoM, luzDia = true }) {
+export function criarCeu(scene, { cenario, leve = false, alcanceTerrenoM, luzDia = true, periodo }) {
   const ceu = {
     cenario,
     alcanceTerrenoM,
     cupula: cupula(),
     hemi: new THREE.HemisphereLight(0xd7e8ff, 0x2a3328, 1.05),
-    // ~240 tufos × 180 triângulos ≈ 43 mil no desktop; ~100 × 80 no leve.
-    nuvens: camadaNuvens(leve ? 24 : 60, leve ? 1 : 2),
+    // Uma só chamada de desenho; a cobertura escolhe quantos cachos ficam visíveis.
+    nuvens: camadaNuvens(leve ? 48 : 140, leve ? 1 : 2),
     rastos: rastos(leve ? 80 : 220),
-    // As missões abrem com a luz do cenário e escurecem; o simulador nasce já de noite.
-    noite: noiteAlvo(cenario, luzDia),
+    // Período explícito no voo livre; missões antigas mantêm a transição original.
+    noite: noiteAlvo(cenario, luzDia, periodo),
+    tempoS: 0,
+    derivaNuvens: { x: 0, z: 0 },
+    movimentoReduzido: globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
   };
   const nev = nevoeiroDe(10, alcanceTerrenoM);
   scene.fog = new THREE.Fog(paletaCeu(ceu.noite).nevoeiro, nev.near, nev.far);
@@ -216,9 +220,9 @@ function aplicarLuz(ceu, { scene, sol, camera, ambiente, pose }, pal) {
  * câmara e o avião por perto: conta o mais próximo dos dois, no espaço do
  * elipsóide do tufo. Sem alocações (corre por tufo, por frame).
  */
-function bolha(t, p, f, cam, pose) {
-  const dCam = distanciaNoTufo((cam.x - p.x) / f, (cam.y - p.y) / f, (cam.z - p.z) / f, t, BASE_TUFO);
-  const dAviao = distanciaNoTufo((pose.x - p.x) / f, (pose.y - p.y) / f, (pose.z - p.z) / f, t, BASE_TUFO);
+function bolha(t, p, f, cam, pose, largura = 1) {
+  const dCam = distanciaNoTufo((cam.x - p.x) / (f * largura), (cam.y - p.y) / f, (cam.z - p.z) / (f * largura), t, BASE_TUFO);
+  const dAviao = distanciaNoTufo((pose.x - p.x) / (f * largura), (pose.y - p.y) / f, (pose.z - p.z) / (f * largura), t, BASE_TUFO);
   return Math.max(0.001, escalaBolha(Math.min(dCam, dAviao)));
 }
 
@@ -231,15 +235,20 @@ function bolha(t, p, f, cam, pose) {
 function aplicarNuvens(ceu, ambiente, pose, origem, camera) {
   const { mesh, nuvens, m, s, p } = ceu.nuvens;
   const alt = alturaNuvensM(ambiente.tetoFt ?? 3000);
-  mesh.visible = alt < NUVENS_ATE_M;
+  const cobertura = Math.min(1, Math.max(0, ambiente.cobertura ?? 0.43));
+  mesh.visible = cobertura > 0 && (ambiente.cobertura !== undefined || alt < NUVENS_ATE_M);
   if (!mesh.visible) return;
   const ax = pose.x + origem.x;
   const az = pose.z + origem.z;
   const meio = CAMPO_NUVENS_M / 2;
   let i = 0;
-  for (const c of nuvens) {
-    const dx = dobrar(c.x, ax, CAMPO_NUVENS_M);
-    const dz = dobrar(c.z, az, CAMPO_NUVENS_M);
+  const numero = Math.ceil(nuvens.length * cobertura);
+  // A camada engrossa sem ligar a chuva à quantidade de nuvens.
+  const largura = 1 + cobertura * 1.35;
+  for (let indice = 0; indice < numero; indice++) {
+    const c = nuvens[indice];
+    const dx = dobrar(c.x + ceu.derivaNuvens.x, ax, CAMPO_NUVENS_M);
+    const dz = dobrar(c.z + ceu.derivaNuvens.z, az, CAMPO_NUVENS_M);
     const orla = Math.min(1, (meio - Math.max(Math.abs(dx), Math.abs(dz))) / ORLA_NUVENS_M);
     // O cacho inteiro encolhe para o centro junto à orla do campo.
     const f = Math.max(0.001, orla);
@@ -251,33 +260,34 @@ function aplicarNuvens(ceu, ambiente, pose, origem, camera) {
         alt + t.dy * f,
         pose.z + dz + (t.dz * cos - t.dx * sin) * f,
       );
-      const e = f * bolha(t, p, f, camera.position, pose);
-      s.set(t.sx * e, t.sy * e, t.sz * e);
+      const e = f * bolha(t, p, f, camera.position, pose, largura);
+      s.set(t.sx * e * largura, t.sy * e, t.sz * e * largura);
       m.compose(p, t.q, s);
       mesh.setMatrixAt(i++, m);
     }
   }
+  mesh.count = i;
   mesh.instanceMatrix.needsUpdate = true;
 }
 
-/** Rastos numa caixa à volta do avião, a derivar com o vento; com visibilidade < 5 km, chuva. */
+/** Chuva explícita; a inferência pela visibilidade só serve estados antigos sem precipitação. */
 function aplicarRastos(ceu, ambiente, pose, dt) {
   const vento = ventoNoMundo(ambiente.ventoMs);
-  const chuva = (ambiente.visKm ?? 10) < 5;
+  const chuva = ambiente.chuva === undefined ? ((ambiente.visKm ?? 10) < 5 ? 0.65 : 0) : Math.min(1, Math.max(0, ambiente.chuva));
   const r = ceu.rastos;
   // Até 10 kt não há rastos; aos 32 kt chegam ao máximo (0,35).
-  const opacidade = chuva ? 0.45 : Math.min(0.35, Math.max(0, (vento.kt - 10) / 40));
+  const opacidade = chuva > 0 ? 0.2 + 0.35 * chuva : Math.min(0.35, Math.max(0, (vento.kt - 10) / 40));
   r.linhas.visible = opacidade > 0.01;
   if (!r.linhas.visible) return;
   r.linhas.material.opacity = opacidade;
   const d = r.deriva;
   d.x = (d.x + vento.x * dt) % CAIXA_RASTOS_M;
   d.z = (d.z + vento.z * dt) % CAIXA_RASTOS_M;
-  d.y = (d.y - (chuva ? 9 : 0) * dt) % CAIXA_RASTOS_M;
+  d.y = (d.y - (chuva ? 12 + chuva * 9 : 0) * dt) % CAIXA_RASTOS_M;
   const velocidade = Math.hypot(vento.x, vento.z);
   const ux = velocidade > 0.25 ? vento.x / velocidade : 0;
   const uz = velocidade > 0.25 ? vento.z / velocidade : 0;
-  const comp = chuva ? 6 : Math.min(30, 2 + vento.kt * 0.9);
+  const comp = chuva ? 4 + chuva * 7 : Math.min(30, 2 + vento.kt * 0.9);
   const pos = r.linhas.geometry.getAttribute('position');
   const a = pos.array;
   for (let i = 0; i < r.base.length; i++) {
@@ -301,12 +311,25 @@ function aplicarRastos(ceu, ambiente, pose, dt) {
  * origem visual. A noite aproxima-se do alvo em ~60 s (vê-se o anoitecer).
  * Devolve a paleta aplicada.
  */
-export function actualizarCeu(ceu, { scene, sol, camera, ambiente, pose, origem = { x: 0, z: 0 }, dt = 0 }) {
-  const alvo = noiteAlvo(ceu.cenario, ambiente.luzDia !== false);
-  ceu.noite += (alvo - ceu.noite) * Math.min(1, dt / RAMPA_NOITE_S);
-  const pal = paletaCeu(ceu.noite);
+export function actualizarCeu(ceu, { scene, sol, camera, ambiente, pose, origem = { x: 0, z: 0 }, dt = 0, tempoS, semente = 222 }) {
+  const passo = Math.max(0, Math.min(dt, 0.25));
+  ceu.tempoS = Number.isFinite(tempoS) ? tempoS : ceu.tempoS + passo;
+  const vento = ventoInstantaneo(ambiente, ceu.tempoS, semente);
+  const ambienteVisual = { ...ambiente, ventoMs: vento };
+  const noMundo = ventoNoMundo(vento);
+  ceu.derivaNuvens.x += noMundo.x * passo;
+  ceu.derivaNuvens.z += noMundo.z * passo;
+  const alvo = noiteAlvo(ceu.cenario, ambiente.luzDia !== false, ambiente.periodo);
+  const transicaoS = ambiente.periodo ? 2.5 : RAMPA_NOITE_S;
+  ceu.noite += (alvo - ceu.noite) * Math.min(1, passo / transicaoS);
+  const pal = paletaCeu(ceu.noite, ambiente);
+  // Clarão suave e raro; o relógio fica imóvel em pausa e não pisca com movimento reduzido.
+  const ciclo = ceu.tempoS % 17;
+  if (ambiente.tempo === 'tempestade' && !ceu.movimentoReduzido && ciclo > 13 && ciclo < 13.35) {
+    pal.intensidadeCeu += Math.sin((ciclo - 13) / 0.35 * Math.PI) * 0.18;
+  }
   aplicarLuz(ceu, { scene, sol, camera, ambiente, pose }, pal);
   aplicarNuvens(ceu, ambiente, pose, origem, camera);
-  aplicarRastos(ceu, ambiente, pose, dt);
+  aplicarRastos(ceu, ambienteVisual, pose, passo);
   return pal;
 }

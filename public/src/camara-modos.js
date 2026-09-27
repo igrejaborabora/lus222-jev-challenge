@@ -2,7 +2,7 @@ export const DURACAO_ABERTURA_S = 3;
 export const REGRESSO_APOS_S = 4;
 export const DURACAO_EVENTO_S = 2.6;
 export const PLANO_CINEMA_S = 7;
-const ORDEM = ['cauda', 'lado', 'cinema', 'livre'];
+const ORDEM = ['cauda', 'cockpit', 'lado', 'cinema', 'livre'];
 const PLANOS_CINEMA = ['alto', 'lado', 'frente', 'orbita'];
 
 /** Plano da câmara cinema neste instante: muda a cada 7 s, sempre pela mesma ordem. */
@@ -27,10 +27,10 @@ export function alternarPreferido(c) {
   return { ...c, preferido: ORDEM[(ORDEM.indexOf(c.preferido) + 1) % ORDEM.length], ultimaInteracaoS: null };
 }
 
-/** Prioridade: livre (mão ou botão) > evento > abertura > modo preferido. */
+/** A vista de pilotagem não é interrompida por cortes automáticos de evento/abertura. */
 export function modoCamara(c, agoraS) {
   if (c.ultimaInteracaoS != null && agoraS - c.ultimaInteracaoS < REGRESSO_APOS_S) return 'livre';
-  if (c.preferido === 'livre') return 'livre';
+  if (c.preferido === 'livre' || c.preferido === 'cockpit') return c.preferido;
   if (c.eventoAteS != null && agoraS < c.eventoAteS) return 'evento';
   if (agoraS - c.inicioS < DURACAO_ABERTURA_S) return 'abertura';
   return c.preferido;
@@ -108,6 +108,18 @@ export function alvoCamara(modo, pose, { fit = 1, foco = null, agoraS = 0 } = {}
   const frente = { x: Math.sin(pose.heading), z: Math.cos(pose.heading) };
   // Esquerda do piloto: +X com rumo 0 (ver escala.js).
   const esquerda = { x: frente.z, z: -frente.x };
+  if (modo === 'cockpit') {
+    // pose.pitch é uma rotação de Three.js: negativo = nariz para cima.
+    // Vista frontal ilustrativa, horizonte world-up estável (sem roll da cabine).
+    const pitch = Number.isFinite(pose.pitch) ? pose.pitch : 0;
+    const direccao = { x: frente.x * Math.cos(pitch), y: -Math.sin(pitch), z: frente.z * Math.cos(pitch) };
+    const pos = {
+      x: pose.x + direccao.x * 4.4,
+      y: pose.y + 1.1 + direccao.y * 4.4,
+      z: pose.z + direccao.z * 4.4,
+    };
+    return { pos, mira: { x: pos.x + direccao.x * 200, y: pos.y + direccao.y * 200, z: pos.z + direccao.z * 200 } };
+  }
   if (modo === 'cinema') return alvoCinema(pose, { fit, foco, agoraS, frente, esquerda });
   if (modo === 'abertura' || modo === 'lado') {
     // Lado direito do piloto (−X com rumo 0): é o flanco que o sol de world.js
