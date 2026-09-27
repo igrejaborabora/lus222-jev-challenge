@@ -13,7 +13,7 @@ export function criarCockpitUI(host,{onLayout=()=>{},onInteract=()=>{}}={}) {
   const horizon=host.querySelector('.sim-atitude svg').outerHTML;
   host.classList.add('cp-root');host.dataset.tab='pfd';
   host.innerHTML=`
-    <div class="cp-top"><span><b>LUS–222</b> FLIGHT DECK</span><button type="button" class="cp-mode" id="cp-mode" aria-pressed="true" title="Switch between manual attitude and assisted flight">MANUAL ATTITUDE</button><div><label class="cp-dimmer" title="Panel backlight">DIM <input id="cp-brightness" type="range" aria-label="Panel brightness" min="45" max="100" value="90"></label><button type="button" id="cp-expand" aria-pressed="false" title="Expand instrument panel">⛶ <span>Expand</span></button></div></div>
+    <div class="cp-top"><span><b>LUS–222</b> FLIGHT DECK</span><button type="button" class="cp-mode" id="cp-mode" aria-pressed="true" title="Switch between manual attitude and assisted flight">MANUAL ATTITUDE</button><div><label class="cp-dimmer" title="Panel backlight">DIM <input id="cp-brightness" type="range" aria-label="Panel brightness" min="45" max="100" value="90"></label><button type="button" id="cp-expand" aria-pressed="false" title="Expand instrument panel">⛶ <span>Expand</span></button><button type="button" data-cp-click="sim-instrumentos-toggle" title="Hide panel · I">Hide [I]</button></div></div>
     <p class="sim-aviso-voo" id="sim-aviso-voo" data-instrumento="aviso" role="status" hidden></p>
     <div class="cp-autopilot" aria-label="Flight targets">
       <label class="cp-mode-select"><span>VERTICAL MODE</span><select data-cp-proxy="sim-modo-vertical" aria-label="Cockpit vertical mode"><option value="livre">MANUAL</option><option value="altitude">ALT HOLD</option><option value="vertical">VS HOLD</option></select></label>
@@ -21,7 +21,7 @@ export function criarCockpitUI(host,{onLayout=()=>{},onInteract=()=>{}}={}) {
       ${toggle('sim-seguir-rumo','HDG HOLD')}<button type="button" data-cp-action="targets" class="cp-apply">APPLY</button><button type="button" data-cp-action="level">LEVEL</button><button type="button" data-cp-click="sim-borrego">GO AROUND</button>
     </div>
     <nav class="cp-tabs" aria-label="Cockpit displays"><button type="button" data-cp-tab="pfd" aria-pressed="true">01 / FLIGHT</button><button type="button" data-cp-tab="nav" aria-pressed="false">02 / NAV</button><button type="button" data-cp-tab="systems" aria-pressed="false">03 / SYSTEMS</button></nav>
-    <div class="cp-displays">
+    <div class="cp-mini" aria-label="Compact flight readings">${field('velocidade','SPEED','KT')}${field('altitude','ALTITUDE','FT')}${field('vertical','VERTICAL','FT/MIN')}${field('rumo','HEADING','°')}${field('agl','HEIGHT AGL','FT')}${field('potencia','POWER','%')}</div><div class="cp-displays">
       <section class="cp-screen cp-pfd" data-cp-screen data-cp-page="pfd" aria-label="Primary flight display">
         <header><span>PRIMARY FLIGHT DISPLAY</span><b id="cp-guidance">MANUAL</b></header>
         <div class="cp-pfd-body">
@@ -40,8 +40,8 @@ export function criarCockpitUI(host,{onLayout=()=>{},onInteract=()=>{}}={}) {
       <section class="cp-screen cp-systems" data-cp-screen data-cp-page="systems" aria-label="Aircraft systems">
         <header><span>AIRCRAFT SYSTEMS</span><button type="button" id="cp-checklist-toggle" aria-pressed="false">CHECKLIST</button></header>
         <div class="cp-systems-body" id="cp-systems-body">
-          <div class="cp-gauges"><div class="cp-power-dial"><svg viewBox="0 0 110 86" aria-hidden="true"><path d="M17 67A44 44 0 1 1 93 67" class="cp-arc-back"/><path id="cp-power-arc" pathLength="100" d="M17 67A44 44 0 1 1 93 67" class="cp-arc-value"/><path id="cp-power-needle" d="M55 52L25 65"/><circle cx="55" cy="52" r="3"/></svg><span>POWER</span><strong id="sim-pot" data-instrumento="potencia">—</strong><small>% / LINKED</small></div><div class="cp-fuel">${field('combustivel','FUEL','KG','sim-fuel')}<div class="cp-fuel-track"><i id="cp-fuel-bar"></i></div>${field('consumo','FUEL FLOW','KG/H')}</div></div>
-          <div class="cp-system-stats">${field('autonomia','ENDURANCE','MIN')}${field('massa','MASS','KG')}</div>
+          <div class="cp-gauges"><div class="cp-power-dial"><svg viewBox="0 0 110 86" aria-hidden="true"><path d="M17 67A44 44 0 1 1 93 67" class="cp-arc-back"/><path id="cp-power-arc" pathLength="100" d="M17 67A44 44 0 1 1 93 67" class="cp-arc-value"/><path id="cp-power-needle" d="M55 52L25 65"/><circle cx="55" cy="52" r="3"/></svg><span>POWER</span><strong id="sim-pot" data-instrumento="potencia">—</strong><small>% / OUTPUT</small></div><div class="cp-fuel">${field('combustivel','FUEL','KG','sim-fuel')}<div class="cp-fuel-track"><i id="cp-fuel-bar"></i></div>${field('consumo','FUEL FLOW','KG/H')}</div></div>
+          <div class="cp-engine-status"><span id="cp-engine-left">L —</span><span id="cp-engine-right">R —</span></div><div class="cp-system-stats">${field('autonomia','ENDURANCE','MIN')}${field('massa','MASS','KG')}</div>
           <div class="cp-system-positions"><span>FLAPS <b id="cp-flaps-value">0%</b><meter id="cp-flaps-meter" min="0" max="100" value="0"></meter></span><span>TRIM <b id="cp-trim-value">0%</b><i class="cp-trim-track"><i id="cp-trim-marker"></i></i></span></div>
         </div>
         <div class="cp-checklist" id="cp-checklist" hidden><select id="cp-checklist-phase" aria-label="Checklist phase"><option value="departure">BEFORE TAKE-OFF</option><option value="landing">BEFORE LANDING</option></select><ul id="cp-checklist-items"></ul><small>Live training checks · pilot verifies runway and traffic.</small></div>
@@ -128,7 +128,8 @@ export function criarCockpitUI(host,{onLayout=()=>{},onInteract=()=>{}}={}) {
     $('cp-flaps-value').textContent=`${n(c.flapsPct)}%${Math.abs(c.flapsTargetPct-c.flapsPct)>1?' → '+n(c.flapsTargetPct)+'%':''}`;
     $('cp-flaps-meter').value=c.flapsPct;$('cp-trim-value').textContent=`${c.trimPct>0?'+':''}${n(c.trimPct)}%`;
     $('cp-trim-marker').style.left=`${(c.trimPct+100)/2}%`;
-    $('cp-power-out').textContent=`${n(c.potenciaPct)}%`;$('cp-trim-out').textContent=`${n(c.trimPct)}%`;
+    $('cp-power-out').textContent=`${n((m.voo.acelerador??m.voo.potencia)*100)}%`;
+    for(const [id,label,side] of [['cp-engine-left','L','esquerdo'],['cp-engine-right','R','direito']]) { const e=m.voo.motores?.[side];$(id).textContent=e?`${label} ${n(e.potencia*100)}%${e.estado!=='operacional'?' / OFF':''}`:`${label} —`;$(id).classList.toggle('failed',Boolean(e&&e.estado!=='operacional')); }$('cp-trim-out').textContent=`${n(c.trimPct)}%`;
     $('cp-power-arc').style.strokeDasharray=`${c.potenciaPct} 100`;
     $('cp-power-needle').setAttribute('transform',`rotate(${c.potenciaPct*2.4} 55 52)`);
     $('cp-fuel-bar').style.height=`${Math.min(100,c.combustivelKg/600*100)}%`;
@@ -148,7 +149,7 @@ export function criarCockpitUI(host,{onLayout=()=>{},onInteract=()=>{}}={}) {
       if(proxy.type==='checkbox')proxy.checked=source.checked;else proxy.value=source.value;
     }
     const selectorValue=key=>{const input=host.querySelector(`.cp-selector[data-cp-knob=${key}]`).parentElement.querySelector('input');return (Number(input.value)-Number(input.min))/(Number(input.max)-Number(input.min));};
-    shell?.render({heading:selectorValue('heading'),altitude:selectorValue('altitude'),vertical:selectorValue('vertical'),power:c.potenciaPct/100,trim:c.trimPct/100,flaps:c.flapsPct/100,brightness:Number($('cp-brightness').value)/100});
+    shell?.render({heading:selectorValue('heading'),altitude:selectorValue('altitude'),vertical:selectorValue('vertical'),power:m.voo.acelerador??c.potenciaPct/100,trim:c.trimPct/100,flaps:c.flapsPct/100,brightness:Number($('cp-brightness').value)/100});
   }
   return {
     actualizar:update,

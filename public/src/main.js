@@ -1,3 +1,4 @@
+import { criarLandingLab } from './lab-ui.js';
 import { cenarioUI, textoUI } from './copy-en.js';
 import { CENARIOS_SIM, PERFIL, ambienteAposEvento, criarMissao, avancarMissao, aplicarDecisao, proximoEvento, estadoParaAvaliacao, combustivelNecessarioKg, pistaNecessariaM, vooInterpolado } from './simulacao.js';
 import { validarRespostas } from './contrato-jev.js';
@@ -85,6 +86,7 @@ function mostrar(nome) {
   estado.ecra = nome;
   document.documentElement.classList.toggle('flight-active', nome === 'live');
   window.scrollTo(0, 0);
+  if(nome==='splash') $('screen-splash').scrollTop=0;
 }
 function numero(n, casas = 0) { return Number.isFinite(Number(n)) ? Number(n).toFixed(casas) : '—'; }
 function tempo(n) { return `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`; }
@@ -234,7 +236,7 @@ async function criarMundo() {
       leve: api.perfilGraficoLeve(),
       cenario: emModoPiloto() ? 'corredor' : estado.cenario,
       pose: parametrosVoo(),
-      pistas: emModoPiloto() ? [] : pistasDaMissao(estado.missao.destinos),
+      pistas: emModoPiloto() ? [] : pistasDaMissao(estado.missao.destinos).map((p,i)=>({...p,comprimentoM:estado.missao.destinos[i].pistaM,heading:-(estado.missao.destinos[i].rumoRad??0)})),
       apresentacao: !emModoPiloto(),
       // O piloto contínuo não tem destinos: sem marcas da missão.
       destinos: emModoPiloto() ? [] : estado.missao.destinos,
@@ -1076,7 +1078,9 @@ function ligarUI() {
   const parametros = new URLSearchParams(location.search);
   const forcarGravado = parametros.get('voo') === 'gravado';
   const desdeS = Math.max(0, Number(parametros.get('desde')) || 0);
-  $('btn-sim-abrir').addEventListener('click', () => { simulador.ligarSom(); void simulador.iniciar({ piloto: forcarGravado ? 'jev-gravado' : 'humano', desdeS }); });
+  const start=options=>{simulador.ligarSom();void simulador.iniciar(options);};
+  criarLandingLab({start});
+  $('btn-sim-abrir').addEventListener('click', () => {let primeiroVoo=true;try{primeiroVoo=localStorage.getItem('lus222-first-flight')!=='complete';}catch{/* Optional preference. */}start({ piloto:forcarGravado?'jev-gravado':'humano',desdeS,primeiroVoo:!forcarGravado&&primeiroVoo });});
   $('btn-open').addEventListener('click', () => mostrar('commander'));
   $('btn-home').addEventListener('click', () => mostrar('splash'));
   $('btn-launch').addEventListener('click', () => { if (!estado.gateway) return; ligarSom(); void iniciar('live'); });

@@ -57,3 +57,19 @@ Files: `public/src/simulador-ui.js`, `public/src/cockpit-ui.js`, `public/src/coc
 
 ## Acceptance
 The landing immediately identifies Pixelgrammar Lab, explains JEV in English and exposes a playable first step. A newcomer can complete guided learning and start final approach directly. The cockpit/terrain provide useful flight references; landing outcomes and AI effects report measured data. New systems are functional and deterministic, not decorative data. Historical replays retain their behavior. The panel visibility preference and authority handoff remain intact.
+
+## Execution and verification — 27 September 2026
+
+Implemented all six stages, including the user's follow-up: conventional keyboard pitch (push Up/W = nose down, pull Down/S = nose up), visible shortcut hints, L to level and compact/expanded/hidden instruments. Short landscape uses a six-reading strip. Engine, terrain and weather performance remain illustrative; the nominal aerodynamic law and historical recordings were preserved. Stall/spin or crosswind tyre-force realism was not added without a validated model.
+
+Verified with 362 node tests, ESLint, asset build and diff check. Chromium checks covered the complete first-flight tutorial, keyboard pitch in both directions, panel visibility and persistence, compact/expanded sizing, failed-engine telemetry and AI handoff, a matched 30-second human/live-AI comparison with mocked responses, and a full guided landing to stop. The landing sample measured 0.8 m/s sink, 127 kt, 1.0 m lateral offset and 406 m ground travel; these are test-run measurements, not aircraft specifications. WebGL smoke covered chase/cockpit, desktop/mobile/short landscape, reduced motion, landing video play/pause and recorded-flight provenance. No browser page errors were observed. Real paid AI requests were not used for automated verification.
+
+The 12-second, silent WebM and JPEG poster were captured from the actual simulator. Media is loaded on demand. PX animation pauses outside the visible landing and respects reduced motion.
+
+### Review findings resolved
+1. Engine failure disappeared when handing control to AI. Preserve `controlos.motores` at `public/src/simulador-ui.js:217`; Chromium confirmed the failed engine stays failed after handoff.
+2. Active hazards were excluded from comparison clearance. Include active minimum separation minus effective radius at `public/src/flight-training.js:183`; a real 30-second scenario regression now covers this case.
+3. Historical Porto replay lost runway lighting because its ground profile uses a smaller radius. Keep its terrain-following lights at `public/src/porto-noite.js:385`; browser verification counted 97 light points. New visual runway inputs also preserve length/heading metadata without changing historical terrain.
+4. The approved multi-feature scope exceeds the change-size guideline. Stage reviewable commits in dependency order: independent engines, pure training/observations, visual flight references, then landing/UI integration. No API/schema changes or new dependencies were introduced.
+
+The original checkout's unrelated strategic-JEV edits were left untouched.

@@ -1,6 +1,7 @@
 /**
  * PX da Pixelgrammar. Adaptado de botffett/web/components/landing/px-particles.tsx:
- * mesmos glifos, molas, cores, repulsão, dispersão de 7 s e varrimento luminoso.
+ * mesmos glifos, molas, cores, repulsão e varrimento luminoso.
+ * A dispersão acontece apenas durante interação, mantendo legível a autoria.
  * Canvas 2D independente de React; só anima enquanto a abertura está visível.
  */
 const W = 520;
@@ -45,8 +46,8 @@ function iniciar(canvas) {
   const particulas = alvos.map((a, i) => {
     const angulo = i / alvos.length * Math.PI * 2;
     const raio = 220 + i % 7 * 26;
-    return { x: W / 2 + Math.cos(angulo) * raio, y: H / 2 + Math.sin(angulo) * raio * 0.6,
-      vx: 0, vy: 0, tx: a.x, ty: a.y, size: 1.5 + i % 5 * 0.3, hue: i % 9 === 0,
+    return { x: marca?.closest('.lab-header') ? a.x : W / 2 + Math.cos(angulo) * raio, y: marca?.closest('.lab-header') ? a.y : H / 2 + Math.sin(angulo) * raio * 0.6,
+      vx: 0, vy: 0, tx: a.x, ty: a.y, size: marca?.closest('.lab-header') ? 3.2 : 1.5 + i % 5 * 0.3, hue: i % 9 === 0,
       pull: 0.014 + i % 11 * 0.0018, flash: 0 };
   });
   let frame = 0;
@@ -55,12 +56,19 @@ function iniciar(canvas) {
   let ultimo = 0;
   let dispersaoS = 0;
 
+  function baseLegivel() {
+    if(!marca.closest('.lab-header'))return;
+    ctx.save();ctx.globalCompositeOperation='source-over';ctx.fillStyle='rgba(120,230,255,.38)';
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`700 ${Math.round(H*.82)}px "IBM Plex Sans",system-ui,sans-serif`;
+    ctx.fillText('PX',W/2,H/2+4);ctx.restore();
+  }
   function estatico() {
     ctx.clearRect(0, 0, W, H);
+    baseLegivel();
     ctx.globalCompositeOperation = 'source-over';
     for (const [i, a] of alvos.entries()) {
       ctx.fillStyle = i % 9 === 0 ? '#bea0ff' : '#78e6ff';
-      ctx.fillRect(a.x, a.y, 2, 2);
+      const size=marca.closest('.lab-header')?3.8:2;ctx.fillRect(a.x,a.y,size,size);
     }
   }
 
@@ -81,9 +89,10 @@ function iniciar(canvas) {
     ultimo = agora;
     tick += dt;
     dispersaoS += dt / 60;
-    if (dispersaoS >= 7) { dispersar(); dispersaoS %= 7; }
+    if (ponteiro.activo && dispersaoS >= 12) { dispersar(); dispersaoS = 0; }
     const sweepX = (tick * 1.4) % (W + 300) - 150;
     ctx.clearRect(0, 0, W, H);
+    baseLegivel();
     ctx.globalCompositeOperation = 'lighter';
     for (const p of particulas) {
       p.vx += ((p.tx - p.x) * p.pull + Math.sin(tick * 0.01 + p.ty * 0.05) * 0.012) * dt;

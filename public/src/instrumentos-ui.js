@@ -1,6 +1,6 @@
 import { instrumentosDeVoo, transformacaoHorizonte, anguloTrajectoria } from './instrumentos.js';
 
-const numero = (n) => Math.round(n).toLocaleString('en-GB');
+const numero = (n) => Number.isFinite(n) ? Math.round(n).toLocaleString('en-GB') : '—';
 const assinado = (n) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${numero(Math.abs(n))}`;
 
 /** Cache de elementos e actualizações de texto só quando o valor muda. */
