@@ -8,7 +8,7 @@
 <title>JEV / Mesa de missão</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./styles.css">
 <script>if (new URLSearchParams(location.search).get('lus222') === 'turntable') location.replace('./turntable.html');</script>
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }</script>
@@ -32,6 +32,11 @@
       <div class="hero-actions"><button type="button" class="button button-accent" id="btn-sim-abrir">Voar o LUS-222 <span aria-hidden="true">↗</span></button><button type="button" class="button button-outline" id="btn-open">Escolher missão <span aria-hidden="true">↗</span></button><span class="gateway-status" id="gateway-status" role="status">A verificar o Gateway…</span></div>
       <p class="hero-foot">typesafe-ai/jev via AI Gateway · dados estruturados, não imagens · física ilustrativa, não certificável · render do LUS-222: EEA Aircraft</p>
     </main>
+    <a class="px-brand" href="https://www.pixelgrammar.com/" target="_blank" rel="noopener noreferrer" aria-label="Pixelgrammar — estúdio criador, abre num novo separador">
+      <span class="px-credit">CRIADO PELA</span>
+      <span class="px-mark"><span class="px-fallback" aria-hidden="true">PX</span><canvas id="px-particles" role="img" aria-label="PX — Pixelgrammar"></canvas></span>
+      <span class="px-wordmark">PIXELGRAMMAR <span aria-hidden="true">↗</span></span>
+    </a>
     <div class="hero-index">QUATRO CENÁRIOS · PORTO EM DESTAQUE</div>
   </section>
 
@@ -205,6 +210,7 @@
   <div class="overlay" id="map-overlay" hidden><div class="overlay-card map-overlay-card"><p class="kicker">GOOGLE MAPS / IMAGEM REAL</p><h2>Pista do Porto.</h2><p>Vista de satélite do Aeroporto Francisco Sá Carneiro. A imagem não representa a noite de São João nem acompanha a posição simulada.</p><iframe title="Vista de satélite da pista do Porto no Google Maps" data-src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2812.334669533097!2d-8.6806638!3d41.2473992!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd246f64614a2bad%3A0x151a578a6d6039d1!2sAeroporto%20Francisco%20S%C3%A1%20Carneiro!5e1!3m2!1spt-PT!2spt!4v1790075229286!5m2!1spt-PT!2spt" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe><button type="button" class="button button-outline" id="btn-map-close">Fechar mapa</button></div></div>
 </div>
 <script type="module" src="./src/ambient.js"></script>
+<script type="module" src="./src/px-particles.js"></script>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

@@ -439,3 +439,17 @@ button:disabled{opacity:.42;cursor:not-allowed}
 /* Seis comandos no dock (Porto) cabem a 320 px sem sair do ecrã. */
 @media(max-width:350px){.control-button{font-size:8px;padding:0 2px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}.exlibris::after{animation:none}}
+
+/* Assinatura PX: partículas do BotFfett, flutuantes sobre a abertura. */
+.px-brand{position:absolute;z-index:3;right:var(--pad);bottom:calc(54px + var(--safe-b));width:clamp(190px,25vw,340px);display:flex;flex-direction:column;align-items:center;text-decoration:none;color:#c9e5ee;animation:px-float 8s ease-in-out infinite}
+.px-brand::before{content:"";position:absolute;inset:-12%;z-index:-1;background:radial-gradient(ellipse,#2e6b8022,transparent 70%);pointer-events:none}
+.px-credit{font:8px var(--mono);letter-spacing:.2em;color:#bbc9d1}
+.px-mark{position:relative;display:block;width:100%;aspect-ratio:520/230}
+#px-particles{display:block;width:100%;height:auto;aspect-ratio:520/230;opacity:0}
+.px-ready #px-particles{opacity:1}.px-ready .px-fallback{display:none}
+.px-fallback{position:absolute;inset:0;display:grid;place-items:center;font:700 clamp(54px,8vw,108px)/1 'IBM Plex Sans',sans-serif;color:#78e6ff}
+.px-wordmark{font:10px var(--mono);letter-spacing:.3em;color:#b6c8d0}.px-wordmark span{margin-left:6px;color:#78e6ff}
+.px-brand:focus-visible{outline:2px solid #78e6ff;outline-offset:8px}.px-brand:hover .px-wordmark{color:#e6faff}
+@keyframes px-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@media(max-width:760px){.px-brand{top:calc(68px + var(--safe-t));bottom:auto;right:18px;width:146px}.px-credit{font-size:7px}.px-wordmark{font-size:8px;letter-spacing:.18em}#hero-particles{display:none}}
+@media(prefers-reduced-motion:reduce){.px-brand{animation:none}}
