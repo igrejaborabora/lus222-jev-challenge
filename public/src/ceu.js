@@ -58,13 +58,17 @@ void main() {
   vec3 sDir = normalize(solDir);
   float mu = max(0.0, dot(dir, sDir));
   float mascaraHorizonte = smoothstep(-0.04, 0.08, vY);
-  float haloLargo = pow(mu, 5.0) * 0.22;
-  float haloFino = pow(mu, 36.0) * 0.42;
-  float disco = smoothstep(0.9991, 0.99985, mu) * 1.1;
+  float haloLargo = pow(mu, 4.5) * 0.25;
+  float haloMedio = pow(mu, 16.0) * 0.22;
+  float haloFino = pow(mu, 42.0) * 0.48;
+  float disco = smoothstep(0.9990, 0.99985, mu) * 1.35;
   vec2 hDir = normalize(vec2(dir.x, dir.z) + vec2(1e-5, 0.0));
   vec2 hSol = normalize(vec2(sDir.x, sDir.z) + vec2(1e-5, 0.0));
-  float ruborHorizonte = exp(-abs(vY) * 14.0) * pow(max(0.0, dot(hDir, hSol)), 2.4) * 0.24;
-  vec3 solar = solCor * (haloLargo + haloFino + disco + ruborHorizonte) * solForca * (1.0 - denso * 0.72) * mascaraHorizonte;
+  float alinhamentoSol = max(0.0, dot(hDir, hSol));
+  float ruborHorizonte = exp(-abs(vY) * 12.5) * pow(alinhamentoSol, 2.1) * 0.30;
+  float anguloRaio = atan(dir.y - sDir.y, dot(dir.xz - sDir.xz, vec2(-hSol.y, hSol.x)));
+  float raiosSol = (0.5 + 0.5 * sin(anguloRaio * 11.0) * cos(anguloRaio * 5.0)) * pow(mu, 9.0) * exp(-abs(vY) * 4.5) * 0.12;
+  vec3 solar = solCor * (haloLargo + haloMedio + haloFino + disco + ruborHorizonte + raiosSol) * solForca * (1.0 - denso * 0.72) * mascaraHorizonte;
   gl_FragColor = vec4(base + solar, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
@@ -159,12 +163,40 @@ function camadaNuvens(n, detalhe) {
     return c;
   });
   const total = nuvens.reduce((acc, c) => acc + c.tufos.length, 0);
-  const mat = new THREE.MeshLambertMaterial({ color: COR_NUVEM, transparent: true, opacity: 0.92 });
+  const mat = new THREE.MeshLambertMaterial({ color: COR_NUVEM, transparent: true, opacity: 0.93 });
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = 'varying float vTufoY;\n' + shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\nvTufoY = position.y;',
+    );
+    shader.fragmentShader = 'varying float vTufoY;\n' + shader.fragmentShader.replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+      float sombraBase = smoothstep(-0.26, 0.55, vTufoY);
+      diffuseColor.rgb *= mix(vec3(0.74, 0.78, 0.85), vec3(1.06, 1.04, 1.01), sombraBase);`,
+    );
+  };
   const mesh = new THREE.InstancedMesh(geometriaTufo(detalhe), mat, n * MAX_TUFOS);
   mesh.count = total;
   mesh.name = 'ceu-nuvens';
   mesh.frustumCulled = false;
-  return { mesh, nuvens, m: new THREE.Matrix4(), s: new THREE.Vector3(), p: new THREE.Vector3() };
+
+  const nCirros = Math.max(12, Math.floor(n * 0.45));
+  const matCirros = new THREE.MeshBasicMaterial({ color: 0xe8edf2, transparent: true, opacity: 0.24, depthWrite: false });
+  const cirrosMesh = new THREE.InstancedMesh(geometriaTufo(1), matCirros, nCirros);
+  cirrosMesh.name = 'ceu-cirros';
+  cirrosMesh.frustumCulled = false;
+  const cirros = Array.from({ length: nCirros }, () => ({
+    x: rnd() * CAMPO_NUVENS_M,
+    z: rnd() * CAMPO_NUVENS_M,
+    dy: 320 + rnd() * 240,
+    sx: 420 + rnd() * 480,
+    sy: 14 + rnd() * 16,
+    sz: 110 + rnd() * 160,
+    q: new THREE.Quaternion().setFromAxisAngle(EIXO_Y, rnd() * Math.PI),
+  }));
+
+  return { mesh, cirrosMesh, cirros, nuvens, m: new THREE.Matrix4(), s: new THREE.Vector3(), p: new THREE.Vector3() };
 }
 
 function rastos(n) {
@@ -206,7 +238,7 @@ export function criarCeu(scene, { cenario, leve = false, alcanceTerrenoM, luzDia
   const nev = nevoeiroDe(10, alcanceTerrenoM);
   scene.fog = new THREE.Fog(paletaCeu(ceu.noite).nevoeiro, nev.near, nev.far);
   scene.background = null;
-  scene.add(ceu.cupula, ceu.hemi, ceu.nuvens.mesh, ceu.rastos.linhas);
+  scene.add(ceu.cupula, ceu.hemi, ceu.nuvens.mesh, ceu.nuvens.cirrosMesh, ceu.rastos.linhas);
   return ceu;
 }
 
@@ -230,7 +262,10 @@ function aplicarLuz(ceu, { scene, sol, camera, ambiente, pose }, pal) {
   scene.fog.near = nev.near;
   scene.fog.far = nev.far;
   ceu.hemi.intensity = pal.intensidadeCeu;
-  ceu.nuvens.mesh.material.color.setHex(misturarCor(COR_NUVEM, COR_NUVEM_NOITE, pal.luzes));
+  const corNuvem = misturarCor(COR_NUVEM, COR_NUVEM_NOITE, pal.luzes);
+  ceu.nuvens.mesh.material.color.setHex(corNuvem);
+  ceu.nuvens.cirrosMesh.material.color.setHex(misturarCor(pal.corSol, corNuvem, 0.65));
+  ceu.nuvens.cirrosMesh.material.opacity = (0.14 + 0.14 * (1 - pal.luzes)) * Math.min(1, cobertura * 1.5);
 
   if (!sol) return;
   sol.color.setHex(pal.corSol);
@@ -261,10 +296,11 @@ function bolha(t, p, f, cam, pose, largura = 1) {
  * entrariam encolhe para o centro, e a camada continua à volta.
  */
 function aplicarNuvens(ceu, ambiente, pose, origem, camera) {
-  const { mesh, nuvens, m, s, p } = ceu.nuvens;
+  const { mesh, cirrosMesh, cirros, nuvens, m, s, p } = ceu.nuvens;
   const alt = alturaNuvensM(ambiente.tetoFt ?? 3000);
   const cobertura = Math.min(1, Math.max(0, ambiente.cobertura ?? 0.43));
   mesh.visible = cobertura > 0 && (ambiente.cobertura !== undefined || alt < NUVENS_ATE_M);
+  cirrosMesh.visible = mesh.visible;
   if (!mesh.visible) return;
   const ax = pose.x + origem.x;
   const az = pose.z + origem.z;
@@ -296,6 +332,20 @@ function aplicarNuvens(ceu, ambiente, pose, origem, camera) {
   }
   mesh.count = i;
   mesh.instanceMatrix.needsUpdate = true;
+
+  const numCirros = Math.ceil(cirros.length * Math.min(1, cobertura * 1.3));
+  for (let k = 0; k < numCirros; k++) {
+    const ci = cirros[k];
+    const dx = dobrar(ci.x + ceu.derivaNuvens.x * 1.35, ax, CAMPO_NUVENS_M);
+    const dz = dobrar(ci.z + ceu.derivaNuvens.z * 1.35, az, CAMPO_NUVENS_M);
+    const orla = Math.max(0.001, Math.min(1, (meio - Math.max(Math.abs(dx), Math.abs(dz))) / ORLA_NUVENS_M));
+    p.set(pose.x + dx, alt + ci.dy, pose.z + dz);
+    s.set(ci.sx * orla, ci.sy * orla, ci.sz * orla);
+    m.compose(p, ci.q, s);
+    cirrosMesh.setMatrixAt(k, m);
+  }
+  cirrosMesh.count = numCirros;
+  cirrosMesh.instanceMatrix.needsUpdate = true;
 }
 
 /** Chuva explícita; a inferência pela visibilidade só serve estados antigos sem precipitação. */

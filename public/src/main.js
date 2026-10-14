@@ -379,23 +379,33 @@ function atualizarTelemetria() {
     const piloto = estado.piloto;
     const entrada = estadoPassoPiloto(piloto.percurso, piloto.automato);
     const restante = Math.max(0, piloto.percurso.distancia_total_m - entrada.voo.posicao_z_m);
+    const ktPiloto = Math.round(piloto.automato.speed * 1.94384);
+    const ftPiloto = Math.round(piloto.automato.y * 3.28084);
     $('flight-phase').textContent = `continuous flight${estado.pausa ? ' · paused' : ''}`;
-    $('tel-speed').textContent = Math.round(piloto.automato.speed * 1.94384);
-    $('tel-alt').textContent = Math.round(piloto.automato.y * 3.28084).toLocaleString('en-GB');
+    $('tel-speed').textContent = ktPiloto;
+    $('tel-alt').textContent = ftPiloto.toLocaleString('en-GB');
     $('tel-fuel').textContent = '—';
     $('tel-eta').textContent = numero(restante / Math.max(1, piloto.automato.speed) / 60, 1);
     $('tel-time').textContent = tempo(entrada.voo.tempo_s);
+    $('tel-speed')?.closest('div')?.style.setProperty('--bar-pct', `${Math.min(100, Math.max(8, (ktPiloto / 210) * 100)).toFixed(0)}%`);
+    $('tel-alt')?.closest('div')?.style.setProperty('--bar-pct', `${Math.min(100, Math.max(8, (ftPiloto / 4500) * 100)).toFixed(0)}%`);
     atualizarProvaPiloto();
     return;
   }
   const m = estado.missao, v = m.voo, d = m.destinos.find((x) => x.id === m.destinoId);
   const restante = Math.hypot(v.xM - d.xM, v.zM - d.zM);
   $('flight-phase').textContent = textoUI(m.fase) + (estado.pausa ? ' · paused' : m.ameacaAtiva && estado.velocidade > TECTO_LEITURA ? ` · ${TECTO_LEITURA}× lanterns` : estado.leitura && estado.velocidade > TECTO_LEITURA ? ` · ${TECTO_LEITURA}× ${textoUI(estado.leitura.tipo)}` : '');
-  $('tel-speed').textContent = Math.round(v.velocidadeMs * 1.94384);
-  $('tel-alt').textContent = Math.round(v.altitudeM * 3.28084).toLocaleString('en-GB');
-  $('tel-fuel').textContent = Math.round(v.combustivelKg);
+  const kt = Math.round(v.velocidadeMs * 1.94384);
+  const ft = Math.round(v.altitudeM * 3.28084);
+  const fuel = Math.round(v.combustivelKg);
+  $('tel-speed').textContent = kt;
+  $('tel-alt').textContent = ft.toLocaleString('en-GB');
+  $('tel-fuel').textContent = fuel;
   $('tel-eta').textContent = Math.round(restante / Math.max(45, v.velocidadeMs + m.ambiente.ventoMs.z) / 60);
   $('tel-time').textContent = tempo(v.tempoS);
+  $('tel-speed')?.closest('div')?.style.setProperty('--bar-pct', `${Math.min(100, Math.max(8, (kt / 210) * 100)).toFixed(0)}%`);
+  $('tel-alt')?.closest('div')?.style.setProperty('--bar-pct', `${Math.min(100, Math.max(8, (ft / 6500) * 100)).toFixed(0)}%`);
+  $('tel-fuel')?.closest('div')?.style.setProperty('--bar-pct', `${Math.min(100, Math.max(6, (fuel / 900) * 100)).toFixed(0)}%`);
   $('map-destination').textContent = nomeDestino(m.destinoId);
   const origem = m.destinos.find((x) => x.id === 'origem');
   const planeado = m.destinos.find((x) => x.id === 'planeado');
@@ -406,6 +416,20 @@ function atualizarTelemetria() {
   $('map-path').setAttribute('d', `M${ox} ${oy} L${px} ${py} L${dx} ${dy}`);
   $('map-plane').setAttribute('cx', String(px)); $('map-plane').setAttribute('cy', String(py));
   $('map-target').setAttribute('cx', String(dx)); $('map-target').setAttribute('cy', String(dy));
+  const angMapa = Math.atan2(dy - py, dx - px);
+  const fovL = 38, fovA = 0.42;
+  const x1 = (px + Math.cos(angMapa - fovA) * fovL).toFixed(1), y1 = (py + Math.sin(angMapa - fovA) * fovL).toFixed(1);
+  const x2 = (px + Math.cos(angMapa + fovA) * fovL).toFixed(1), y2 = (py + Math.sin(angMapa + fovA) * fovL).toFixed(1);
+  $('map-fov')?.setAttribute('points', `${px.toFixed(1)},${py.toFixed(1)} ${x1},${y1} ${x2},${y2}`);
+  const ameaca = m.ameacaAtiva;
+  if (ameaca) {
+    const [ax, ay] = ponto(ameaca);
+    $('map-threat')?.setAttribute('cx', String(ax));
+    $('map-threat')?.setAttribute('cy', String(ay));
+  } else {
+    $('map-threat')?.setAttribute('cx', '-40');
+    $('map-threat')?.setAttribute('cy', '-40');
+  }
   $('map-caption').textContent = `${Math.round(restante / 1000)} km · estimated reserve ${Math.round(v.combustivelKg - combustivelNecessarioKg(m, d))} kg`;
   const baloes = m.separacoes.find((s) => s.id === 'baloes');
   if (baloes && estado.log?.linhas.at(-1)?.id === 'baloes') {

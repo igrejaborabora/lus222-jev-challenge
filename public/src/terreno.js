@@ -141,7 +141,21 @@ function geometriaMosaico(t, i, j) {
  */
 function materialDoTerreno(perfil) {
   const material = new THREE.MeshLambertMaterial({ vertexColors: true });
-  if (!perfil?.cidade) return { material, urbano: null };
+  if (!perfil?.cidade) {
+    material.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying float vAltTerreno;\nvarying float vDistCam;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvAltTerreno = position.y;\nvec4 mvTerreno = modelViewMatrix * vec4(transformed, 1.0);\nvDistCam = -mvTerreno.z;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying float vAltTerreno;\nvarying float vDistCam;')
+        .replace('#include <fog_fragment>', `#include <fog_fragment>
+          #ifdef USE_FOG
+            float brumaVale = exp(-max(0.0, vAltTerreno - 4.0) * 0.018) * smoothstep(260.0, 2600.0, vDistCam) * 0.28;
+            gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, brumaVale);
+          #endif`);
+    };
+    return { material, urbano: null };
+  }
   const urbano = { value: 0 };
   const foto = { mapa:{value:null}, intensidade:{value:0}, pedida:false, textura:null, loading:null, libertada:false };
   material.onBeforeCompile = (shader) => {
@@ -149,17 +163,22 @@ function materialDoTerreno(perfil) {
     shader.uniforms.fotoPorto = foto.mapa;
     shader.uniforms.pesoFoto = foto.intensidade;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float urbano;\nvarying float vUrbano;\nattribute vec3 fotoUVPeso;\nvarying vec3 vFoto;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvUrbano = urbano; vFoto = fotoUVPeso;');
+      .replace('#include <common>', '#include <common>\nattribute float urbano;\nvarying float vUrbano;\nattribute vec3 fotoUVPeso;\nvarying vec3 vFoto;\nvarying float vAltTerreno;\nvarying float vDistCam;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvUrbano = urbano; vFoto = fotoUVPeso; vAltTerreno = position.y;\nvec4 mvTerreno = modelViewMatrix * vec4(transformed, 1.0);\nvDistCam = -mvTerreno.z;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying float vUrbano;\nuniform float brilhoUrbano;\nvarying vec3 vFoto;\nuniform sampler2D fotoPorto;\nuniform float pesoFoto;')
+      .replace('#include <common>', '#include <common>\nvarying float vUrbano;\nuniform float brilhoUrbano;\nvarying vec3 vFoto;\nuniform sampler2D fotoPorto;\nuniform float pesoFoto;\nvarying float vAltTerreno;\nvarying float vDistCam;')
       .replace('#include <color_fragment>', `#include <color_fragment>
         if (pesoFoto > 0.0 && vFoto.z > 0.0) {
           vec3 foto = texture2D(fotoPorto, clamp(vFoto.xy, 0.0, 1.0)).rgb;
           float coberta = 1.0 - smoothstep(0.91, 0.99, min(foto.r, min(foto.g, foto.b)));
           diffuseColor.rgb = mix(diffuseColor.rgb, foto, vFoto.z * pesoFoto * coberta);
         }`)
-      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0, 0.6, 0.25) * pow(vUrbano, 1.6) * brilhoUrbano;');
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0, 0.62, 0.28) * pow(vUrbano, 1.5) * brilhoUrbano;')
+      .replace('#include <fog_fragment>', `#include <fog_fragment>
+        #ifdef USE_FOG
+          float brumaVale = exp(-max(0.0, vAltTerreno - 3.0) * 0.022) * smoothstep(220.0, 2400.0, vDistCam) * 0.32;
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, brumaVale);
+        #endif`);
   };
   return { material, urbano, foto };
 }
@@ -168,15 +187,23 @@ function materialDoMar() {
   const mat = new THREE.MeshLambertMaterial({ color: COR_MAR });
   mat.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec2 vMarPos;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 marMundo = modelMatrix * vec4(transformed, 1.0);\nvMarPos = marMundo.xz;');
+      .replace('#include <common>', '#include <common>\nvarying vec2 vMarPos;\nvarying vec3 vMarView;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 marMundo = modelMatrix * vec4(transformed, 1.0);\nvMarPos = marMundo.xz;\nvMarView = cameraPosition - marMundo.xyz;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec2 vMarPos;')
+      .replace('#include <common>', '#include <common>\nvarying vec2 vMarPos;\nvarying vec3 vMarView;')
       .replace('#include <color_fragment>', `#include <color_fragment>
         float onda1 = sin(vMarPos.x * 0.018 + vMarPos.y * 0.011) * cos(vMarPos.y * 0.021 - vMarPos.x * 0.007);
         float onda2 = sin(vMarPos.x * 0.065 - vMarPos.y * 0.048) * 0.5;
-        float crista = smoothstep(0.32, 0.88, onda1 + onda2 * 0.45);
-        diffuseColor.rgb = mix(diffuseColor.rgb * (0.93 + 0.07 * onda1), diffuseColor.rgb * 1.28 + vec3(0.05, 0.08, 0.1), crista * 0.35);
+        float onda3 = cos(vMarPos.x * 0.14 + vMarPos.y * 0.11) * 0.25;
+        float crista = smoothstep(0.30, 0.86, onda1 + onda2 * 0.45 + onda3 * 0.25);
+        vec3 V = normalize(vMarView + vec3(0.0, 1e-4, 0.0));
+        vec3 N = normalize(vec3((onda1 + onda2) * 0.09, 1.0, (onda2 - onda3) * 0.09));
+        float fresnel = pow(1.0 - max(0.0, V.y), 3.2);
+        vec3 solDirMar = normalize(vec3(-0.92, 0.28, 0.28));
+        vec3 H = normalize(V + solDirMar);
+        float spec = pow(max(0.0, dot(N, H)), 48.0) * 0.55;
+        diffuseColor.rgb = mix(diffuseColor.rgb * (0.92 + 0.08 * onda1), diffuseColor.rgb * 1.32 + vec3(0.06, 0.09, 0.11), crista * 0.36);
+        diffuseColor.rgb += vec3(0.10, 0.15, 0.18) * fresnel * 0.45 + vec3(1.0, 0.86, 0.62) * spec;
       `);
   };
   return mat;

@@ -31,7 +31,7 @@ export function perfilGraficoLeve() {
   return (
     window.matchMedia('(pointer: coarse)').matches ||
     window.matchMedia('(max-width: 720px)').matches ||
-    (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)
+    Boolean(navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2)
   );
 }
 
@@ -442,6 +442,24 @@ function luzesNavegacao(aviao) {
   });
 }
 
+function rastosPontaAsa(aviao) {
+  const matRasto = new THREE.MeshBasicMaterial({
+    color: 0xeaf4ff,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  return [-7.92, 7.92].map((x) => {
+    const fita = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 18), matRasto);
+    fita.rotation.x = Math.PI / 2;
+    fita.position.set(x, 1.24, -9.2);
+    fita.visible = false;
+    aviao.add(fita);
+    return fita;
+  });
+}
+
 export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = null, pistas = [], apresentacao = true, destinos = [], nomesDestinos = {}, luzDia = true, periodo } = {}) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -451,6 +469,8 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     logarithmicDepthBuffer: true,
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, leve ? 1.25 : 1.75));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
   // A cúpula do céu cobre todo o fundo; o preto só se vê se ela falhar.
   renderer.setClearColor(0x000000, 1);
 
@@ -517,6 +537,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     });
   }
   const luzesNav = luzesNavegacao(aviao);
+  const rastosAsa = rastosPontaAsa(aviao);
   const geoSinalHalo = new THREE.SphereGeometry(0.62, 10, 8);
   const luzesSinal = [[0,1.6,-1,'beacon',0xff3020],[8,1.25,.5,'estrobo',0xffffff],[-8,1.25,.5,'estrobo',0xffffff]].map(([x,y,z,tipo,cor]) => {
     const luz = new THREE.Mesh(new THREE.SphereGeometry(0.24,8,6), new THREE.MeshBasicMaterial({color:cor,toneMapped:false}));
@@ -557,7 +578,10 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     // Valores de dia: a noite escala-os (escurecerAviao) sem os perder.
     intensidadesDia: { ambiente: scene.environmentIntensity, fill: fill.intensity },
     ceu,
-    luzesNav, luzesSinal, reduzido,
+    luzesNav, luzesSinal, rastosAsa, reduzido,
+    bankCamSuave: 0,
+    fovSuave: 48,
+    tempoCam: 0,
     origemVisual: { x: 0, z: 0 },
     alvoLook: null,
     tAmeaca: 0,
@@ -628,6 +652,15 @@ function actualizarCeuEAviao(mundo, visual, dt) {
   for (const luz of mundo.luzesNav) luz.visible = acesas;
   const fase = faseLuzes(visual.voo?.tempoS ?? (visual.pose.hélice ?? 0)/16, mundo.reduzido);
   for(const luz of mundo.luzesSinal) luz.visible = acesas && fase[luz.userData.tipo];
+  if (mundo.rastosAsa) {
+    const cargaAero = Math.min(1, Math.abs(visual.poseLocal.bank || 0) * 1.65 + Math.max(0, (visual.poseLocal.pitch || 0) * 1.25) + 0.14);
+    const opRasto = mundo.molduraCockpit?.visible ? 0 : cargaAero * 0.28;
+    for (const fita of mundo.rastosAsa) {
+      fita.visible = opRasto > 0.02;
+      fita.material.opacity = opRasto;
+    }
+  }
+  mundo.renderer.toneMappingExposure = 1.08 + 0.18 * pal.luzes;
   escurecerAviao(mundo, pal);
   escurecerTerreno(mundo.terreno, pal.luzes);
   if (mundo.portoNoite) {
@@ -800,8 +833,23 @@ function enquadrar(mundo, modo, pose, dt, { manual = false } = {}) {
   }
   const d = mundo.desvioCamara;
   const m = mundo.desvioMira;
-  cam.position.set(pose.x + d.x, pose.y + d.y, pose.z + d.z);
+  const tSuave = Math.min(Math.max(0, dt || 0), 0.08);
+  mundo.tempoCam = (mundo.tempoCam || 0) + tSuave;
+  const manobra = Math.min(1, Math.abs(pose.bank || 0) * 1.4 + Math.abs(pose.pitch || 0) * 1.1);
+  const shakeAmp = (!mundo.reduzido && (pose.y || 0) > 12) ? (0.045 + manobra * 0.09) : 0;
+  const sx = shakeAmp * Math.sin(mundo.tempoCam * 13.7);
+  const sy = shakeAmp * Math.cos(mundo.tempoCam * 17.3) * 0.75;
+  cam.position.set(pose.x + d.x + sx, pose.y + d.y + sy, pose.z + d.z);
   limitarAoChao(mundo);
+  const bankAlvo = modo === 'cauda' && !mundo.reduzido ? -(pose.bank || 0) * 0.22 : 0;
+  mundo.bankCamSuave = (mundo.bankCamSuave || 0) + (bankAlvo - (mundo.bankCamSuave || 0)) * (1 - Math.exp(-3.4 * (tSuave || 0.016)));
+  cam.up.set(Math.sin(mundo.bankCamSuave), Math.cos(mundo.bankCamSuave), 0);
+  const fovAlvo = modo === 'evento' ? 50.5 : 48 + manobra * 4.2;
+  mundo.fovSuave = (mundo.fovSuave || 48) + (fovAlvo - (mundo.fovSuave || 48)) * (1 - Math.exp(-3.2 * (tSuave || 0.016)));
+  if (Math.abs(cam.fov - mundo.fovSuave) > 0.04) {
+    cam.fov = mundo.fovSuave;
+    cam.updateProjectionMatrix();
+  }
   cam.lookAt(pose.x + m.x, pose.y + m.y, pose.z + m.z);
   // Um arrasto a meio de um modo automático roda à volta do avião.
   mundo.controlos.target.set(pose.x, pose.y, pose.z);
@@ -941,30 +989,52 @@ function malhaTrafego(a) {
   const g = new THREE.Group();
   const helicoptero = /helic/i.test(a.tipo);
   const corpo = mat(0xe9e4d6);
+  const vidro = mat(0x13202d);
+  const destaque = mat(0x1a2744);
   if (helicoptero) {
     const cabine = new THREE.Mesh(new THREE.SphereGeometry(1.6, 12, 10), corpo);
     cabine.scale.set(1, 1, 1.5);
+    const parabrisa = new THREE.Mesh(new THREE.SphereGeometry(1.38, 10, 8), vidro);
+    parabrisa.scale.set(0.92, 0.78, 1.15);
+    parabrisa.position.set(0, 0.22, 0.72);
     const cauda = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 6), corpo);
     cauda.position.set(0, 0.3, -4.5);
+    const derivaCauda = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.25, 0.85), destaque);
+    derivaCauda.position.set(0, 0.65, -7.2);
+    for (const sx of [-0.95, 0.95]) {
+      const esqui = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 3.8, 6), destaque);
+      esqui.rotation.x = Math.PI / 2;
+      esqui.position.set(sx, -1.35, 0.1);
+      g.add(esqui);
+    }
     const rotor = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 5.5, 0.05, 24), new THREE.MeshBasicMaterial({ color: 0xcfd6dc, transparent: true, opacity: 0.22, depthWrite: false }));
     rotor.position.y = 1.9;
-    g.add(cabine, cauda, rotor);
+    g.add(cabine, parabrisa, cauda, derivaCauda, rotor);
     g.userData.rotor = rotor;
   } else {
-    const fuselagem = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.3, 8.5), corpo);
-    const asa = new THREE.Mesh(new THREE.BoxGeometry(11, 0.18, 1.6), corpo);
-    asa.position.z = 0.6;
-    const estab = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.12, 0.9), corpo);
-    estab.position.z = -3.8;
-    const deriva = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.6, 1.1), mat(0x1a2744));
-    deriva.position.set(0, 0.9, -3.8);
-    g.add(fuselagem, asa, estab, deriva);
+    const fuselagem = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.56, 8.8, 10), corpo);
+    fuselagem.rotation.x = Math.PI / 2;
+    const cabineVidro = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.48, 1.85), vidro);
+    cabineVidro.position.set(0, 0.46, 2.15);
+    const asa = new THREE.Mesh(new THREE.BoxGeometry(11.4, 0.18, 1.65), corpo);
+    asa.position.set(0, 0.38, 0.6);
+    for (const sx of [-2.4, 2.4]) {
+      const nacela = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.22, 1.85, 8), destaque);
+      nacela.rotation.x = Math.PI / 2;
+      nacela.position.set(sx, 0.22, 1.15);
+      g.add(nacela);
+    }
+    const estab = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.12, 0.95), corpo);
+    estab.position.set(0, 0.18, -3.9);
+    const deriva = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.72, 1.18), destaque);
+    deriva.position.set(0, 0.95, -3.85);
+    g.add(fuselagem, cabineVidro, asa, estab, deriva);
   }
   // Luzes de navegação e estroboscópio: de noite é o que se vê primeiro.
   const vermelha = luzPonto(0xff3030, 9);
-  vermelha.position.set(helicoptero ? 1.4 : 5.5, 0, 0.6);
+  vermelha.position.set(helicoptero ? 1.4 : 5.7, 0, 0.6);
   const verde = luzPonto(0x30ff70, 9);
-  verde.position.set(helicoptero ? -1.4 : -5.5, 0, 0.6);
+  verde.position.set(helicoptero ? -1.4 : -5.7, 0, 0.6);
   const estrobo = luzPonto(0xffffff, 16);
   estrobo.position.set(0, helicoptero ? 2.2 : 1.2, 0);
   g.add(vermelha, verde, estrobo);

@@ -96,7 +96,25 @@ function cidade(grupo, perfil, pistas, leve) {
       }
     }
   }
-  instancias(grupo, 'porto-quarteiroes', new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial(), casas);
+  const matCasas = new THREE.MeshLambertMaterial();
+  matCasas.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vCasaMundo;\nvarying vec3 vCasaNormal;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 mCasa = modelMatrix * instanceMatrix * vec4(transformed, 1.0);\nvCasaMundo = mCasa.xyz;\nvCasaNormal = normalize(mat3(modelMatrix * instanceMatrix) * objectNormal);');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vCasaMundo;\nvarying vec3 vCasaNormal;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float parede = step(abs(vCasaNormal.y), 0.35);
+        float uJan = fract((vCasaMundo.x + vCasaMundo.z) * 0.22);
+        float vJan = fract(vCasaMundo.y * 0.28);
+        float caixilho = step(0.18, uJan) * step(uJan, 0.82) * step(0.22, vJan) * step(vJan, 0.78);
+        float hashJan = fract(sin(floor((vCasaMundo.x + vCasaMundo.z) * 0.22) * 12.9898 + floor(vCasaMundo.y * 0.28) * 78.233) * 43758.5453);
+        float acesa = parede * caixilho * step(0.42, hashJan);
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.62, parede * caixilho * (1.0 - acesa));
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.84, 0.56), acesa * 0.65);
+      `);
+  };
+  instancias(grupo, 'porto-quarteiroes', new THREE.BoxGeometry(1, 1, 1), matCasas, casas);
   instancias(grupo, 'porto-telhados', new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial(), telhados);
 }
 
@@ -147,17 +165,29 @@ function parques(grupo, perfil, pistas, leve) {
   const rnd = mulberry32(170222);
   const copas = [];
   for (const p of PARQUES) {
-    const passo = leve ? 90 : 60;
+    const passo = leve ? 85 : 52;
     for (let x = p.x - p.rx; x <= p.x + p.rx; x += passo) {
       for (let z = p.z - p.rz; z <= p.z + p.rz; z += passo) {
         const bx = x + (rnd() - 0.5) * passo;
         const bz = z + (rnd() - 0.5) * passo;
         const y = alturaTerreno(perfil, bx, bz, pistas);
         if (!dentro(p, bx, bz) || y < 10) continue;
-        const h = 9 + rnd() * 9;
-        copas.push({ x: bx, z: bz, y: y + h * 0.5, largura: h, fundo: h, altura: h, cor: rnd() < 0.5 ? 0x445a43 : 0x627249 });
+        const h = 9 + rnd() * 10;
+        copas.push({ x: bx, z: bz, y: y + h * 0.5, largura: h, fundo: h, altura: h * 1.1, cor: rnd() < 0.5 ? 0x3f583e : 0x5c6e44 });
       }
     }
+  }
+  const nEncosta = leve ? 160 : 420;
+  for (let k = 0; k < nEncosta; k++) {
+    const bx = -1200 + rnd() * 8200;
+    const bz = 148500 + rnd() * 13500;
+    if (!faixaLivre(bx, bz, pistas, 180)) continue;
+    const dRio = perfil.rio ? distanciaAoRio(perfil.rio, bx, bz) : 9999;
+    if (dRio < 140) continue;
+    const y = alturaTerreno(perfil, bx, bz, pistas);
+    if (y < 14 || y > 165) continue;
+    const h = 8 + rnd() * 11;
+    copas.push({ x: bx, z: bz, y: y + h * 0.48, largura: h * 0.92, fundo: h * 0.92, altura: h * 1.18, cor: rnd() < 0.55 ? 0x3b533b : 0x52643d });
   }
   instancias(grupo, 'porto-parques', new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial(), copas);
 }

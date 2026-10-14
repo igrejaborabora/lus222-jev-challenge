@@ -321,7 +321,38 @@ function criarCidade(perfil, pistas, leve) {
       if (h >= 2) { pos.push(x, h + 8, z); cor.push(1, 0.42, 0.32); }
     }
   }
-  return pontosLuz(pos, cor, leve ? 2 : 2.5);
+  const arterias = [
+    [[2900, 153200], [3100, 154150], [3500, 154650], [4450, 155050], [6200, 155950]],
+    [[900, 154850], [2500, 155200], [4450, 155050], [6100, 155300]],
+    [[-700, 153600], [100, 154600], [800, 156000], [1100, 158000], [300, 161800]],
+    [[5550, 153300], [6000, 154450], [6200, 156000], [5900, 157800], [5450, 159500]],
+    [[2000, 150000], [3400, 150750], [4700, 151500]],
+  ];
+  const passoFarois = leve ? 56 : 28;
+  for (const via of arterias) {
+    for (let i = 1; i < via.length; i++) {
+      const a = via[i - 1];
+      const b = via[i];
+      const dx = b[0] - a[0];
+      const dz = b[1] - a[1];
+      const len = Math.hypot(dx, dz) || 1;
+      const nx = -dz / len * 5.5;
+      const nz = dx / len * 5.5;
+      for (let d = 0; d < len; d += passoFarois) {
+        if (rnd() < 0.22) continue;
+        const t = d / len;
+        const x = a[0] + dx * t;
+        const z = a[1] + dz * t;
+        const h = alturaTerreno(perfil, x, z, pistas);
+        if (h < 6) continue;
+        pos.push(x + nx, h + 2.4, z + nz);
+        cor.push(1.0, 0.95, 0.84);
+        pos.push(x - nx, h + 2.4, z - nz);
+        cor.push(1.0, 0.22, 0.18);
+      }
+    }
+  }
+  return pontosLuz(pos, cor, leve ? 2.2 : 2.8);
 }
 
 /** Balizagem da pista do Sá Carneiro (norte–sul): bordos, soleiras verdes, fim vermelho e aproximação. */

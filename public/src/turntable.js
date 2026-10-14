@@ -26,6 +26,8 @@ try {
   throw new Error('Sem WebGL');
 }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.12;
 renderer.setScissorTest(true);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -33,18 +35,18 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.7;
-scene.add(new THREE.HemisphereLight(0xd7e8ff, 0x2a3328, 1.05));
-const sol = new THREE.DirectionalLight(0xfff4dc, 1.35);
-sol.position.set(-54, 42, 18);
+scene.environmentIntensity = 0.92;
+scene.add(new THREE.HemisphereLight(0xdbeeff, 0x263445, 1.12));
+const sol = new THREE.DirectionalLight(0xfff3d6, 1.65);
+sol.position.set(-54, 42, 22);
 sol.castShadow = true;
 sol.shadow.mapSize.set(2048, 2048);
 Object.assign(sol.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 140 });
-sol.shadow.bias = -0.0004;
-sol.shadow.normalBias = 0.04;
+sol.shadow.bias = -0.0003;
+sol.shadow.normalBias = 0.035;
 scene.add(sol, sol.target);
-const fill = new THREE.DirectionalLight(0xffffff, 0.35);
-fill.position.set(40, 30, -20);
+const fill = new THREE.DirectionalLight(0xcce4ff, 0.48);
+fill.position.set(42, -18, -24);
 scene.add(fill);
 
 const silhueta = new THREE.MeshBasicMaterial({ color: 0x0b0f15 });
