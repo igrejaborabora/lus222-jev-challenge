@@ -138,14 +138,27 @@ function meshAmeaca(o, pose, leve, mundo) {
     }
     case 'torre': {
       const h = p.altura;
-      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.6, h, 8), mat(0x2a2e33));
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 1.85, h, 8), mat(0x2a2e33));
       mast.position.y = h / 2;
+      g.add(mast);
+      for (const frac of [0.35, 0.65, 0.88]) {
+        const cinta = new THREE.Mesh(new THREE.CylinderGeometry(1.75 - frac * 0.7, 1.85 - frac * 0.7, 0.9, 8), mat(0xc4483a));
+        cinta.position.y = h * frac;
+        g.add(cinta);
+      }
+      const plato = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.35, 8), mat(0x3a4047));
+      plato.position.y = h * 0.92;
       const beacon = new THREE.Mesh(
         new THREE.SphereGeometry(1.4, 10, 8),
-        new THREE.MeshLambertMaterial({ color: 0xff3b3b, emissive: 0xff2222, emissiveIntensity: 0.9 }),
+        new THREE.MeshLambertMaterial({ color: 0xff3b3b, emissive: 0xff2222, emissiveIntensity: 0.95 }),
       );
       beacon.position.y = h + 0.6;
-      g.add(mast, beacon, anelChao(0xe07a4a));
+      const halo = new THREE.Mesh(
+        new THREE.SphereGeometry(2.8, 10, 8),
+        new THREE.MeshBasicMaterial({ color: 0xff3828, transparent: true, opacity: 0.25, depthWrite: false }),
+      );
+      halo.position.y = h + 0.6;
+      g.add(plato, beacon, halo, anelChao(0xe07a4a));
       g.userData.beacon = beacon;
       break;
     }
@@ -154,21 +167,28 @@ function meshAmeaca(o, pose, leve, mundo) {
       // altura, para um cume de centenas de metros não ser uma agulha.
       const h = p.altura;
       const raioBase = Math.max(24, h * 0.4);
-      const hill = new THREE.Mesh(new THREE.ConeGeometry(raioBase, h + 2, 7), mat(0x5a5e58));
+      const hill = new THREE.Mesh(new THREE.ConeGeometry(raioBase, h + 2, 9), mat(0x5a5e58));
       hill.position.y = h / 2 - 1;
+      const ombro = new THREE.Mesh(new THREE.ConeGeometry(raioBase * 0.68, h * 0.66, 8), mat(0x4d524c));
+      ombro.position.set(raioBase * 0.28, h * 0.33 - 1, -raioBase * 0.18);
       // O anel acompanha a base: com os 16 m fixos ficava dentro do cone.
-      g.add(hill, anelChao(0xc4a574, raioBase + 2, raioBase * 1.15 + 6));
+      g.add(hill, ombro, anelChao(0xc4a574, raioBase + 2, raioBase * 1.15 + 6));
       break;
     }
     case 'trafego': {
       const alt = Math.max(28, p.y || 42);
-      const body = new THREE.Mesh(new THREE.BoxGeometry(10, 1.4, 12), mat(0xe8c36a));
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.78, 12.6, 10), mat(0xe8c36a));
+      body.rotation.x = Math.PI / 2;
       body.position.y = alt;
-      const wing = new THREE.Mesh(new THREE.BoxGeometry(20, 0.25, 3.4), mat(0xf0d48a));
-      wing.position.y = alt;
-      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 2.2), mat(0x1a2744));
-      fin.position.set(0, alt + 1.6, -5);
-      g.add(body, wing, fin, anelChao(0xe8c36a));
+      const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.65, 2.2), mat(0x162230));
+      cockpit.position.set(0, alt + 0.62, 2.8);
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(20.6, 0.24, 3.2), mat(0xf0d48a));
+      wing.position.y = alt + 0.1;
+      const stab = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.18, 1.4), mat(0xe8c36a));
+      stab.position.set(0, alt + 0.25, -5.4);
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.2, 2.2), mat(0x1a2744));
+      fin.position.set(0, alt + 1.6, -5.1);
+      g.add(body, cockpit, wing, stab, fin, anelChao(0xe8c36a));
       g.rotation.y = p.heading;
       g.userData.trafego = { heading: p.heading, speed: 28 };
       break;
@@ -184,12 +204,14 @@ function meshAmeaca(o, pose, leve, mundo) {
         const x = (i - 1.5) * 1.0;
         const y = i % 2 ? 0.65 : -0.45;
         const z = (i % 2) * 0.7;
-        const envelope = new THREE.Mesh(new THREE.SphereGeometry(0.95, 10, 8), new THREE.MeshLambertMaterial({ color: cores[i], emissive: cores[i], emissiveIntensity: 0.65 }));
+        const envelope = new THREE.Mesh(new THREE.SphereGeometry(0.95, 10, 8), new THREE.MeshLambertMaterial({ color: cores[i], emissive: cores[i], emissiveIntensity: 0.68 }));
         envelope.scale.set(0.85, 1.35, 0.85);
         envelope.position.set(x, y, z);
         const chama = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffdb8e }));
         chama.position.set(x, y - 1.45, z);
-        g.add(envelope, chama);
+        const halo = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffb85c, transparent: true, opacity: 0.28, depthWrite: false }));
+        halo.position.set(x, y - 1.35, z);
+        g.add(envelope, chama, halo);
       }
       break;
     }
@@ -199,18 +221,31 @@ function meshAmeaca(o, pose, leve, mundo) {
         new THREE.MeshLambertMaterial({ color: 0x8aa0b8, transparent: true, opacity: 0.48 }),
       );
       wall.position.y = 38;
-      g.add(wall, anelChao(0x8aa0b8));
+      const nucleo = new THREE.Mesh(
+        new THREE.SphereGeometry(32, 10, 8),
+        new THREE.MeshLambertMaterial({ color: 0x5c7288, transparent: true, opacity: 0.36 }),
+      );
+      nucleo.scale.set(1.6, 1.1, 0.55);
+      nucleo.position.y = 42;
+      g.add(wall, nucleo, anelChao(0x8aa0b8));
       break;
     }
     case 'cabo': {
       const h = p.altura;
       for (const side of [-18, 18]) {
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, h, 6), mat(0x2a2e33));
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.52, h, 6), mat(0x2a2e33));
         pole.position.set(side, h / 2, 0);
-        g.add(pole);
+        const travessa = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.22, 0.22), mat(0x3b4148));
+        travessa.position.set(side, h * 0.86, 0);
+        g.add(pole, travessa);
       }
       const wire = new THREE.Mesh(new THREE.BoxGeometry(36, 0.18, 0.18), mat(0x151515));
       wire.position.y = h * 0.86;
+      for (const sx of [-9, 0, 9]) {
+        const esfera = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), mat(0xd85a32));
+        esfera.position.set(sx, h * 0.86, 0);
+        g.add(esfera);
+      }
       g.add(wire, anelChao(0xe07a4a));
       break;
     }
@@ -392,8 +427,13 @@ const LUZES_NAV = [
 
 function luzesNavegacao(aviao) {
   const geo = new THREE.SphereGeometry(0.18, 10, 8);
+  const geoHalo = new THREE.SphereGeometry(0.46, 10, 8);
   return LUZES_NAV.map(({ nome, cor, pos }) => {
-    const luz = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: cor }));
+    const luz = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: cor, toneMapped: false }));
+    const halo = new THREE.Mesh(geoHalo, new THREE.MeshBasicMaterial({
+      color: cor, transparent: true, opacity: 0.28, depthWrite: false, toneMapped: false,
+    }));
+    luz.add(halo);
     luz.name = nome;
     luz.position.set(...pos);
     luz.visible = false;
@@ -421,7 +461,7 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
   scene.add(camera);
 
   // Cor, intensidade e direcção do sol vêm do céu (actualizarCeu), por frame.
-  const sun = new THREE.DirectionalLight(0xfff1d8, 1.35);
+  const sun = new THREE.DirectionalLight(0xfff1d8, 1.38);
   sun.position.set(-90, 70, 30);
   scene.add(sun, sun.target);
   // Cúpula, nevoeiro, luz hemisférica, nuvens e rastos; o nevoeiro fecha
@@ -437,20 +477,20 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     // Guarda o render target: libertar só a textura não liberta o framebuffer.
     ambienteRT = pmrem.fromScene(sala, 0.04);
     scene.environment = ambienteRT.texture;
-    scene.environmentIntensity = cenario === 'porto' ? 0.3 : 0.7;
+    scene.environmentIntensity = cenario === 'porto' ? 0.34 : 0.76;
     sala.dispose?.();
     pmrem.dispose();
     // Sombra própria do avião (asa sobre a fuselagem), com a câmara de sombra a seguir a pose.
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 140 });
+    sun.shadow.mapSize.set(2048, 2048);
+    Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 160 });
     sun.shadow.camera.updateProjectionMatrix();
-    sun.shadow.bias = -0.0004;
-    sun.shadow.normalBias = 0.04;
+    sun.shadow.bias = -0.0003;
+    sun.shadow.normalBias = 0.035;
   }
-  const fill = new THREE.DirectionalLight(0xffffff, 0.35);
+  const fill = new THREE.DirectionalLight(0xeef5ff, 0.38);
   fill.position.set(40, 30, -20);
   scene.add(fill);
 
@@ -477,8 +517,11 @@ export function criarCena(canvas, { leve = false, cenario = 'medevac', pose = nu
     });
   }
   const luzesNav = luzesNavegacao(aviao);
+  const geoSinalHalo = new THREE.SphereGeometry(0.62, 10, 8);
   const luzesSinal = [[0,1.6,-1,'beacon',0xff3020],[8,1.25,.5,'estrobo',0xffffff],[-8,1.25,.5,'estrobo',0xffffff]].map(([x,y,z,tipo,cor]) => {
     const luz = new THREE.Mesh(new THREE.SphereGeometry(0.24,8,6), new THREE.MeshBasicMaterial({color:cor,toneMapped:false}));
+    const halo = new THREE.Mesh(geoSinalHalo, new THREE.MeshBasicMaterial({color:cor,transparent:true,opacity:0.32,depthWrite:false,toneMapped:false}));
+    luz.add(halo);
     luz.position.set(x,y,z);luz.userData.tipo = tipo;aviao.add(luz);return luz;
   });
   scene.add(aviao);

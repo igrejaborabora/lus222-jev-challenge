@@ -52,12 +52,13 @@ export async function criarCockpitShell(host) {
   scene.add(warm);
 
   const materials = {
-    body: new THREE.MeshStandardMaterial({ color: 0x19212b, roughness: 0.68, metalness: 0.5 }),
-    bevel: new THREE.MeshStandardMaterial({ color: 0x465361, roughness: 0.42, metalness: 0.66 }),
-    rim: new THREE.MeshStandardMaterial({ color: 0x080d14, roughness: 0.52, metalness: 0.4 }),
-    face: new THREE.MeshStandardMaterial({ color: 0x303b48, roughness: 0.62, metalness: 0.48 }),
-    screw: new THREE.MeshStandardMaterial({ color: 0x83919d, roughness: 0.38, metalness: 0.82 }),
-    amber: new THREE.MeshBasicMaterial({ color: 0xe9b46e }),
+    body: new THREE.MeshStandardMaterial({ color: 0x161e27, roughness: 0.62, metalness: 0.56 }),
+    bevel: new THREE.MeshStandardMaterial({ color: 0x526170, roughness: 0.36, metalness: 0.72 }),
+    rim: new THREE.MeshStandardMaterial({ color: 0x070c12, roughness: 0.48, metalness: 0.46 }),
+    face: new THREE.MeshStandardMaterial({ color: 0x33404f, roughness: 0.55, metalness: 0.54 }),
+    screw: new THREE.MeshStandardMaterial({ color: 0x8e9ca8, roughness: 0.32, metalness: 0.86 }),
+    amber: new THREE.MeshBasicMaterial({ color: 0xefb972 }),
+    cyan: new THREE.MeshBasicMaterial({ color: 0x7ad7c8 }),
     dark: new THREE.MeshBasicMaterial({ color: 0x05080c }),
   };
   let geometry = new THREE.Group();
@@ -124,6 +125,12 @@ export async function criarCockpitShell(host) {
       add(plate(w + 14, h + 14, 5, 9, materials.bevel, { width: w + 2, height: h + 2 }), x, y, -2);
       add(plate(w + 7, h + 7, 2, 6, materials.rim, { width: w, height: h }), x, y, 3);
       add(box(24, 1.2, 1, materials.amber), x - w / 2 + 17, y - h / 2 - 4, 4.5);
+      add(box(14, 1.2, 1, materials.cyan), x + w / 2 - 12, y + h / 2 + 4, 4.5);
+      for (const sx of [-w / 2 - 4, w / 2 + 4]) {
+        for (const sy of [-h / 2 - 4, h / 2 + 4]) {
+          add(cylinder(1.4, 0.9, materials.screw, 10), x + sx, y + sy, 3.6);
+        }
+      }
     }
     for (const knob of layout.knobs) {
       const r = Math.max(3, Math.min(30, knob.radius - 2));

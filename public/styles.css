@@ -98,8 +98,8 @@ button:disabled{opacity:.42;cursor:not-allowed}
    de decisão vive aqui: a gaveta, o selo e a etiqueta (irmãos) contam com ela. */
 #screen-live{background:var(--bg);min-height:0;--largura-gaveta:min(320px,27vw)}
 #flight-canvas,.flight-tint{position:absolute;inset:0;width:100%;height:100%}
-.flight-tint{pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.4),transparent 34%,transparent 76%,rgba(0,0,0,.34)),linear-gradient(0deg,rgba(0,0,0,.42),transparent 30%)}
-.flight-header{position:absolute;z-index:3;left:0;right:0;top:0;height:calc(62px + var(--safe-t));padding:var(--safe-t) calc(20px + var(--safe-r)) 0 calc(20px + var(--safe-l));display:flex;align-items:center;gap:20px;background:rgba(6,8,10,.9);border-bottom:1px solid rgba(255,255,255,.14)}
+.flight-tint{pointer-events:none;background:radial-gradient(ellipse 84% 78% at 50% 46%,transparent 52%,rgba(4,7,10,.38) 100%),linear-gradient(90deg,rgba(4,7,10,.42),transparent 30%,transparent 76%,rgba(4,7,10,.34)),linear-gradient(0deg,rgba(4,7,10,.46),transparent 28%)}
+.flight-header{position:absolute;z-index:3;left:0;right:0;top:0;height:calc(62px + var(--safe-t));padding:var(--safe-t) calc(20px + var(--safe-r)) 0 calc(20px + var(--safe-l));display:flex;align-items:center;gap:20px;background:rgba(6,9,13,.84);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.15);box-shadow:0 6px 24px rgba(0,0,0,.32)}
 .flight-identity{display:flex;align-items:center;gap:12px;min-width:0}.flight-identity>div{min-width:0}
 .identity-thumb{width:58px;height:34px;object-fit:cover;object-position:60% 45%;filter:grayscale(1) contrast(1.1);border:1px solid rgba(255,255,255,.25)}
 .flight-identity b,.flight-identity small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -110,7 +110,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .flight-sound{margin-left:auto;flex:none;width:40px;height:38px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.28);background:transparent;color:var(--ink);padding:0}.flight-sound svg{width:20px;height:20px}
 .flight-sound+.flight-exit{margin-left:0}.flight-sound[aria-pressed="true"] .som-mudo,.flight-sound[aria-pressed="false"] .som-ondas{display:none}.flight-sound[aria-pressed="false"]{color:#9fa9b2}
 .flight-label{position:absolute;z-index:2;top:calc(74px + var(--safe-t));left:50%;transform:translateX(-50%);font:9px var(--mono);letter-spacing:.12em;color:rgba(255,255,255,.7);pointer-events:none;white-space:nowrap}
-.decision-panel{position:absolute;z-index:3;top:calc(74px + var(--safe-t));bottom:calc(86px + var(--safe-b));left:calc(16px + var(--safe-l));width:var(--largura-gaveta);display:flex;flex-direction:column;min-height:0;overflow:auto;overscroll-behavior:contain;background:rgba(8,11,14,.94);border:1px solid rgba(255,255,255,.18);padding:20px;transition:transform .28s ease,opacity .28s ease}
+.decision-panel{position:absolute;z-index:3;top:calc(74px + var(--safe-t));bottom:calc(86px + var(--safe-b));left:calc(16px + var(--safe-l));width:var(--largura-gaveta);display:flex;flex-direction:column;min-height:0;overflow:auto;overscroll-behavior:contain;background:rgba(8,12,16,.88);backdrop-filter:blur(12px);box-shadow:0 16px 42px rgba(0,0,0,.48),inset 0 1px rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);padding:20px;transition:transform .28s ease,opacity .28s ease}
 /* Fechada: fora do Tab e do leitor de ecrã, mas só depois do deslize (a abertura mostra logo). */
 .decision-panel:not(.is-open){transform:translateX(calc(-100% - 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .28s ease,opacity .28s ease,visibility 0s linear .28s}
 .decision-panel .kicker{display:flex;justify-content:space-between}
@@ -135,13 +135,13 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .typed-legend{margin-top:4px;font:9px var(--mono);color:#9fa9b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .decision-flags span[data-nivel="assinalar"]{border-color:rgba(255,255,255,.62)}.decision-flags span[data-nivel="pic"]{border-color:#f0a431;color:#ffcf85}
 .pic-dist{margin:4px 0 10px}.pic-countdown{margin:0 0 12px;font:600 12px var(--mono);letter-spacing:.12em;color:#ffcf85}
-.telemetry{position:absolute;z-index:3;top:calc(74px + var(--safe-t));right:calc(16px + var(--safe-r));width:140px;background:rgba(8,11,14,.88);border:1px solid rgba(255,255,255,.14);padding:12px 14px}
+.telemetry{position:absolute;z-index:3;top:calc(74px + var(--safe-t));right:calc(16px + var(--safe-r));width:140px;background:rgba(8,12,16,.82);backdrop-filter:blur(10px);box-shadow:0 10px 28px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);padding:12px 14px}
 .telemetry .kicker{font-size:8px;margin-bottom:8px}
 .telemetry>div{border-top:1px solid rgba(255,255,255,.15);padding:7px 0}
 .telemetry>div>span{font:8px var(--mono);letter-spacing:.08em;color:#c6ced5}
 .telemetry strong{display:flex;align-items:baseline;gap:3px;font:600 24px/.95 var(--display);margin-top:3px}
 .telemetry strong b{font-weight:600}.telemetry strong small{font:9px var(--mono);color:#e1e6ea}
-.map-card{position:absolute;z-index:3;right:calc(16px + var(--safe-r));bottom:calc(86px + var(--safe-b));width:250px;background:rgba(8,11,14,.88);border:1px solid rgba(255,255,255,.15);padding:11px 14px}
+.map-card{position:absolute;z-index:3;right:calc(16px + var(--safe-r));bottom:calc(86px + var(--safe-b));width:250px;background:rgba(8,12,16,.84);backdrop-filter:blur(10px);box-shadow:0 10px 28px rgba(0,0,0,.4),inset 0 1px rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);padding:11px 14px}
 .map-label{font:9px var(--mono);letter-spacing:.13em;color:#e1e6ea}
 .map-card svg{display:block;width:100%;height:70px;margin:4px 0}
 .map-card strong,.map-card small{display:block}.map-card strong{font-size:12px}.map-card small{font:9px var(--mono);color:#b6c0c8;margin-top:3px}
@@ -153,12 +153,13 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .pilot-tape-row{display:grid;grid-template-columns:44px 1fr auto;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1);font:9px/1.35 var(--mono)}
 .pilot-tape-row time{color:#aeb8c0}.pilot-tape-row b{font-weight:500;color:#f4f6f8}.pilot-tape-row span{color:#c4cdd4;text-align:right}
 .pilot-active .map-card{display:none}
-.flight-seal{position:absolute;z-index:3;left:50%;bottom:calc(92px + var(--safe-b));transform:translateX(-50%);display:grid;justify-items:center;gap:4px;min-width:min(420px,70vw);max-width:calc(100vw - 32px);padding:12px 22px 14px;background:rgba(6,8,10,.82);border:1px solid rgba(255,255,255,.3);text-align:center;pointer-events:none;backdrop-filter:blur(6px)}
+.flight-seal{position:absolute;z-index:3;left:50%;bottom:calc(92px + var(--safe-b));transform:translateX(-50%);display:grid;justify-items:center;gap:4px;min-width:min(420px,70vw);max-width:calc(100vw - 32px);padding:12px 22px 14px;background:rgba(6,9,13,.8);border:1px solid rgba(255,255,255,.32);box-shadow:0 12px 34px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.1);text-align:center;pointer-events:none;backdrop-filter:blur(10px)}
 /* Simulador: palco 3D à esquerda, painel do JEV à direita (no telemóvel, empilhado). */
 .screen.sim.active{display:grid;grid-template-columns:minmax(0,1fr) 380px}
-.sim-palco{position:relative;min-width:0;min-height:0;overflow:hidden}
+.sim-palco{position:relative;min-width:0;min-height:0;overflow:hidden;background:#06090d}
+.sim-palco::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;box-shadow:inset 0 0 68px rgba(3,6,9,.46)}
 #sim-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
-.sim-topo{position:absolute;z-index:3;left:0;right:0;top:0;height:calc(58px + var(--safe-t));padding:var(--safe-t) 16px 0 calc(16px + var(--safe-l));display:flex;align-items:center;gap:14px;background:linear-gradient(rgba(6,8,10,.92),rgba(6,8,10,.55));border-bottom:1px solid rgba(255,255,255,.12)}
+.sim-topo{position:absolute;z-index:3;left:0;right:0;top:0;height:calc(58px + var(--safe-t));padding:var(--safe-t) 16px 0 calc(16px + var(--safe-l));display:flex;align-items:center;gap:14px;background:linear-gradient(rgba(6,9,13,.9),rgba(6,9,13,.55));backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,.14)}
 .sim-piloto{display:flex;margin-left:auto;border:1px solid rgba(255,255,255,.35)}
 .sim-piloto button{border:0;background:transparent;color:#cfd6dc;padding:9px 14px;font:600 11px var(--mono);letter-spacing:.12em;cursor:pointer}
 .sim-piloto button[aria-pressed="true"]{background:#f4f6f8;color:#090b0e}

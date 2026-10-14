@@ -3,17 +3,22 @@ import { FOTO_PORTO, coordenadasFotoPorto, pesoFotoPorto } from './porto-aerial.
 import { alturaTerreno, perfilComAgua, prepararPistas, urbanoEm, ruido2, distanciaAoRio } from './relevo.js';
 import { mosaicosAManter, mosaicosNecessarios, planearMosaicos, TAMANHO_MOSAICO_M } from './mosaicos.js';
 
-// Paleta dessaturada (identidade preto e branco): o relevo lê-se pela luz.
+// Paleta dessaturada (identidade preto e branco): o relevo lê-se pela luz,
+// declive e transição entre praia, vale, rocha e cume.
 const COR = {
-  praia: new THREE.Color(0xa9a38f),
-  baixo: new THREE.Color(0x56604c),
-  medio: new THREE.Color(0x767a70),
-  alto: new THREE.Color(0xc9cdc6),
+  submerso: new THREE.Color(0x1f363d),
+  espuma: new THREE.Color(0xc5c4b8),
+  praia: new THREE.Color(0xb2ac97),
+  baixo: new THREE.Color(0x4d5945),
+  vale: new THREE.Color(0x5b6550),
+  medio: new THREE.Color(0x73786d),
+  rocha: new THREE.Color(0x646560),
+  alto: new THREE.Color(0xcfd3cc),
   pista: new THREE.Color(0x3c4146),
 };
 // Plano da pista: asfalto esbatido no verde baixo, para não ser um disco preto.
 const COR_PLANO = COR.baixo.clone();
-const COR_MAR = new THREE.Color(0x263d48);
+const COR_MAR = new THREE.Color(0x213a46);
 const COR_CIDADE = new THREE.Color(0x9a9485);
 const FUNDO_VISIVEL_M = -6;
 // Chão abaixo disto (acima do mar) é praia, mas só num perfil com água: no
@@ -32,15 +37,27 @@ function noPlanoDaPista(pistas, x, z) {
   return false;
 }
 
-function corDe(h, x, z, t, alvo) {
+function corDe(h, x, z, ny, t, alvo) {
   if (noPlanoDaPista(t.pistas, x, z)) return alvo.copy(COR_PLANO);
+  if (h < 0) {
+    return alvo.copy(COR.submerso).lerp(COR.espuma, Math.max(0, Math.min(1, (h + 3.5) / 3.5)) * 0.45);
+  }
   // Uma plataforma aeroportuária baixa no interior não é praia. A cor
   // costeira acompanha a costa/vale, sem alterar as alturas da simulação.
   const costa = t.perfil?.agua === 'costa';
   const pertoDaAgua = !costa || x > t.perfil.costaX + t.perfil.recorteM * ruido2(z / 7000, 3.7, t.perfil.seed + 5) - 180 || (t.perfil.rio && distanciaAoRio(t.perfil.rio, x, z) < 240);
-  if (t.praia && h < PRAIA_ATE_M && pertoDaAgua) return alvo.copy(COR.praia);
-  if (h < 160) alvo.copy(COR.baixo).lerp(COR.medio, h / 160);
-  else alvo.copy(COR.medio).lerp(COR.alto, Math.min(1, (h - 160) / 500));
+  if (t.praia && h < PRAIA_ATE_M && pertoDaAgua) {
+    const fPraia = Math.max(0, Math.min(1, (h - 0.8) / (PRAIA_ATE_M - 0.8)));
+    alvo.copy(COR.espuma).lerp(COR.praia, Math.min(1, h / 1.8));
+    return alvo.lerp(COR.baixo, fPraia * fPraia * 0.65);
+  }
+  const micro = ruido2(x / 320, z / 320, (t.perfil?.seed ?? 7) + 19) * 0.06;
+  if (h < 70) alvo.copy(COR.baixo).lerp(COR.vale, Math.max(0, Math.min(1, h / 70 + micro)));
+  else if (h < 180) alvo.copy(COR.vale).lerp(COR.medio, Math.max(0, Math.min(1, (h - 70) / 110 + micro)));
+  else alvo.copy(COR.medio).lerp(COR.alto, Math.min(1, (h - 180) / 480));
+  // Escarpas e encostas íngremes expõem granito/xisto.
+  const declive = Math.max(0, Math.min(1, (0.985 - ny) * 14));
+  if (declive > 0.01) alvo.lerp(COR.rocha, declive * 0.72);
   if (t.perfil?.cidade) alvo.lerp(COR_CIDADE, urbanoEm(t.perfil, x, z, h) * 0.58);
   return alvo;
 }
@@ -91,7 +108,7 @@ function geometriaMosaico(t, i, j) {
       const nz = (alturas[g - n] - alturas[g + n]) / (2 * passo);
       const inv = 1 / Math.hypot(nx, 1, nz);
       nor.setXYZ(k, nx * inv, inv, nz * inv);
-      corDe(y, x0 + ix * passo, z0 + iy * passo, t, c);
+      corDe(y, x0 + ix * passo, z0 + iy * passo, inv, t, c);
       cores[k * 3] = c.r;
       cores[k * 3 + 1] = c.g;
       cores[k * 3 + 2] = c.b;
@@ -147,13 +164,31 @@ function materialDoTerreno(perfil) {
   return { material, urbano, foto };
 }
 
+function materialDoMar() {
+  const mat = new THREE.MeshLambertMaterial({ color: COR_MAR });
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vMarPos;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 marMundo = modelMatrix * vec4(transformed, 1.0);\nvMarPos = marMundo.xz;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vMarPos;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float onda1 = sin(vMarPos.x * 0.018 + vMarPos.y * 0.011) * cos(vMarPos.y * 0.021 - vMarPos.x * 0.007);
+        float onda2 = sin(vMarPos.x * 0.065 - vMarPos.y * 0.048) * 0.5;
+        float crista = smoothstep(0.32, 0.88, onda1 + onda2 * 0.45);
+        diffuseColor.rgb = mix(diffuseColor.rgb * (0.93 + 0.07 * onda1), diffuseColor.rgb * 1.28 + vec3(0.05, 0.08, 0.1), crista * 0.35);
+      `);
+  };
+  return mat;
+}
+
 export function criarTerreno({ perfil, pistas = [], leve = false }) {
   const grupo = new THREE.Group();
   grupo.name = 'terreno';
   const raio = leve ? 2 : 3;
   // Mar raso que acompanha o avião; o relevo submerso fica por baixo dele.
   const lado = TAMANHO_MOSAICO_M * (2 * raio + 3);
-  const mar = new THREE.Mesh(new THREE.PlaneGeometry(lado, lado), new THREE.MeshLambertMaterial({ color: COR_MAR }));
+  const mar = new THREE.Mesh(new THREE.PlaneGeometry(lado, lado), materialDoMar());
   mar.rotation.x = -Math.PI / 2;
   grupo.add(mar);
   const { material, urbano, foto } = materialDoTerreno(perfil);

@@ -232,10 +232,25 @@ function frentesDeAgua(grupo, perfil, pistas) {
     const nx = dz / d * 69, nz = -dx / d * 69;
     tri(agua, [a[0] + nx, 0.035, a[1] + nz], [a[0] - nx, 0.035, a[1] - nz], [b[0] + nx, 0.035, b[1] + nz], [b[0] - nx, 0.035, b[1] - nz]);
   }
-  for (const [nome, vertices, cor] of [['porto-atlantic-shore', surf, 0x8ea8a3], ['porto-river-quays', cais, 0xa89d85], ['porto-douro-water', agua, 0x345f62]]) {
+  for (const [nome, vertices, cor] of [['porto-atlantic-shore', surf, 0xa2b9b2], ['porto-river-quays', cais, 0xb0a48c], ['porto-douro-water', agua, 0x2d5b61]]) {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3)); geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: cor, side: THREE.DoubleSide }));
+    const mat = new THREE.MeshLambertMaterial({ color: cor, side: THREE.DoubleSide });
+    if (nome === 'porto-douro-water') {
+      mat.onBeforeCompile = (shader) => {
+        shader.vertexShader = 'varying vec2 vDouroPos;\n' + shader.vertexShader.replace(
+          '#include <begin_vertex>',
+          '#include <begin_vertex>\nvDouroPos = position.xz;',
+        );
+        shader.fragmentShader = 'varying vec2 vDouroPos;\n' + shader.fragmentShader.replace(
+          '#include <dithering_fragment>',
+          `float r = sin(vDouroPos.x * 0.045 + vDouroPos.y * 0.03) * cos(vDouroPos.x * 0.02 - vDouroPos.y * 0.055);
+           gl_FragColor.rgb += vec3(0.035, 0.06, 0.068) * r;
+           #include <dithering_fragment>`,
+        );
+      };
+    }
+    const mesh = new THREE.Mesh(geo, mat);
     mesh.name = nome; grupo.add(mesh);
   }
 }

@@ -31,22 +31,41 @@ const ELEVACAO_MIN_LUZ = 0.15;
 
 const VERTICE_CUPULA = `
 varying float vY;
+varying vec3 vDir;
 void main() {
-  vY = normalize(position).y;
+  vDir = normalize(position);
+  vY = vDir.y;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 
 // Abaixo do horizonte e junto dele, a cor do nevoeiro: o terreno esbatido
 // encontra a cúpula sem costura. Com pouca visibilidade a faixa sobe.
+// O sol e o halo atmosférico (Mie + Rayleigh) seguem a direcção real do sol.
 const FRAGMENTO_CUPULA = `
 uniform vec3 zenite;
 uniform vec3 horizonte;
 uniform vec3 nevoeiro;
+uniform vec3 solDir;
+uniform vec3 solCor;
+uniform float solForca;
 uniform float denso;
 varying float vY;
+varying vec3 vDir;
 void main() {
+  vec3 dir = normalize(vDir);
   vec3 baixo = mix(nevoeiro, horizonte, smoothstep(-0.02, 0.1 + 0.3 * denso, vY));
-  gl_FragColor = vec4(mix(baixo, zenite, smoothstep(0.0, 0.55, vY)), 1.0);
+  vec3 base = mix(baixo, zenite, smoothstep(0.0, 0.55, vY));
+  vec3 sDir = normalize(solDir);
+  float mu = max(0.0, dot(dir, sDir));
+  float mascaraHorizonte = smoothstep(-0.04, 0.08, vY);
+  float haloLargo = pow(mu, 5.0) * 0.22;
+  float haloFino = pow(mu, 36.0) * 0.42;
+  float disco = smoothstep(0.9991, 0.99985, mu) * 1.1;
+  vec2 hDir = normalize(vec2(dir.x, dir.z) + vec2(1e-5, 0.0));
+  vec2 hSol = normalize(vec2(sDir.x, sDir.z) + vec2(1e-5, 0.0));
+  float ruborHorizonte = exp(-abs(vY) * 14.0) * pow(max(0.0, dot(hDir, hSol)), 2.4) * 0.24;
+  vec3 solar = solCor * (haloLargo + haloFino + disco + ruborHorizonte) * solForca * (1.0 - denso * 0.72) * mascaraHorizonte;
+  gl_FragColor = vec4(base + solar, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`;
@@ -57,6 +76,9 @@ function cupula() {
       zenite: { value: new THREE.Color() },
       horizonte: { value: new THREE.Color() },
       nevoeiro: { value: new THREE.Color() },
+      solDir: { value: new THREE.Vector3(SOL_H.x, 0.5, SOL_H.z).normalize() },
+      solCor: { value: new THREE.Color(0xfff4dc) },
+      solForca: { value: 1.0 },
       denso: { value: 0 },
     },
     vertexShader: VERTICE_CUPULA,
@@ -68,7 +90,7 @@ function cupula() {
     depthTest: false,
     fog: false,
   });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(24000, 24, 12), material);
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(24000, 32, 18), material);
   mesh.name = 'ceu-cupula';
   mesh.renderOrder = -1;
   mesh.frustumCulled = false;
@@ -193,8 +215,14 @@ function aplicarLuz(ceu, { scene, sol, camera, ambiente, pose }, pal) {
   u.zenite.value.setHex(pal.zenite);
   u.horizonte.value.setHex(pal.horizonte);
   u.nevoeiro.value.setHex(pal.nevoeiro);
+  u.solCor.value.setHex(pal.corSol);
+  const elSol = pal.elevacaoSolRad;
+  const chSol = Math.cos(elSol);
+  u.solDir.value.set(SOL_H.x * chSol, Math.sin(elSol), SOL_H.z * chSol).normalize();
+  u.solForca.value = Math.max(0, Math.min(1.2, pal.intensidadeSol * 0.85 * Math.max(0, Math.sin(elSol + 0.18))));
   const visKm = ambiente.visKm ?? 10;
-  u.denso.value = Math.min(1, Math.max(0, (10 - visKm) / 9));
+  const cobertura = Math.min(1, Math.max(0, ambiente.cobertura ?? 0.43));
+  u.denso.value = Math.min(1, Math.max(cobertura > 0.65 ? (cobertura - 0.65) * 1.8 : 0, Math.max(0, (10 - visKm) / 9)));
   ceu.cupula.position.copy(camera.position);
 
   const nev = nevoeiroDe(visKm, ceu.alcanceTerrenoM);
