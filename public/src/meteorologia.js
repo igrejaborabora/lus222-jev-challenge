@@ -41,9 +41,17 @@ export function ventoInstantaneo(ambiente, tempoS = 0, semente = 222) {
   const t = Number.isFinite(tempoS) ? tempoS : 0;
   const fase = (Number.isFinite(semente) ? semente : 222) * 0.61803398875;
   const onda = (velocidade, desvio) => Math.sin(t * velocidade + fase + desvio);
-  return {
-    x: numero(ambiente?.ventoMs?.x, 0, -35, 35) + forca * (3.4 * onda(0.43, 0) + 1.6 * onda(1.19, 1.2)),
-    z: numero(ambiente?.ventoMs?.z, 0, -35, 35) + forca * (2.8 * onda(0.37, 2) + 1.2 * onda(1.37, 0.7)),
-    vertical: forca ? forca * (1.3 * onda(0.61, 4) + 0.6 * onda(1.67, 2.1)) : 0,
-  };
+  let x = numero(ambiente?.ventoMs?.x, 0, -35, 35) + forca * (3.4 * onda(0.43, 0) + 1.6 * onda(1.19, 1.2));
+  let z = numero(ambiente?.ventoMs?.z, 0, -35, 35) + forca * (2.8 * onda(0.37, 2) + 1.2 * onda(1.37, 0.7));
+  let vertical = forca ? forca * (1.3 * onda(0.61, 4) + 0.6 * onda(1.67, 2.1)) : 0;
+  const p = ambiente?.perturbacao;
+  if (p && Number.isFinite(p.inicioS) && Number.isFinite(p.fimS) && t >= p.inicioS && t <= p.fimS) {
+    const duracao = Math.max(0.1, p.fimS - p.inicioS);
+    const u = clamp((t - p.inicioS) / duracao, 0, 1);
+    const envelope = Math.sin(u * Math.PI);
+    x += numero(p.deltaVentoX, 0, -28, 28) * envelope;
+    z += numero(p.deltaVentoZ, 0, -28, 28) * envelope;
+    vertical += numero(p.deltaVerticalMs, 0, -10, 10) * envelope;
+  }
+  return { x, z, vertical };
 }

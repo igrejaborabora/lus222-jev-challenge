@@ -20,6 +20,13 @@ import { iniciarReproducao, reproduzir } from './voo-gravado.js';
 import { pontosFitaRota, setaManobra } from './rota-visual.js';
 import { alturaTerreno, perfilTerreno, pistasDaMissao, prepararPistas } from './relevo.js';
 import { raioEfectivoM } from './ameacas.js';
+import {
+  injetarPerturbacao,
+  passoVariabilidadeAutomatica,
+  perturbacaoActiva,
+  resumoPainelLiveJev,
+  sintetizarDecisaoTaticaJev,
+} from './variabilidade-voo.js';
 
 /**
  * Ecrã do simulador: o motor da missão com o piloto aos comandos (humano ou
@@ -105,7 +112,8 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     m: null, api: null, mundo: null, raf: 0, ultimo: 0, ultimoUI: 0, pausa: false, fim: false,
     teclas: new Set(), toque: new Map(), verticalSeleccionada: 'manter', trilho: [], supervisor: 0, ultimoSupervisor: null,
     ultimoFoco: -Infinity, geracao: 0, mapa: null,
-    decisaoVisivel: null, ordens: '', jev: null, aviso: null, gravacao: null, cursor: null,
+    decisaoVisivel: null, ultimaRespostaJev: null, fitaDecisoes: [], variabilidade: { activo: true, proximoS: 18, contador: 0 },
+    ordens: '', jev: null, aviso: null, gravacao: null, cursor: null,
   };
   const storage = { getItem:key=>localStorage.getItem(key), setItem:(key,value)=>localStorage.setItem(key,value) };
   let instrumentosVisiveis = painelGuardado(storage);
@@ -191,8 +199,140 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   /** Painel e contadores a partir de uma decisão gravada, como se chegasse ao vivo. */
   function mostrarDecisaoGravada(d) {
     pintarDecisaoGravada(d);
+    s.ultimaRespostaJev = { answers: d.r, confidence: d.c, latencia_ms: d.ms, fonte: 'RECORDED JEV' };
+    registarFitaJev(d.r, d.ms, 'RECORDED');
     mostrarDecisaoNoVoo(d.r, d.ms, true);
     contarDecisaoGravada(d);
+  }
+
+  function registarFitaJev(answers, ms, gatilho = null) {
+    if (!s.m?.voo) return;
+    const pert = perturbacaoActiva(s.m);
+    const tag = gatilho ?? (pert ? pert.codigo : s.m.ameacas?.length ? 'TRAFFIC' : 'ROUTE');
+    const escolha = answers?.manobra?.choice
+      ? etiquetaOpcao('manobra', answers.manobra.choice)
+      : answers?.landingDecision?.choice
+        ? etiquetaOpcao('landingDecision', answers.landingDecision.choice)
+        : 'Hold';
+    const item = {
+      tempo: tempo(s.m.voo.tempoS),
+      tag,
+      escolha,
+      ms: Math.round(Number(ms) || 168),
+    };
+    s.fitaDecisoes = [item, ...(s.fitaDecisoes ?? []).slice(0, 5)];
+    const hostFita = $('sim-decisao-fita');
+    if (hostFita) {
+      hostFita.replaceChildren(...s.fitaDecisoes.map((f) => {
+        const row = el('div', 'sim-fita-item');
+        row.append(
+          el('time', '', f.tempo),
+          el('em', '', f.tag),
+          el('b', '', f.escolha),
+          el('span', '', `${f.ms} ms`),
+        );
+        return row;
+      }));
+    }
+  }
+
+  function actualizarPainelLiveHud() {
+    if (!s.m || $('sim-decisao').hidden) return;
+    const fonte = s.m.piloto.tipo === 'jev-gravado'
+      ? 'RECORDED JEV'
+      : gatewayDisponivel() ? 'LIVE JEV' : 'LIVE JEV · REFLEX';
+    const sup = s.m.piloto.supervisor?.ateS > s.m.voo.tempoS;
+    const resumo = resumoPainelLiveJev(s.m, s.ultimaRespostaJev, { fonte, supervisor: sup });
+    const msEl = $('sim-decisao-ms');
+    if (msEl) msEl.textContent = resumo.latenciaMs != null ? `${resumo.latenciaMs} ms · ${resumo.fonte.includes('RECORDED') ? 'REPLAY' : 'LIVE'}` : `${resumo.fonte}`;
+    const evBox = $('sim-decisao-evento');
+    if (evBox) {
+      evBox.dataset.hazard = resumo.evento.tipo;
+      $('sim-decisao-evento-tag').textContent = resumo.evento.codigo;
+      $('sim-decisao-evento-titulo').textContent = resumo.evento.titulo;
+    }
+    const iasEl = $('sim-jev-ias');
+    if (iasEl) {
+      iasEl.textContent = `${resumo.telemetria.iasKt} kt`;
+      $('sim-jev-alt').textContent = `${resumo.telemetria.altFt} ft`;
+      const vsi = resumo.telemetria.vsiFpm;
+      $('sim-jev-vsi').textContent = `${vsi >= 0 ? '+' : ''}${vsi} fpm`;
+      $('sim-jev-wind').textContent = `${resumo.telemetria.ventoKt} kt`;
+    }
+    const choiceTop = $('sim-jev-choice-top');
+    if (choiceTop) {
+      const pct = resumo.decisao.probabilidadeTopo != null ? ` · ${Math.round(resumo.decisao.probabilidadeTopo * 100)}%` : '';
+      choiceTop.textContent = `${resumo.decisao.escolha}${pct}`;
+    }
+    const barsHost = $('sim-jev-bars');
+    if (barsHost && resumo.decisao.opcoes.length) {
+      barsHost.replaceChildren(...resumo.decisao.opcoes.map((o) => {
+        const row = el('div', o.escolhida ? 'sim-bar-item is-chosen' : 'sim-bar-item');
+        const track = el('div', 'sim-bar-track');
+        const fill = el('span', 'sim-bar-fill');
+        fill.style.width = `${Math.max(4, o.pct)}%`;
+        track.append(fill);
+        row.append(el('span', '', o.rotulo), track, el('span', '', decimal(o.probabilidade)));
+        return row;
+      }));
+    }
+    const scoreEl = $('sim-jev-score');
+    if (scoreEl) scoreEl.textContent = `${resumo.decisao.riscoScore} / 100 · ${resumo.decisao.riscoNivel}`;
+    const boolEl = $('sim-jev-bool');
+    if (boolEl) boolEl.textContent = `${resumo.decisao.estabilizado ? 'true' : 'false'} · conf ${decimal(resumo.decisao.confiancaBoolean)}`;
+    const pert = perturbacaoActiva(s.m);
+    for (const btn of document.querySelectorAll('[data-sim-hazard]')) {
+      btn.classList.toggle('is-active', pert?.tipo === btn.dataset.simHazard);
+    }
+  }
+
+  function aplicarReflexoTaticoJev(gatilho = null) {
+    if (!s.m || s.m.resultado) return;
+    const sintese = sintetizarDecisaoTaticaJev(s.m, { ordens: s.ordens, fonte: gatewayDisponivel() ? 'jev' : 'jev-reflex' });
+    s.ultimaRespostaJev = sintese;
+    $('sim-estado').textContent = s.m.aiLanding ? JSON.stringify(estadoAterragem(s.m), null, 2) : textoEstadoUI(sintese.estado);
+    const host = $('sim-julgamentos');
+    if (!host.querySelector('.typed-row')) { host.replaceChildren(); host.classList.remove('sim-vazio'); }
+    actualizarPainel($('sim-meta'), host, sintese);
+    mostrarDecisaoNoVoo(sintese.answers, sintese.latencia_ms, false);
+    registarFitaJev(sintese.answers, sintese.latencia_ms, gatilho);
+    if (s.m.piloto.tipo !== 'humano' && !s.m.aiLanding) {
+      const eixos = actuacaoDeManobra(sintese.answers.manobra.choice);
+      s.m = { ...s.m, piloto: darOrdem(s.m.piloto, { ...eixos, potencia: sintese.answers.potencia.choice, fonte: 'jev' }, s.m.voo.tempoS, RETENCAO_JEV_S) };
+    }
+    actualizarPainelLiveHud();
+  }
+
+  function injetarFenomenoVoo(tipo, origem = 'manual') {
+    if (!s.m || s.fim || s.m.resultado) return;
+    if (s.m.piloto.tipo === 'jev-gravado') {
+      s.gravacao = null;
+      s.gravado = null;
+      s.m = { ...s.m, piloto: novoPiloto('jev') };
+      s.jev = novoJev(false);
+      marcarPiloto('jev');
+    }
+    s.m = injetarPerturbacao(s.m, tipo, { origem });
+    const pert = perturbacaoActiva(s.m);
+    if (pert) {
+      avisar(`${pert.rotulo} — JEV evaluating tactical response.`);
+      if (s.mundo && tipo === 'bird_flock' && pert.ameacaId) {
+        const novas = s.api.sincronizarAmeacas(s.mundo, s.m.ameacas, { atrasoS: 0, dt: 0 });
+        const g = s.mundo.malhasAmeacas?.get(pert.ameacaId) ?? (novas.length ? s.mundo.malhasAmeacas?.get(novas.at(-1)) : null);
+        if (g) { s.api.focarEvento(s.mundo, { x: g.position.x, y: g.position.y, z: g.position.z }); s.ultimoFoco = s.m.voo.tempoS; }
+      }
+    }
+    // Se o utilizador injectar um fenómeno e o painel JEV estiver escondido, mostra-o e dispara avaliação imediata.
+    $('sim-decisao').hidden = false;
+    aplicarReflexoTaticoJev(pert?.codigo ?? null);
+    if (s.jev && gatewayDisponivel() && pedidosAoVivo < LIMITE_PEDIDOS_JEV) {
+      s.jev.pipeline.proximoEm = 0;
+      despacharJev(performance.now());
+    }
+    actualizarLampadas();
+    actualizarHud();
+    actualizarContadores();
+    actualizarMapa();
   }
 
   /**
@@ -233,7 +373,6 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
 
   function entregarAoJev(objectivo = $('sim-ai-objective').value) {
     if (!s.m || s.fim || s.m.resultado) return;
-    if (!gatewayDisponivel() || pedidosAoVivo >= LIMITE_PEDIDOS_JEV) { avisar('Live JEV is unavailable or this visit has reached its limit. You keep the controls. A recorded route is available from the landing page.'); return; }
     if (s.m.voo.emSolo || (s.m.treino && objectivo !== 'aterrar')) { avisar('Start free flight to use AI route control. Landing guidance can take over an airborne approach.'); return; }
     cancelarPedidosJev();
     if (s.m.piloto.tipo === 'jev-gravado') { avisar('This is a recording. Start a live flight from the landing page.'); return; }
@@ -244,6 +383,11 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     s.jev = novoJev(Boolean(s.m.aiLanding));
     s.teclas.clear(); s.toque.clear();
     marcarPiloto('jev');
+    aplicarReflexoTaticoJev('ENGAGE');
+    if (!gatewayDisponivel() || pedidosAoVivo >= LIMITE_PEDIDOS_JEV) {
+      avisar('JEV active in tactical reflex mode · inject Wind Gust, Air Pocket or Bird Flock to test decisions.');
+      return;
+    }
     avisar(objectivo==='aterrar'?'JEV objective: land at Porto. Guidance will join the approach.':'JEV objective: fly the route.');
   }
 
@@ -290,6 +434,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     jev.decisoes += 1;
     jev.custoUsd += (Number(d.usage?.inputTokens) || 0) * CUSTO_TOKEN_USD;
     s.aviso = null;
+    s.ultimaRespostaJev = d;
     const host = $('sim-julgamentos');
     if (!host.querySelector('.typed-row')) { host.replaceChildren(); host.classList.remove('sim-vazio'); }
     actualizarPainel($('sim-meta'), host, d);
@@ -299,11 +444,15 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     if(s.m.aiLanding) {
       const next=decidirAterragemAI(s.m,d.answers.landingDecision.choice,{phase:ticket.entrada.estado.phase,tempoS:ticket.entrada.tempoS});
       if(next!==s.m){s.m=next;s.decisaoVisivel={tempoS:s.m.voo.tempoS,gravada:false};lab.observarDecisao(s.m,etiquetaOpcao('landingDecision',d.answers.landingDecision.choice),false);}
+      registarFitaJev(d.answers, d.latencia_ms, 'LANDING');
+      actualizarPainelLiveHud();
       return;
     }
     mostrarDecisaoNoVoo(d.answers, d.latencia_ms);
+    registarFitaJev(d.answers, d.latencia_ms);
     const eixos = actuacaoDeManobra(d.answers.manobra.choice);
     s.m = { ...s.m, piloto: darOrdem(s.m.piloto, { ...eixos, potencia: d.answers.potencia.choice, fonte: 'jev' }, s.m.voo.tempoS, RETENCAO_JEV_S) };
+    actualizarPainelLiveHud();
   }
 
   function falharJev(ticket, erro) {
@@ -441,6 +590,7 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     const d = s.m.destinos.find((x) => x.id === s.m.destinoId);
     const km = Math.hypot(d.xM - v.xM, d.zM - v.zM) / 1000;
     $('sim-objetivo').textContent = s.m.aiLanding ? `AI objective: land at Porto · ${km.toFixed(1)} km to airport` : `Next: ${textoUI(NOMES_CIRCUITO[d.id] ?? d.id)} · ${km.toFixed(1)} km · ${s.m.pontosPassados.length} waypoints passed`;
+    actualizarPainelLiveHud();
   }
 
   function actualizarContadores() {
@@ -574,8 +724,17 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
       if (s.m.piloto.tipo !== 'humano') comandos.gamepad();
       if (s.m.piloto.tipo === 'humano') aplicarHumano();
       else if (s.jev) {
-        if (!(s.m.aiLanding && s.m.voo.emSolo) && pedidosAoVivo >= LIMITE_PEDIDOS_JEV) interromperJev('This visit has reached its live AI request allowance.');
+        if (!gatewayDisponivel() && deveDespacharPasso(s.jev.pipeline, t)) {
+          s.jev.pipeline.proximoEm = t + 1200;
+          s.jev.decisoes += 1;
+          aplicarReflexoTaticoJev();
+        } else if (!(s.m.aiLanding && s.m.voo.emSolo) && pedidosAoVivo >= LIMITE_PEDIDOS_JEV) interromperJev('This visit has reached its live AI request allowance.');
         else if (!(s.m.aiLanding && s.m.voo.emSolo) && deveDespacharPasso(s.jev.pipeline, t)) despacharJev(t);
+      }
+      const autoVar = passoVariabilidadeAutomatica(s.m, s.variabilidade);
+      if (autoVar.disparou) {
+        s.m = autoVar.m;
+        if (s.m.piloto.tipo !== 'humano') aplicarReflexoTaticoJev(autoVar.disparou.codigo);
       }
       s.m = avancarMissao(s.m, dt);
       contarSupervisor();
@@ -649,6 +808,10 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
     s.cursor = { i: 0, lido: false };
     if (gravacao) s.gravado = { decisoes: 0, custoUsd: 0, latencias: [] };
     s.decisaoVisivel = null;
+    s.ultimaRespostaJev = null;
+    s.fitaDecisoes = [];
+    s.variabilidade = { activo: $('sim-variabilidade-auto')?.checked !== false, proximoS: 18, contador: 0 };
+    if ($('sim-decisao-fita')) $('sim-decisao-fita').replaceChildren();
     s.fim = false; s.trilho = []; s.supervisor = 0; s.ultimoSupervisor = null; s.ultimoFoco = -Infinity;
     $('sim-julgamentos').replaceChildren(document.createTextNode('You have the controls. Select AI control to let JEV fly and see its decisions.'));
     $('sim-julgamentos').classList.add('sim-vazio');
@@ -805,6 +968,22 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
   $('sim-ai-go-around').addEventListener('click',()=>{if(s.m?.aiLanding&&!s.m.voo.emSolo){s.m=pedirBorregoAI(s.m);}});
   $('sim-ai-takeover').addEventListener('click',()=>{if(s.m?.piloto.tipo!=='humano')pararJev('You have taken the controls.');});
   $('sim-piloto-jev').addEventListener('click', () => { if (s.m?.piloto.tipo === 'humano') entregarAoJev(); });
+  $('sim-decisao-collapse')?.addEventListener('click', () => {
+    const box = $('sim-decisao');
+    if (!box) return;
+    const col = box.classList.toggle('sim-decisao--collapsed');
+    $('sim-decisao-collapse').setAttribute('aria-expanded', String(!col));
+    $('sim-decisao-collapse').textContent = col ? 'Expand' : 'Hide';
+  });
+  for (const btn of document.querySelectorAll('[data-sim-hazard]')) {
+    btn.addEventListener('click', () => {
+      const codigo = btn.getAttribute('data-sim-hazard');
+      if (codigo) injetarFenomenoVoo(codigo);
+    });
+  }
+  $('sim-variabilidade-auto')?.addEventListener('change', (e) => {
+    s.variabilidade.activo = Boolean(e.target?.checked);
+  });
   const darOrdens = (texto) => {
     s.ordens = limparOrdens(texto);
     $('sim-ordens').value = s.ordens;
