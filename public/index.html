@@ -279,6 +279,14 @@
       <p class="kicker light">CURRENT SITUATION <span id="event-number">01</span></p><h2 id="event-title">Preparing briefing</h2><p class="event-desc" id="event-desc">JEV will receive the structured mission state.</p>
       <div class="decision-flow"><div class="flow-step"><span class="flow-index">01</span><div><small>INPUT</small><strong id="flow-input">—</strong></div></div><div class="flow-step"><span class="flow-index">02</span><div><small>DECISION</small><strong id="flow-choice">Waiting for JEV</strong><span id="flow-detail">—</span></div></div><div class="flow-step"><span class="flow-index">03</span><div><small>MISSION OUTCOME</small><strong id="flow-effect">—</strong></div></div></div>
       <div class="decision-flags"><span id="decision-origin">—</span><span id="decision-pic">—</span></div>
+      <section class="jev-live-inject jev-live-inject-drawer" aria-label="Flight variability and perturbation injection">
+        <div class="jev-live-inject-head"><span>FLIGHT VARIABILITY · INJECT PHENOMENON</span><b id="live-hazard-badge">NOMINAL</b></div>
+        <div class="jev-live-inject-btns">
+          <button type="button" class="jev-hazard-btn" data-live-hazard="wind_gust">≋ Wind Gust</button>
+          <button type="button" class="jev-hazard-btn" data-live-hazard="air_pocket">⇣ Air Pocket</button>
+          <button type="button" class="jev-hazard-btn" data-live-hazard="bird_flock">🐦 Bird Flock</button>
+        </div>
+      </section>
       <section class="typed-panel" aria-label="Structured JEV answers"><p class="typed-meta" id="typed-meta">—</p><div id="typed-answers"></div></section>
     </aside>
     <aside class="telemetry" aria-label="Telemetry"><p class="kicker light">FLIGHT / SIMULATION TIME</p><div><span>AIRSPEED</span><strong><b id="tel-speed">—</b><small>kt</small></strong></div><div><span>ALTITUDE</span><strong><b id="tel-alt">—</b><small>ft</small></strong></div><div><span>FUEL</span><strong><b id="tel-fuel">—</b><small>kg</small></strong></div><div><span>ETA</span><strong><b id="tel-eta">—</b><small>min</small></strong></div><div><span>TIME</span><strong><b id="tel-time">—</b><small>min</small></strong></div></aside>
@@ -362,7 +370,61 @@
       <p class="sim-objetivo" id="sim-objetivo">—</p>
       <aside class="flight-lab-note" id="lab-tutorial" hidden aria-label="First flight"><strong id="lab-tutorial-title"></strong><p id="lab-tutorial-text"></p><button type="button" id="lab-tutorial-skip">Skip</button></aside>
       <aside class="flight-lab-note" id="lab-approach" hidden aria-label="Visual approach advice"><button type="button" id="lab-guide-hide" aria-label="Hide visual approach guide">×</button><strong id="lab-approach-title"></strong><p id="lab-approach-reading"></p><p id="lab-approach-text"></p><small>Read-only reference · you have the controls</small></aside>
-      <aside class="sim-decisao" id="sim-decisao" aria-label="Current AI decision" hidden><span id="sim-decisao-fonte">AI PILOT · JEV</span><small id="lab-ai-situation"></small><strong id="sim-decisao-manobra">Waiting for a decision…</strong><p id="sim-decisao-detalhe">JEV selects a manoeuvre and power setting.</p><small id="sim-decisao-estado">Automatic protection may intervene.</small><small id="lab-observed-effect"></small><div id="sim-ai-actions" hidden><button type="button" class="control-button" id="sim-ai-go-around">Go around</button><button type="button" class="control-button" id="sim-ai-takeover">I take control</button></div></aside>
+      <aside class="sim-decisao" id="sim-decisao" aria-label="Current AI decision" data-collapsed="false" hidden>
+        <header class="sim-decisao-head">
+          <div class="sim-decisao-head-meta">
+            <span class="sim-decisao-dot" aria-hidden="true"></span>
+            <span id="sim-decisao-fonte">AI PILOT · JEV</span>
+          </div>
+          <div class="sim-decisao-head-actions">
+            <b class="sim-decisao-ms" id="sim-decisao-ms">— ms</b>
+            <button type="button" class="sim-decisao-collapse" id="sim-decisao-collapse" aria-expanded="true" title="Collapse or expand Live JEV decision HUD">−</button>
+          </div>
+        </header>
+        <div class="sim-decisao-evento" id="sim-decisao-evento" data-hazard="nominal">
+          <span class="sim-decisao-evento-tag" id="sim-decisao-evento-tag">CORRIDOR</span>
+          <strong id="sim-decisao-evento-titulo">NOMINAL CORRIDOR · CLEAR AIR</strong>
+        </div>
+        <small id="lab-ai-situation"></small>
+        <strong id="sim-decisao-manobra">Waiting for a decision…</strong>
+        <p id="sim-decisao-detalhe">JEV selects a manoeuvre and power setting.</p>
+        <div class="sim-decisao-corpo" id="sim-decisao-corpo">
+          <div class="sim-decisao-telemetria" id="sim-decisao-telemetria" aria-label="State sent to JEV">
+            <span>IAS <b id="sim-jev-ias">—</b></span>
+            <span>ALT <b id="sim-jev-alt">—</b></span>
+            <span>VSI <b id="sim-jev-vsi">—</b></span>
+            <span>WIND <b id="sim-jev-wind">—</b></span>
+          </div>
+          <div class="sim-decisao-tipada" id="sim-decisao-tipada" aria-label="Calibrated JEV probabilities">
+            <div class="sim-tipada-row">
+              <div class="sim-tipada-top"><span>Choice · Manoeuvre</span><b id="sim-jev-choice-top">—</b></div>
+              <div class="sim-tipada-bars" id="sim-jev-bars"></div>
+            </div>
+            <div class="sim-tipada-metrics">
+              <div><span>Score · Risk</span><b id="sim-jev-score">18 / 100 · LOW</b></div>
+              <div><span>Boolean · Envelope</span><b id="sim-jev-bool">true · 0.96</b></div>
+            </div>
+          </div>
+          <div class="sim-decisao-inject" aria-label="Inject flight perturbation">
+            <div class="sim-decisao-inject-head">
+              <span>INJECT PERTURBATION</span>
+              <label class="sim-inject-auto"><input type="checkbox" id="sim-variabilidade-auto" checked> Auto</label>
+            </div>
+            <div class="sim-decisao-inject-btns">
+              <button type="button" class="jev-hazard-btn" data-sim-hazard="wind_gust" title="Inject sudden crosswind gust">≋ Wind Gust</button>
+              <button type="button" class="jev-hazard-btn" data-sim-hazard="air_pocket" title="Inject sudden downdraft / air pocket">⇣ Air Pocket</button>
+              <button type="button" class="jev-hazard-btn" data-sim-hazard="bird_flock" title="Spawn 3D bird flock ahead in corridor">🐦 Bird Flock</button>
+            </div>
+          </div>
+          <div class="sim-decisao-fita-wrap">
+            <span class="sim-decisao-fita-label">LIVE JEV DECISION TAPE</span>
+            <div class="sim-decisao-fita" id="sim-decisao-fita" aria-live="polite"></div>
+          </div>
+        </div>
+        <small id="sim-decisao-estado">Automatic protection may intervene.</small>
+        <small id="lab-observed-effect"></small>
+        <div id="sim-ai-actions" hidden><button type="button" class="control-button" id="sim-ai-go-around">Go around</button><button type="button" class="control-button" id="sim-ai-takeover">I take control</button></div>
+      </aside>
       <details class="sim-ajuda"><summary>Flight controls</summary><div><b>You have full control in manual mode</b><p>↑ / W pushes the nose down · ↓ / S pulls the nose up<br>Hold a key to increase the angle. Release to keep that attitude. Click Climb / Descend for a 5° adjustment. Level explicitly stops the climb or descent. Dive points the nose down 65°.</p><p>← / A and → / D turn · E / Q change power<br>L levels · P pauses · C changes camera · I shows or hides the panel · hold B to brake. Z / X control rudder. Use the Nose target slider for fine landing adjustments. Reduce speed on final, ease the descent before touchdown and brake on the runway.</p><p>Protection is OFF by default: terrain impacts end the flight. You can enable it above. Assisted mode holds altitude when controls are released. The AI pilot always uses protection.</p><p>The green marker shows the flight path; the yellow symbol shows the nose. Watch ALTITUDE, VERTICAL and HEIGHT AGL.</p></div></details>
       <div class="sim-comandos">
         <div class="sim-manual"><p id="sim-comando-manual" class="sim-comando-manual">Use any flight control to take over.</p>
@@ -391,7 +453,7 @@
     </div>
     <aside class="sim-painel" id="sim-painel" aria-label="JEV and aircraft systems">
       <button type="button" class="control-button sim-voltar-voo" id="sim-voltar-voo">Back to flight ↑</button>
-      <section class="sim-bloco sim-config sim-ai-objective"><h2 class="sim-h">AI PILOT · JEV</h2><label>Flight objective<select id="sim-ai-objective"><option value="aterrar">Land at Porto</option><option value="rota">Fly the route</option></select></label><p class="sim-nota">JEV selects the intent. Continuous guidance aligns, descends and brakes. Weather or an unstable final can trigger a go-around. You can take over at any time.</p><button type="button" class="control-button" id="sim-ai-start">Engage live AI</button></section>
+      <section class="sim-bloco sim-config sim-ai-objective"><h2 class="sim-h">AI PILOT · JEV</h2><label>Flight objective<select id="sim-ai-objective"><option value="aterrar">Land at Porto</option><option value="rota">Fly the route</option></select></label><p class="sim-nota">JEV selects the intent. Continuous guidance aligns, descends and brakes. Weather or an unstable final can trigger a go-around. You can take over at any time.</p><button type="button" class="control-button" id="sim-ai-start">Engage live AI</button><div class="sim-painel-hazards"><span class="sim-painel-hazards-title">INJECT FLIGHT VARIABILITY</span><div class="sim-config-grid"><button type="button" class="control-button" data-sim-hazard="wind_gust">≋ Wind Gust</button><button type="button" class="control-button" data-sim-hazard="air_pocket">⇣ Air Pocket</button><button type="button" class="control-button" data-sim-hazard="bird_flock">🐦 Bird Flock</button></div></div></section>
       <section class="sim-bloco sim-config" aria-labelledby="sim-config-titulo">
         <h2 class="sim-h" id="sim-config-titulo">CONTROLS <span>SIMULATION PROFILE</span></h2>
         <label>Power <output id="sim-potencia-out">55%</output><input id="sim-potencia-range" type="range" min="0" max="100" step="1" value="55"></label>

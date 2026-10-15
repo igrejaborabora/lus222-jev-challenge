@@ -14,6 +14,7 @@ import { decimal, pintarPainel, pintarPergunta } from './painel-jev.js';
 import { encaminhar, ROTULO_NIVEL } from './confianca.js';
 import { criarSomMotor } from './som-motor.js';
 import { criarSimuladorUI } from './simulador-ui.js';
+import { CATALOGO_PERTURBACOES, injetarPerturbacao, sintetizarDecisaoTaticaJev } from './variabilidade-voo.js';
 import {
   actualizarSeparacoes,
   actualizarOrdemPiloto,
@@ -1165,6 +1166,39 @@ function ligarUI() {
     estado.mapaOrigem?.focus();
   });
   $('btn-drawer').addEventListener('click', () => abrirGaveta(!$('decision-panel').classList.contains('is-open')));
+  for (const btn of document.querySelectorAll('[data-live-hazard]')) {
+    btn.addEventListener('click', () => {
+      const codigo = btn.getAttribute('data-live-hazard');
+      if (!codigo || estado.ecra !== 'live' || !estado.missao) return;
+      const spec = CATALOGO_PERTURBACOES[codigo];
+      if (!spec) return;
+      if (!emModoPiloto()) {
+        estado.missao = injetarPerturbacao(estado.missao, codigo);
+        const jev = sintetizarDecisaoTaticaJev(estado.missao, { latenciaMs: 19 });
+        const entrada = estadoParaAvaliacao(estado.missao);
+        const { missao } = aplicarDecisao(estado.missao, {
+          acaoMissao: { choice: 'manter_plano' },
+          destinoPreferido: { choice: estado.missao.destinoId },
+          manobraVertical: { choice: jev.answers.manobra.choice.includes('subir') ? 'subir_60m' : 'manter' },
+          manobraLateral: { choice: jev.answers.manobra.choice.includes('direita') ? 'direita_120m' : jev.answers.manobra.choice.includes('esquerda') ? 'esquerda_120m' : 'manter' },
+          urgencia: jev.answers.urgencia,
+        }, 'jev');
+        estado.missao = missao;
+        if (estado.mundo && estado.missao.ameacas?.length) {
+          estado.mundoApi.mostrarAmeacas(estado.mundo, estado.missao.ameacas, parametrosVoo(), { escalaDistancia: 1 });
+        }
+        $('event-title').textContent = `${spec.rotulo} injected.`;
+        $('event-desc').textContent = `Active tactical perturbation (${spec.curto}) in flight corridor.`;
+        $('flow-input').textContent = entradaBreve(entrada);
+        $('flow-choice').textContent = `${jev.answers.manobra.choice} · ${jev.answers.potencia.choice}`;
+        $('flow-detail').textContent = `Urgency ${jev.answers.urgencia.score}/3 · Out-of-envelope P(true) ${numero(jev.answers.foraDoEnvelope.probability, 2)}`;
+        $('flow-effect').textContent = `Immediate JEV tactical reflex applied (${jev.latencia_ms} ms).`;
+        $('decision-origin').textContent = 'LIVE JEV · TACTICAL REFLEX';
+        mostrarRespostas(jev);
+        selo('JEV REFLEX', `${spec.curto} · ${jev.answers.manobra.choice}`, jev.latencia_ms, false, jev.confidence.manobra);
+      }
+    });
+  }
   $('btn-lab-open').addEventListener('click', () => { $('lab-overlay').hidden = false; $('lab-event').focus(); });
   $('btn-lab-close').addEventListener('click', () => { $('lab-overlay').hidden = true; $('btn-lab-open').focus(); });
   $('btn-pic-cancel').addEventListener('click', () => { if (estado.escalada) { fecharEscalada(null, 'jev'); return; } $('pic-overlay').hidden = true; estado.pausa = false; $('btn-pause').textContent = 'Pause'; });
