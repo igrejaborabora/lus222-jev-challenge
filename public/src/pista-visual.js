@@ -56,41 +56,49 @@ export function criarPistasVisuais(geografia, pistas, { leve = false } = {}) {
     const grupo = new THREE.Group(); grupo.name = 'runway-reference';
     grupo.position.set(pista.x, pista.y, pista.z); grupo.rotation.y = pista.heading;
     const half = pista.comprimentoM / 2, width = pista.larguraM;
-    caixas(grupo, 'runway-asphalt', [[0, 0.045, 0, width, 0.08, pista.comprimentoM], [-155, 0.045, 0, 22, 0.08, pista.comprimentoM - 260], [-290, 0.045, 300, 310, 0.08, 740], ...[-half + 180, 0, half - 180].map(z => [-82, 0.045, z, 160, 0.08, 22])], 0x353d41);
+    caixas(grupo, 'runway-shoulders', [[0, 0.025, 0, width + 14, 0.05, pista.comprimentoM + 90]], 0x454d50);
+    caixas(grupo, 'runway-asphalt', [[0, 0.045, 0, width, 0.08, pista.comprimentoM], [-155, 0.045, 0, 22, 0.08, pista.comprimentoM - 260], [-290, 0.045, 300, 310, 0.08, 740], ...[-half + 180, -half + 680, 0, half - 680, half - 180].map(z => [-82, 0.045, z, 160, 0.08, 22])], 0x31383c);
     const tinta = [[-width / 2 + 1, 0.1, 0, 0.5, 0.04, pista.comprimentoM], [width / 2 - 1, 0.1, 0, 0.5, 0.04, pista.comprimentoM]];
     for (let z = -half + 230; z < half - 230; z += 90) tinta.push([0, 0.1, z, 1.5, 0.04, 30]);
     for (const direction of [1, -1]) {
       const soleira = -direction * half;
+      tinta.push([0, 0.1, soleira + direction * 6, width - 2, 0.04, 3.2]);
       for (const side of [-1, 1]) {
         for (let i = 0; i < 4; i++) tinta.push([side * (5 + i * 4.5), 0.1, soleira + direction * 35, 2.7, 0.04, 30]);
         tinta.push([side * 12, 0.1, soleira + direction * 300, 6, 0.04, 45]);
-        for (const dist of [450, 600, 750]) for (let i = 0; i < (dist < 600 ? 3 : dist < 750 ? 2 : 1); i++) tinta.push([side * (10 + i * 4), 0.1, soleira + direction * dist, 1.8, 0.04, 22]);
+        for (const dist of [150, 450, 600, 750]) for (let i = 0; i < (dist < 600 ? 3 : dist < 750 ? 2 : 1); i++) tinta.push([side * (10 + i * 4), 0.1, soleira + direction * dist, 1.8, 0.04, 22]);
       }
       // Designação do rumo SIMULADO; não é uma carta do aeroporto real.
       const degrees = ((pista.heading + (direction < 0 ? Math.PI : 0)) * 180 / Math.PI + 360) % 360;
       const designacao = Math.round(degrees / 10) % 36 || 36;
       numero(grupo, String(designacao).padStart(2, '0'), soleira + direction * 110, direction);
     }
-    caixas(grupo, 'runway-markings', tinta, 0xe4e5d7);
+    caixas(grupo, 'runway-markings', tinta, 0xe8e9dc);
     const amarelo = [[-155, 0.11, 0, 0.4, 0.04, pista.comprimentoM - 300]];
     for (let z = -10; z <= 610; z += 110) amarelo.push([-300, 0.11, z, 140, 0.04, 0.6], [-235, 0.11, z - 20, 0.6, 0.04, 40]);
-    caixas(grupo, 'taxiway-markings', amarelo, 0xc6b164);
-    // Terminal, mangas e torre são volumes ilustrativos; nunca obstáculos físicos.
-    caixas(grupo, 'airport-terminal', [[-480, 10, 300, 80, 20, 560], [-520, 6, 300, 110, 12, 250], [-440, 36, -180, 12, 72, 12], ...[30, 140, 250, 360, 470, 580].map(z => [-395, 8, z, 90, 6, 12])], 0xcbd0cb);
+    for (const z of [-half + 180, -half + 680, 0, half - 680, half - 180]) amarelo.push([-38, 0.11, z, 2.2, 0.04, 20]);
+    caixas(grupo, 'taxiway-markings', amarelo, 0xd4be6a);
+    // Terminal, mangas, hangares e torre são volumes ilustrativos; nunca obstáculos físicos.
+    caixas(grupo, 'airport-terminal', [[-480, 10, 300, 80, 20, 560], [-520, 6, 300, 110, 12, 250], [-485, 21.5, 300, 88, 2.5, 572], [-440, 36, -180, 12, 72, 12], [-440, 81, -180, 18, 3, 18], [-480, 9, -460, 74, 18, 130], [-480, 9, -640, 74, 18, 130], ...[30, 140, 250, 360, 470, 580].map(z => [-395, 8, z, 90, 6, 12])], 0xcbd0cb);
     caixas(grupo, 'airport-glass', [[-437, 11, 300, 3, 12, 540], [-440, 73, -180, 24, 12, 24]], 0x42626a);
     const lights = [];
-    for (let z = -half; z <= half; z += leve ? 120 : 60) for (const side of [-1, 1]) lights.push([side * (width / 2 + 1), 0.65, z, 1, 0.9, 0.65]);
+    for (let z = -half; z <= half; z += leve ? 120 : 60) {
+      for (const side of [-1, 1]) lights.push([side * (width / 2 + 1), 0.65, z, 1, 0.92, 0.7]);
+      lights.push([0, 0.25, z, 0.85, 0.9, 0.92]);
+      lights.push([-155, 0.45, z, 0.28, 0.56, 0.98]);
+    }
+    lights.push([-440, 85, -180, 0.4, 0.95, 0.65]);
     const ends = [1, -1].map(direction => {
       const soleira = -direction * half;
       const approach = [];
-      for (let x = -22; x <= 22; x += 5.5) approach.push([x, 0.7, soleira, 0.3, 1, 0.45]);
-      for (let d = 60; d <= 720; d += 60) approach.push([0, 0.7, soleira - direction * d, 1, 0.93, 0.83]);
-      for (const d of [300, 600]) for (let x = -22; x <= 22; x += 5.5) approach.push([x, 0.7, soleira - direction * d, 1, 0.93, 0.83]);
-      const luzes = pontos(grupo, `runway-approach-lights-${direction}`, approach, leve ? 2 : 3);
-      const papi = pontos(grupo, `runway-papi-${direction}`, [0, 1, 2, 3].map(i => [direction * (width / 2 + 18 + i * 7), 1, soleira + direction * 300, 1, 1, 1]), 5);
+      for (let x = -22; x <= 22; x += 4.4) approach.push([x, 0.7, soleira, 0.25, 1, 0.45]);
+      for (let d = 60; d <= 720; d += 60) approach.push([0, 0.7, soleira - direction * d, 1, 0.95, 0.84]);
+      for (const d of [150, 300, 450, 600]) for (let x = -22; x <= 22; x += 5.5) approach.push([x, 0.7, soleira - direction * d, 1, 0.95, 0.84]);
+      const luzes = pontos(grupo, `runway-approach-lights-${direction}`, approach, leve ? 2.4 : 3.4);
+      const papi = pontos(grupo, `runway-papi-${direction}`, [0, 1, 2, 3].map(i => [direction * (width / 2 + 18 + i * 7), 1, soleira + direction * 300, 1, 1, 1]), 5.5);
       return { direction, papi, luzes, guia: corredor(grupo, pista, direction), whites: -1 };
     });
-    pontos(grupo, 'runway-edge-lights', lights, 2.4);
+    pontos(grupo, 'runway-edge-lights', lights, 2.6);
     geografia.add(grupo);
     return { pista, grupo, ends };
   });

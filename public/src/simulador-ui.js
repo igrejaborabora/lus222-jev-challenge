@@ -494,11 +494,16 @@ export function criarSimuladorUI({ som, mostrar, aoSair, carregarMundo, gatewayD
       host.append(g);
       return { id: d.id, circulo: g.firstChild };
     });
-    const trilho = svg('polyline', { fill: 'none', stroke: 'rgba(255,255,255,.55)', 'stroke-width': 60 });
+    const trilho = svg('polyline', { fill: 'none', stroke: 'rgba(120,230,255,.68)', 'stroke-width': 65 });
     const ameacas = svg('g');
-    const aviao = svg('path', { d: 'M0,-700 L420,500 L0,260 L-420,500 Z', fill: '#f4f6f8' });
-    host.append(trilho, ameacas, aviao);
-    s.mapa = { trilho, ameacas, aviao, pontos };
+    const aviaoGrupo = svg('g');
+    aviaoGrupo.append(
+      svg('polygon', { points: '0,0 -1150,-2400 1150,-2400', fill: 'rgba(120,230,255,.15)' }),
+      svg('circle', { cx: 0, cy: 0, r: 920, fill: 'none', stroke: 'rgba(120,230,255,.28)', 'stroke-width': 45, 'stroke-dasharray': '160 120' }),
+      svg('path', { d: 'M0,-740 L440,520 L0,260 L-440,520 Z', fill: '#f4f6f8', stroke: '#071018', 'stroke-width': 45 }),
+    );
+    host.append(trilho, ameacas, aviaoGrupo);
+    s.mapa = { trilho, ameacas, aviao: aviaoGrupo, pontos };
   }
 
   function actualizarMapa() {

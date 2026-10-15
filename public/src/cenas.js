@@ -42,13 +42,22 @@ function torre({ x, z, w, d, h, pedra, vidro }) {
   const h3 = h * 0.15;
   const base = new THREE.Mesh(new THREE.BoxGeometry(w, h1, d), pedra);
   base.position.y = h1 / 2;
+  const cornija1 = new THREE.Mesh(new THREE.BoxGeometry(w + 0.8, 0.9, d + 0.8), pedra);
+  cornija1.position.y = h1;
   const meio = new THREE.Mesh(new THREE.BoxGeometry(w * 0.74, h2, d * 0.74), vidro);
   meio.position.y = h1 + h2 / 2;
+  const cornija2 = new THREE.Mesh(new THREE.BoxGeometry(w * 0.78, 0.7, d * 0.78), pedra);
+  cornija2.position.y = h1 + h2;
   const topo = new THREE.Mesh(new THREE.BoxGeometry(w * 0.4, h3, d * 0.4), pedra);
   topo.position.y = h1 + h2 + h3 / 2;
   const antena = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 7, 5), mat(0x1a1c1e));
   antena.position.y = h + 3.2;
-  g.add(base, meio, topo, antena);
+  const farol = new THREE.Mesh(
+    new THREE.SphereGeometry(0.32, 6, 5),
+    new THREE.MeshBasicMaterial({ color: 0xff3b30 }),
+  );
+  farol.position.y = h + 6.8;
+  g.add(base, cornija1, meio, cornija2, topo, antena, farol);
   if (h < 100) {
     const tanque = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 2.4, 8), mat(0x5c5348));
     tanque.position.y = h + 1.4;

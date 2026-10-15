@@ -211,14 +211,36 @@ function pinturaFuselagem(zMin, zMax, leve) {
     ctx.stroke();
   }
 
+  // Linhas de painéis estruturais subtis ao longo da fuselagem.
+  ctx.strokeStyle = 'rgba(155, 164, 176, 0.32)';
+  ctx.lineWidth = W / 1400;
+  for (const zPainel of [-3.35, -2.35, -1.15, 0.05, 1.45, 2.35, 3.05, 3.72]) {
+    const xP = px(zPainel);
+    ctx.beginPath();
+    ctx.moveTo(xP, H * 0.14);
+    ctx.lineTo(xP, H * 0.86);
+    ctx.stroke();
+  }
+
   // Para-brisas em dois painéis com pilar central, e janelas laterais da cabine.
   const vidro = '#121a22';
   for (const s of [1, -1]) {
-    poligono([topo(3.08, s * 0.06), topo(3.08, s * 0.66), topo(3.68, s * 0.5), topo(3.68, s * 0.05)], vidro, true);
-    poligono([lado(2.98, 0.46, s), lado(2.52, 0.5, s), lado(2.54, 0.86, s), lado(2.96, 0.8, s)], vidro, true);
-    poligono([lado(3.42, 0.26, s), lado(3.06, 0.4, s), lado(3.07, 0.68, s), lado(3.36, 0.5, s)], vidro, true);
+    const p1 = [topo(3.08, s * 0.06), topo(3.08, s * 0.66), topo(3.68, s * 0.5), topo(3.68, s * 0.05)];
+    const p2 = [lado(2.98, 0.46, s), lado(2.52, 0.5, s), lado(2.54, 0.86, s), lado(2.96, 0.8, s)];
+    const p3 = [lado(3.42, 0.26, s), lado(3.06, 0.4, s), lado(3.07, 0.68, s), lado(3.36, 0.5, s)];
+    poligono(p1, vidro, true);
+    poligono(p2, vidro, true);
+    poligono(p3, vidro, true);
+    ctx.strokeStyle = '#6c7785';
+    ctx.lineWidth = W / 950;
+    for (const poly of [p1, p2, p3]) {
+      ctx.beginPath();
+      poly.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.closePath();
+      ctx.stroke();
+    }
 
-    // Vigias da cabine: seis por lado, de cantos arredondados.
+    // Vigias da cabine: seis por lado, de cantos arredondados e aro metálico.
     for (let i = 0; i < 6; i++) {
       const z = 1.25 - i * 0.66;
       const [x0, ya] = lado(z + 0.12, 0.05, s);
@@ -227,18 +249,27 @@ function pinturaFuselagem(zMin, zMax, leve) {
       const y = Math.min(ya, yb);
       const w = Math.abs(x1 - x0);
       const h = Math.abs(yb - ya);
-      for (const [c, f] of [[ctx, vidro], ...(rctx ? [[rctx, 'rgb(28,28,28)']] : [])]) {
+      const r = Math.min(w, h) * 0.42;
+      ctx.beginPath();
+      ctx.roundRect(x - 1.5, y - 1.5, w + 3, h + 3, r + 1);
+      ctx.fillStyle = '#9aa3ae';
+      ctx.fill();
+      for (const [c, f] of [[ctx, vidro], ...(rctx ? [[rctx, 'rgb(22,22,22)']] : [])]) {
         c.beginPath();
-        c.roundRect(x, y, w, h, Math.min(w, h) * 0.42);
+        c.roundRect(x, y, w, h, r);
         c.fillStyle = f;
         c.fill();
       }
+      ctx.beginPath();
+      ctx.roundRect(x + w * 0.14, y + h * 0.12, w * 0.72, h * 0.26, r * 0.5);
+      ctx.fillStyle = 'rgba(182, 214, 240, 0.18)';
+      ctx.fill();
     }
 
-    // Porta dianteira: só o contorno.
+    // Porta dianteira: contorno e pega de abertura.
     const porta = [lado(2.22, -0.72, s), lado(1.68, -0.72, s), lado(1.68, 0.78, s), lado(2.22, 0.78, s)];
-    ctx.strokeStyle = '#c9ced4';
-    ctx.lineWidth = W / 900;
+    ctx.strokeStyle = '#aeb6c0';
+    ctx.lineWidth = W / 820;
     ctx.beginPath();
     porta.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
     ctx.closePath();
@@ -411,9 +442,19 @@ export function criarLus222({ leve = false } = {}) {
   // Naceles centradas na asa, perto da fuselagem, como na vista frontal.
   const props = [];
   const geoPa = geometriaPa();
+  const geoBoca = new THREE.CylinderGeometry(0.14, 0.21, 0.28, leve ? 8 : 14);
+  geoBoca.rotateX(Math.PI / 2);
+  const geoEscape = new THREE.CylinderGeometry(0.065, 0.075, 0.32, leve ? 6 : 10);
+  geoEscape.rotateX(Math.PI / 2);
   for (const s of [-1, 1]) {
     const x = s * 2.45;
     g.add(corpoSuperelipse(ESTACOES_NACELE, m.branco, { cx: x, nAneis: 14 }));
+    const boca = new THREE.Mesh(geoBoca, m.escuro);
+    boca.position.set(x, 0.56, 1.48);
+    const escape = new THREE.Mesh(geoEscape, m.metal);
+    escape.rotation.y = s * 0.24;
+    escape.position.set(x + s * 0.34, 0.74, 0.85);
+    g.add(boca, escape);
     const spinner = new THREE.Mesh(
       new THREE.LatheGeometry([[0.2, 0], [0.2, 0.08], [0.15, 0.24], [0.07, 0.36], [0, 0.4]].map(([r, y]) => new THREE.Vector2(r, y)), 16),
       m.branco,
@@ -480,7 +521,16 @@ export function criarLus222({ leve = false } = {}) {
   const antena = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.02, 0.5, 5), m.escuro);
   antena.position.set(0, 1.3, 2.35);
   antena.rotation.x = -0.35;
-  g.add(antena);
+  const antenaTraseira = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.24, 0.34), m.branco);
+  antenaTraseira.position.set(0, 1.32, -2.1);
+  antenaTraseira.rotation.x = -0.22;
+  g.add(antena, antenaTraseira);
+  for (const s of [-1, 1]) {
+    const pitot = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.014, 0.24, 6), m.metal);
+    pitot.rotation.x = Math.PI / 2;
+    pitot.position.set(s * 0.72, -0.14, 4.18);
+    g.add(pitot);
+  }
 
   criarLuzesAterragem(g);
   g.userData.props = props;
