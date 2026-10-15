@@ -103,38 +103,116 @@
         <span class="px-mark"><span class="px-fallback" aria-hidden="true">PX</span><canvas id="px-particles" data-px-particles role="img" aria-label="PX — Pixelgrammar"></canvas></span>
         <span class="lab-wordmark">PIXELGRAMMAR <b>LAB</b></span>
       </a>
-      <nav aria-label="Experiment navigation"><a href="#lab-experience">The experience</a><a href="#lab-observe">How it works</a><a href="#lab-about">The Lab <span>↗</span></a></nav>
-      <span class="lab-edition"><i></i> OPEN EXPERIMENT / 01</span>
+      <nav aria-label="Experiment navigation"><a href="#lab-experience">Use Case &amp; Sim</a><a href="#lab-observe">JEV Architecture</a><a href="#lab-about">The Lab <span>↗</span></a></nav>
+      <span class="lab-edition"><i></i> PIXELGRAMMAR USE CASE // 01</span>
     </header>
+    <div class="lab-sysbar" aria-label="System architecture summary">
+      <span><b>STUDIO</b> PIXELGRAMMAR — AI, INTERACTION &amp; SIMULATION</span>
+      <span><b>MODEL</b> typesafe-ai/jev · experimental_evaluate</span>
+      <span><b>OUTPUT</b> TYPED CHOICE · SCORE · BOOLEAN (ZERO PROSE)</span>
+      <span><b>AIRFRAME</b> LUS–222 STOL · PORTO LPPR</span>
+    </div>
     <main id="lab-main">
       <section class="lab-hero" aria-labelledby="lab-title">
         <div class="lab-hero-art" aria-hidden="true"><img src="./img/lus-222-hero.webp" alt="" fetchpriority="high"></div>
-        <div class="lab-hero-content"><p class="lab-eyebrow"><span>FLIGHT EXPERIMENT</span> HUMAN × MACHINE</p>
-          <h1 id="lab-title">Take control.<br><em>See how<br>AI decides.</em></h1>
-          <p class="lab-lead">Fly over Porto. Hand the controls to AI. Take them back.<br>An interactive LUS-222 flight simulator by Pixelgrammar Lab, featuring JEV by TypeSafe AI.</p>
-          <div class="lab-actions"><button type="button" class="button lab-primary" id="btn-sim-abrir">Start flying <span aria-hidden="true">↗</span></button><button type="button" class="button lab-secondary" data-lab-start="ai">Watch JEV fly <span aria-hidden="true">▷</span></button></div>
-          <p class="lab-action-note">Runs in your browser · No sign-up · Human control by default</p>
+        <div class="lab-tech-grid" aria-hidden="true"></div>
+        <div class="lab-hero-content">
+          <p class="lab-eyebrow"><span>PIXELGRAMMAR ENGINEERING USE CASE</span> TYPESAFE-AI/JEV × LUS–222</p>
+          <h1 id="lab-title">Take control.<br><em>See how typed<br>AI decides.</em></h1>
+          <p class="lab-lead">A real-time 3D flight simulator engineered by Pixelgrammar to demonstrate a new frontier AI paradigm: <strong>JEV (<code>typesafe-ai/jev</code>)</strong>. Instead of generating chat prose, JEV evaluates structured aircraft telemetry and returns typed decisions, calibrated probabilities and millisecond latency.</p>
+          <div class="lab-hero-specs" aria-label="Use case pillars">
+            <div><span>ENGINEERED BY</span><strong>Pixelgrammar Studio</strong><small>Applied AI · WebGL · Critical UI</small></div>
+            <div><span>DECISION ENGINE</span><strong>typesafe-ai/jev</strong><small>Choice · Score · Boolean · ~220 ms</small></div>
+            <div><span>TESTBED AIRFRAME</span><strong>LUS–222 Regional STOL</strong><small>Porto LPPR · Human ⇄ AI Handover</small></div>
+          </div>
+          <div class="lab-actions"><button type="button" class="button lab-primary" id="btn-sim-abrir">Launch 3D Flight Deck <span aria-hidden="true">↗</span></button><button type="button" class="button lab-secondary" data-lab-start="ai">Watch JEV Pilot Live <span aria-hidden="true">▷</span></button></div>
+          <p class="lab-action-note">Runs in your browser · WebGL ACESFilmic · Instant human takeover at any time</p>
         </div>
-        <div class="lab-aircraft-note"><span>01 / LUS–222</span><p>A Portuguese aircraft.<br>A shared decision space.</p><small>Aircraft render: EEA Aircraft</small></div>
-        <div class="lab-hero-footer"><span>PORTO, PORTUGAL / DUSK</span><span id="gateway-status" role="status">Checking live JEV…</span><a href="#lab-experience">EXPLORE THE EXPERIMENT ↓</a></div>
+        <div class="lab-aircraft-note">
+          <span>01 / LIVE JEV TELEMETRY &amp; AIRFRAME</span>
+          <p>Structured flight state in.<br>Typed decision out.</p>
+          <dl class="lab-hud-readout">
+            <div><dt>MODEL</dt><dd>typesafe-ai/jev</dd></div>
+            <div><dt>PRIMITIVE</dt><dd>experimental_evaluate</dd></div>
+            <div><dt>CONTINUE</dt><dd><b>0.84</b> <i style="--p:84%"></i></dd></div>
+            <div><dt>HOLD / GA</dt><dd>0.12 / 0.04</dd></div>
+            <div><dt>LATENCY</dt><dd class="lab-hud-ms">214 ms · ZERO PROSE</dd></div>
+          </dl>
+          <small>LUS-222 render: EEA Aircraft · System &amp; UI: Pixelgrammar</small>
+        </div>
+        <div class="lab-hero-footer"><span>PORTO LPPR · 41°14′53″N 008°40′53″W · DUSK</span><span id="gateway-status" role="status">Checking live JEV…</span><a href="#lab-experience">INSPECT SYSTEM ARCHITECTURE ↓</a></div>
       </section>
       <section class="lab-experience lab-section" id="lab-experience" aria-labelledby="lab-experience-title">
-        <div class="lab-section-head"><p class="lab-eyebrow">01 / THE EXPERIENCE</p><h2 id="lab-experience-title">A cockpit.<br>A city. <em>Your call.</em></h2><p>Read the instruments. Feel the change in altitude. Find the runway. The same flight becomes a different experience with a human or an AI at the controls.</p></div>
-        <figure class="lab-preview"><div class="lab-window-bar"><span><i></i> LUS–222 / FLIGHT DECK</span><span>CAPTURED IN THE SIMULATOR</span></div><div class="lab-preview-media"><video id="lab-preview-video" muted loop playsinline preload="none" poster="./img/flight-lab-preview.jpg" aria-label="Recorded view of the LUS-222 simulator over Porto"><source src="./img/flight-lab-preview.webm" type="video/webm"></video><button type="button" id="lab-video-toggle" aria-pressed="false">Play preview ▷</button></div><figcaption><span>Porto at dusk · Actual simulator capture</span><span>Illustrative scenery and aircraft systems</span></figcaption></figure>
+        <div class="lab-section-head"><p class="lab-eyebrow">01 / THE PIXELGRAMMAR USE CASE</p><h2 id="lab-experience-title">Real-time simulation.<br><em>Built to test AI under pressure.</em></h2><p>Pixelgrammar designs and engineers interactive 3D systems, mission-critical interfaces and applied AI architectures. In this use case, we built a full WebGL flight deck over Porto where a human pilot and TypeSafe AI’s JEV share the exact same aircraft physics, instruments and safety supervisor.</p></div>
+        <figure class="lab-preview"><div class="lab-window-bar"><span><i></i> PIXELGRAMMAR SIMULATOR ENGINE // LUS–222 FLIGHT DECK</span><span>THREE.JS ACESFILMIC · TACTICAL RADAR · LIVE JEV HUD</span></div><div class="lab-preview-media"><video id="lab-preview-video" muted loop playsinline preload="none" poster="./img/flight-lab-preview.jpg" aria-label="Recorded view of the LUS-222 simulator over Porto"><source src="./img/flight-lab-preview.webm" type="video/webm"></video><button type="button" id="lab-video-toggle" aria-pressed="false">Play preview ▷</button></div><figcaption><span>Porto LPPR at dusk · Actual simulator capture</span><span>Illustrative aerodynamics + live typesafe-ai/jev telemetry bridge</span></figcaption></figure>
         <div class="lab-paths">
-          <article><span class="lab-path-number">01</span><div><h3>Find your bearings.</h3><p>A short first flight, with prompts for power, pitch and level flight. Learn by moving the aircraft.</p><button type="button" class="lab-link" data-lab-start="learn">Try your first flight ↗</button></div></article>
-          <article><span class="lab-path-number">02</span><div><h3>Make the approach.</h3><p>Start on final, line up with the runway and manage your descent. Review the touchdown afterwards.</p><button type="button" class="lab-link" data-lab-start="land">Practise landing ↗</button></div></article>
-          <article><span class="lab-path-number">03</span><div><h3>Let AI take a turn.</h3><p>Give JEV a goal: fly the route or land at Porto. Follow its decisions and take over whenever you want.</p><button type="button" class="lab-link" data-lab-start="ai">Choose an AI flight ↗</button></div></article>
+          <article><span class="lab-path-number">01</span><div><h3>Fly the LUS-222 manually.</h3><p>Take direct control of throttle, pitch and roll with real-time PFD instruments, twin-engine telemetry and optional envelope protection.</p><button type="button" class="lab-link" data-lab-start="learn">Try manual flight ↗</button></div></article>
+          <article><span class="lab-path-number">02</span><div><h3>Execute the LPPR approach.</h3><p>Start on final over Porto, align with the runway threshold, manage sink rate and inspect touchdown telemetry afterwards.</p><button type="button" class="lab-link" data-lab-start="land">Practise runway approach ↗</button></div></article>
+          <article><span class="lab-path-number">03</span><div><h3>Put JEV in command.</h3><p>Assign JEV a route or landing objective. Watch its typed choices, calibrated confidence and millisecond latency live—and take over anytime.</p><button type="button" class="lab-link" data-lab-start="ai">Launch AI pilot ↗</button></div></article>
         </div>
       </section>
       <section class="lab-observe lab-section" id="lab-observe" aria-labelledby="lab-observe-title">
-        <div class="lab-section-head"><p class="lab-eyebrow">02 / HUMAN + AI</p><h2 id="lab-observe-title">See the decision.<br><em>Then the difference.</em></h2><p>JEV is an AI model by TypeSafe. It reads structured flight data and chooses actions for the route. During landing, it decides whether to continue, hold or go around; flight guidance handles the approach and touchdown.</p></div>
-        <div class="lab-decision-flow" aria-label="How a JEV flight decision works">
-          <article><span>01 / OBSERVE</span><h3>The flight state.</h3><p>Position, altitude, speed, wind and nearby hazards become the data JEV reads.</p><div class="lab-flow-symbol" aria-hidden="true">↗ <span>+ ≋</span></div></article>
-          <article><span>02 / DECIDE</span><h3>A visible choice.</h3><p>JEV selects from the available actions. Live and recorded decisions are clearly identified.</p><div class="lab-flow-symbol lab-violet" aria-hidden="true">JEV <span>→</span></div></article>
-          <article><span>03 / OBSERVE AGAIN</span><h3>A measurable change.</h3><p>Follow altitude, speed and separation. Take control, repeat the scenario and compare the results.</p><div class="lab-flow-symbol" aria-hidden="true">↘ <span>↗</span></div></article>
+        <div class="lab-section-head"><p class="lab-eyebrow">02 / WHAT IS JEV &amp; WHY IT MATTERS</p><h2 id="lab-observe-title">No chat prose.<br><em>Typed decisions in milliseconds.</em></h2><p>JEV (<code>typesafe-ai/jev</code>) is a frontier evaluation model accessed via <code>experimental_evaluate</code>. Unlike conversational LLMs that stream free-form text, JEV ingests structured telemetry and returns schema-locked <strong>Choice</strong>, <strong>Score</strong> and <strong>Boolean</strong> decisions with calibrated probability distributions in a single fast call.</p></div>
+        <div class="lab-jev-inspector" aria-label="JEV typed evaluation pipeline">
+          <div class="lab-jev-pane">
+            <header><span>01 // TELEMETRY STATE IN</span><code>landing-contract.js</code></header>
+            <pre><code>{
+  "objective": "land_at_porto",
+  "phase": "descending",
+  "altitude_m": 380,
+  "speed_mps": 59.4,
+  "vertical_speed_mps": -3.2,
+  "stable": true,
+  "engines_available": 2,
+  "weather": { "tempo": "limpo", "vento_kt": 14 },
+  "traffic": "clear"
+}</code></pre>
+          </div>
+          <div class="lab-jev-bridge">
+            <span class="lab-jev-chip">experimental_evaluate</span>
+            <strong>typesafe-ai/jev</strong>
+            <ul>
+              <li>Zero free-text generation</li>
+              <li>Single-call multi-criteria</li>
+              <li>Calibrated probabilities</li>
+              <li>~180–420 ms round-trip</li>
+            </ul>
+          </div>
+          <div class="lab-jev-pane lab-jev-out">
+            <header><span>02 // TYPED DECISION OUT</span><b class="lab-jev-ms">214 ms · LIVE</b></header>
+            <div class="lab-jev-row">
+              <div class="lab-jev-row-head"><span>Choice · landingDecision</span><strong>continue <em>84%</em></strong></div>
+              <div class="lab-jev-bars"><i style="width:84%" class="is-top"></i><i style="width:12%"></i><i style="width:4%"></i></div>
+              <small>continue 0.84 · hold 0.12 · go_around 0.04</small>
+            </div>
+            <div class="lab-jev-row">
+              <div class="lab-jev-row-head"><span>Score · approachRisk</span><strong>18 / 100 <em>LOW</em></strong></div>
+              <small>Continuous calibrated rubric [0–100]</small>
+            </div>
+            <div class="lab-jev-row">
+              <div class="lab-jev-row-head"><span>Boolean · stabilizedGate</span><strong>true <em>CONF 0.97</em></strong></div>
+              <small>Verified against descent envelope criteria</small>
+            </div>
+          </div>
         </div>
-        <div class="lab-mission-link"><div><span>GO FURTHER</span><p>Urgency. Payload. Uncertainty.<br>Explore four AI mission briefings.</p></div><button type="button" class="button lab-secondary" id="btn-open">Explore AI missions <span aria-hidden="true">↗</span></button></div>
+        <div class="lab-decision-flow" aria-label="How a JEV flight decision works">
+          <article><span>01 / STATE INGESTION</span><h3>Validated telemetry.</h3><p>Position, altitude, airspeed, wind shear, engine state and nearby hazards are sanitised by strict client contracts before evaluation.</p><div class="lab-flow-symbol" aria-hidden="true">↗ <span>+ ≋</span></div></article>
+          <article><span>02 / TYPED INFERENCE</span><h3>Calibrated choice.</h3><p>JEV evaluates all criteria in one call and returns a probability distribution over valid actions—clearly distinguishing live AI from recorded replay.</p><div class="lab-flow-symbol lab-violet" aria-hidden="true">JEV <span>→</span></div></article>
+          <article><span>03 / CLOSED-LOOP CONTROL</span><h3>Supervised actuation.</h3><p>Flight guidance executes the chosen manoeuvre while an independent safety supervisor enforces terrain and traffic separation.</p><div class="lab-flow-symbol" aria-hidden="true">↘ <span>↗</span></div></article>
+        </div>
+        <div class="lab-px-capabilities" aria-label="Pixelgrammar engineering capabilities">
+          <div class="lab-px-cap-head">
+            <span>PIXELGRAMMAR CAPABILITIES // ENGINEERING THE STACK</span>
+            <h3>Who is Pixelgrammar—and why we built this.</h3>
+            <p>Pixelgrammar is a software, AI and simulation studio. We partner with ambitious teams to turn new AI models and complex domain physics into high-craft, production-ready interactive products.</p>
+          </div>
+          <div class="lab-px-cap-grid">
+            <article><span>CAPABILITY 01</span><h4>Frontier AI Integration</h4><p>Adapting new model primitives like <code>typesafe-ai/jev</code> into deterministic, schema-validated decision pipelines with real-time observability.</p></article>
+            <article><span>CAPABILITY 02</span><h4>3D &amp; WebGL Simulation</h4><p>Engineering custom Three.js worlds, procedural terrain, shaders and flight dynamics that run at 60 FPS directly in the browser.</p></article>
+            <article><span>CAPABILITY 03</span><h4>Tactical &amp; Critical UI</h4><p>Designing high-density instrumentation, glass-cockpit HUDs and human-in-the-loop override controls where clarity is non-negotiable.</p></article>
+          </div>
+        </div>
+        <div class="lab-mission-link"><div><span>GO FURTHER // MULTI-CRITERIA BRIEFINGS</span><p>Clinical urgency. Heavy payload. Uncertain sighting.<br>Stress-test JEV across four operational mission scenarios.</p></div><button type="button" class="button lab-secondary" id="btn-open">Explore AI missions <span aria-hidden="true">↗</span></button></div>
       </section>
       <section class="lab-about lab-section" id="lab-about" aria-labelledby="lab-about-title"><div class="lab-about-mark" data-px-logo role="img" aria-label="PX — Pixelgrammar Lab">
         <span class="px-mark" aria-hidden="true"><span class="px-fallback">PX</span><canvas id="px-lab-particles" data-px-particles></canvas></span>
