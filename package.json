@@ -6,7 +6,7 @@
   "description": "O JEV (typesafe-ai/jev) decide e desvia o LUS-222 — cenário CEiiA/EEA Aircraft. Evasão autónoma visível, não DAA certificável. A regra geométrica nunca se vende como JEV.",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=24.22.1 <25"
   },
   "scripts": {
     "build": "node scripts/verify-deploy-assets.mjs",
@@ -20,11 +20,11 @@
     "deploy": "vercel deploy --prod"
   },
   "dependencies": {
-    "ai": "^7.0.107"
+    "ai": "^7.0.148"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.11.0",
-    "globals": "^17.12.0"
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0"
   }
 }
